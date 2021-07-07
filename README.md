@@ -2,26 +2,37 @@
 
 This repository contains a set of supporting scripts used for the Chocolatey for Business (C4B) Quick-Start Guide.
 
-These scripts can be used to assist in setup of a brand new Windows Server as a C4B Server, including:
+These scripts can be used to assist in setup of a brand new Windows Server as a C4B Server.
 
-- C4B Server initial bootstrapping
-    - Install of Chocolatey
-    - Prompt for C4B license, with validation
-    - Script to help turn your C4B license into a Chocolatey package
-    - Setup of local `choco-setup` directories
-    - Download of Chocolatey packages required for setup
-- Sonatype Nexus Repository setup
-    - Install of Sonatype Nexus Repository Manager OSS instance
-    - Edit conofiguration to allow running of scripts
-    - Cleanup of all demo source repositories
-    - `ChocolateyInternal` NuGet v2 repository
-    - `choco-install` raw repository, with a script for offline Chocolatey install
-    - Setup of `ChocolateyInternal` on C4B Server as source, with API key
-    - Setup of firewall rule for repository access
-- Chocolatey Central Management setup
-    - Install of MS SQL Express
-    - Creation and permissions of `ChocolateyManagement` DB
-    - Install of all 3 CCM packages, with correct parameters
+## Completed
+- [X] C4B Server initial bootstrapping
+    - [X] Install of Chocolatey
+    - [X] Prompt for C4B license, with validation
+    - [X] Script to help turn your C4B license into a Chocolatey package
+    - [X] Setup of local `choco-setup` directories
+    - [X] Download of Chocolatey packages required for setup
+- [X] Sonatype Nexus Repository setup
+    - [X] Install of Sonatype Nexus Repository Manager OSS instance
+    - [X] Edit conofiguration to allow running of scripts
+    - [X] Cleanup of all demo source repositories
+    - [X] `ChocolateyInternal` NuGet v2 repository
+    - [X] `choco-install` raw repository, with a script for offline Chocolatey install
+    - [X] Setup of `ChocolateyInternal` on C4B Server as source, with API key
+    - [X] Setup of firewall rule for repository access
+- [X] Chocolatey Central Management setup
+    - [X] Install of MS SQL Express
+    - [X] Creation and permissions of `ChocolateyManagement` DB
+    - [X] Install of all 3 CCM packages, with correct parameters
+
+## TODO
+
+- [ ] Add `ClientSetup.ps1` script to `choco-install` raw repo
+- [ ] Add `ChocolateyTest` NuGet repo
+- [ ] Add Jenkins Setup
+- [ ] Add ability to pass JSON data between scripts
+- [ ] Add SSL configuration for Nexus and CCM Web
+- [ ] Disable first-run experience for MS Edge
+- [ ] Update bootstrap script to refer to repo locations (instead of ch0.co)
 
 ## Outline of Current Quick-Start Process
 
