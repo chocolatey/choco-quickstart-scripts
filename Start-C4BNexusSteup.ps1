@@ -694,6 +694,62 @@ function New-NexusRawHostedRepository {
     }
 }
 
+function Get-NexusRealm {
+    <#
+    .SYNOPSIS
+    Gets Nexus Realm information
+    
+    .DESCRIPTION
+    Gets Nexus Realm information
+    
+    .PARAMETER Active
+    Returns only active realms
+    
+    .EXAMPLE
+    Get-NexusRealm
+    .EXAMPLE
+    Get-NexusRealm -Active
+    #>
+    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Get-NexusRealm/')]
+    Param(
+        [Parameter()]
+        [Switch]
+        $Active
+    )
+
+    begin {
+
+        if (-not $header) {
+            throw "Not connected to Nexus server! Run Connect-NexusServer first."
+        }
+
+        
+        $urislug = "/service/rest/v1/security/realms/available"
+        
+
+    }
+
+    process {
+
+        if ($Active) {
+            $current = Invoke-Nexus -UriSlug $urislug -Method 'GET'
+            $urislug = '/service/rest/v1/security/realms/active'
+            $Activated = Invoke-Nexus -UriSlug $urislug -Method 'GET'
+            $current | Where-Object { $_.Id -in $Activated }
+        }
+        else {
+            $result = Invoke-Nexus -UriSlug $urislug -Method 'GET' 
+
+            $result | Foreach-Object {
+                [pscustomobject]@{
+                    Id   = $_.id
+                    Name = $_.name
+                }
+            }
+        }
+    }
+}
+
 function Enable-NexusRealm {
     <#
     .SYNOPSIS
@@ -772,6 +828,119 @@ function Enable-NexusRealm {
 
     }
 }
+
+function Get-NexusNuGetApiKey {
+    <#
+    .SYNOPSIS
+    Retrieves the NuGet API key of the given user credential
+    
+    .DESCRIPTION
+    Retrieves the NuGet API key of the given user credential
+    
+    .PARAMETER Credential
+    The Nexus User whose API key you wish to retrieve
+    
+    .EXAMPLE
+    Get-NexusNugetApiKey -Credential (Get-Credential)
+    
+    .NOTES
+    
+    #>
+    [CmdletBinding(HelpUri='https://steviecoaster.dev/TreasureChest/Security/API%20Key/Get-NexusNuGetApiKey/')]
+    Param(
+        [Parameter(Mandatory)]
+        [PSCredential]
+        $Credential
+    )
+
+    process {
+        $token = Get-NexusUserToken -Credential $Credential
+        $base64Token = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($token))
+        $UriBase = "$($protocol)://$($Hostname):$($port)"
+        
+        $slug = "/service/rest/internal/nuget-api-key?authToken=$base64Token&_dc=$(([DateTime]::ParseExact("01/02/0001 21:08:29", "MM/dd/yyyy HH:mm:ss",$null)).Ticks)"
+
+        $uri = $UriBase + $slug
+
+        Invoke-RestMethod -Uri $uri -Method GET -ContentType 'application/json' -Headers $header
+
+    }
+}
+
+function New-NexusRawComponent {
+    <#
+    .SYNOPSIS
+    Uploads a file to a Raw repository
+    
+    .DESCRIPTION
+    Uploads a file to a Raw repository
+    
+    .PARAMETER RepositoryName
+    The Raw repository to upload too
+    
+    .PARAMETER File
+    The file to upload
+    
+    .PARAMETER Directory
+    The directory to store the file on the repo
+    
+    .PARAMETER Name
+    The name of the file stored into the repo. Can be different than the file name being uploaded.
+    
+    .EXAMPLE
+    New-NexusRawComponent -RepositoryName GeneralFiles -File C:\temp\service.1234.log
+    .EXAMPLE
+    New-NexusRawComponent -RepositoryName GeneralFiles -File C:\temp\service.log -Directory logs
+    .EXAMPLE
+    New-NexusRawComponent -RepositoryName GeneralFile -File C:\temp\service.log -Directory logs -Name service.99999.log
+    
+    .NOTES
+    #>
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory)]
+        [String]
+        $RepositoryName,
+
+        [Parameter(Mandatory)]
+        [String]
+        $File,
+
+        [Parameter()]
+        [String]
+        $Directory,
+
+        [Parameter()]
+        [String]
+        $Name = (Split-Path -Leaf $File)
+    )
+
+    process {
+
+        if(-not $Directory){
+            $urislug = "/repository/$($RepositoryName)/$($Name)"
+        }
+        else {
+            $urislug = "/repository/$($RepositoryName)/$($Directory)/$($Name)"
+
+        }
+        $UriBase = "$($protocol)://$($Hostname):$($port)"
+        $Uri = $UriBase + $UriSlug
+
+
+        $params = @{
+            Uri         = $Uri
+            Method      = 'PUT'
+            ContentType = 'text/plain'
+            InFile        = $File
+            Headers     = $header
+            UseBasicParsing = $true
+        }
+
+        $null = Invoke-WebRequest @params        
+    }
+}
+
 # Install base nexus-repository package
 choco install nexus-repository -y
 
@@ -797,7 +966,6 @@ $NuGetApiKey = (Get-NexusNuGetApiKey -Credential $Credential).apikey
 
 #Push ChocolateyInstall.ps1 to raw repo
 $ScriptDir = "$env:SystemDrive\choco-setup\files"
-[System.Net.WebClient]::new().DownloadFile('https://ch0.co/nexus-raw',"$ScriptDir\ChocolateyInstall.ps1")
 New-NexusRawComponent -RepositoryName 'choco-install' -File "$ScriptDir\ChocolateyInstall.ps1"
 
 #Push ClientSetup.ps1 to raw repo
@@ -810,8 +978,8 @@ Get-ChildItem -Path "$env:SystemDrive\choco-setup\packages" -Filter *.nupkg |
     }
 
 # Add ChooclateyInternal as a source repository
-choco source add -n $($params.NuGetRepositoryName) -s "$($params.ServerUri)/repository/$($params.NuGetRepositoryName)/" --priority 1
-choco apikey -s "$($params.ServerUri)/repository/$($params.NuGetRepositoryName)/" -k $NugetApiKey
+choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/" --priority 1
+choco apikey -s 'ChocolateyInternal' -k $NugetApiKey
 
 # Install MS Edge for browsing the Nexus web portal (hide First-Run Experience)
 choco install microsoft-edge -y
@@ -839,7 +1007,7 @@ $NexusJson = @{
     NexusUri = "http://localhost:8081"
     NexusUser = "admin"
     NexusPw = "$($Credential.GetNetworkCredential().Password)"
-    NexusRepo = "$($params.ServerUri)/repository/$($params.NuGetRepositoryName)/"
+    NexusRepo = "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/"
     NuGetApiKey = $NugetApiKey
 }
 $NexusJson | ConvertTo-Json | Out-File .\nexus.json
@@ -851,12 +1019,9 @@ Nexus Repository Setup Completed
 Please login to the following URL to complete admin account setup:
 
 Server Url: 'http://localhost:8081'
-
-You will need the following API Key to complete Administrative workstation setup.
-The API Key can be accessed at:  http://localhost:8081/#user/nugetapitoken
-
+Chocolatey Repo: "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/"
 NuGet ApiKey: $NugetApiKey
-Nexus admin user password: $($Credential.GetNetworkCredential().Password)
+Nexus 'admin' user password: $($Credential.GetNetworkCredential().Password)
 
 ##############################################################
 "@
