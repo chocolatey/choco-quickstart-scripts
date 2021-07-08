@@ -164,14 +164,14 @@ Start-Service -Name Jenkins
 $JenkinsJson = @{
     JenkinsUri = "http://localhost:8080"
     JenkinsUser = "admin"
-    JenkinsPw = $JenkinsPw.ToString()
+    JenkinsPw = $(Get-Content "${env:ProgramFiles(x86)}\Jenkins\secrets\initialAdminPassword")
 }
 $JenkinsJson | ConvertTo-Json | Out-File .\jenkins.json
 
 Write-Host 'Jenkins setup complete' -ForegroundColor Green
 Write-Host 'Login to Jenkins at: http://locahost:8080' -ForegroundColor Green
 Write-Host 'Initial default Jenkins admin user password:' -ForegroundColor Green
-Write-Host "$JenkinsJson.JenkinsPw" -ForegroundColor Green
+Write-Host "$(Get-Content "${env:ProgramFiles(x86)}\Jenkins\secrets\initialAdminPassword")" -ForegroundColor Green
 Write-Host 'These details have been saved in 'jenkins.json' for your convenience' -ForegroundColor Green
 
 # Set error action preference back to default
