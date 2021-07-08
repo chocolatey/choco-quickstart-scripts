@@ -11,28 +11,35 @@ These scripts can be used to assist in setup of a brand new Windows Server as a 
     - [X] Script to help turn your C4B license into a Chocolatey package
     - [X] Setup of local `choco-setup` directories
     - [X] Download of Chocolatey packages required for setup
+    - [X] Use repo locations for file downloads (instead of ch0.co)
+    - [X] Output data to JSON to pass between scripts
 - [X] Sonatype Nexus Repository setup
     - [X] Install of Sonatype Nexus Repository Manager OSS instance
     - [X] Edit conofiguration to allow running of scripts
     - [X] Cleanup of all demo source repositories
     - [X] `ChocolateyInternal` NuGet v2 repository
+    - [X] Add `ChocolateyTest` NuGet v2 repo
     - [X] `choco-install` raw repository, with a script for offline Chocolatey install
     - [X] Setup of `ChocolateyInternal` on C4B Server as source, with API key
     - [X] Setup of firewall rule for repository access
+    - [X] Install MS Edge, and disable first-run experience
+    - [X] Output data to JSON to pass between scripts
 - [X] Chocolatey Central Management setup
     - [X] Install of MS SQL Express
     - [X] Creation and permissions of `ChocolateyManagement` DB
     - [X] Install of all 3 CCM packages, with correct parameters
+    - [X] Output data to JSON to pass between scripts
+- [X] Add Jenkins Setup
+    - [X] Choco install of the package, pinned to version
+    - [X] Pre-downloaded Jenkins scripts for Package Internalizer automation
+    - [X] Pre-defined Jenkins jobs for the scripts above
+    - [X] Output data to JSON to pass between scripts
 
 ## TODO
 
 - [ ] Add `ClientSetup.ps1` script to `choco-install` raw repo
-- [ ] Add `ChocolateyTest` NuGet repo
-- [ ] Add Jenkins Setup
-- [ ] Add ability to pass JSON data between scripts
 - [ ] Add SSL configuration for Nexus and CCM Web
-- [ ] Disable first-run experience for MS Edge
-- [ ] Update bootstrap script to refer to repo locations (instead of ch0.co)
+- [ ] Update Readme to reflect new QuickStart process
 
 ## Outline of Current Quick-Start Process
 

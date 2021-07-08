@@ -8,6 +8,7 @@ C4B Quick-Start Guide Nexus setup script
     - Edit configuration to allow running of scripts
     - Cleanup of all demo source repositories
     - `ChocolateyInternal` NuGet v2 repository
+    - `ChocolateyTest` NuGet V2 repository
     - `choco-install` raw repository, with a script for offline Chocolatey install
     - Setup of `ChocolateyInternal` on C4B Server as source, with API key
     - Setup of firewall rule for repository access
@@ -25,7 +26,7 @@ $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 
 # Start logging
-Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bNexusSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt" -IncludeInvocationHeader
+Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bNexusSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
 
 function Wait-Nexus {
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::tls12
@@ -788,6 +789,7 @@ Enable-NexusRealm -Realm 'NuGet API-Key Realm'
 
 #Create Chocolatey repositories
 New-NexusNugetHostedRepository -Name ChocolateyInternal -DeploymentPolicy Allow
+New-NexusNugetHostedRepository -Name ChocolateyTest -DeploymentPolicy Allow
 New-NexusRawHostedRepository -Name choco-install -DeploymentPolicy Allow -ContentDisposition Attachment
 
 #Surface API Key
@@ -799,7 +801,7 @@ $ScriptDir = "$env:SystemDrive\choco-setup\files"
 New-NexusRawComponent -RepositoryName 'choco-install' -File "$ScriptDir\ChocolateyInstall.ps1"
 
 #Push ClientSetup.ps1 to raw repo
-New-NexusRawComponent -RepositoryName 'choco-install' -File $PutFileHere
+#New-NexusRawComponent -RepositoryName 'choco-install' -File $PutFileHere
 
 # Push all packages from previous steps to NuGet repo
 Get-ChildItem -Path "$env:SystemDrive\choco-setup\packages" -Filter *.nupkg |
@@ -811,8 +813,16 @@ Get-ChildItem -Path "$env:SystemDrive\choco-setup\packages" -Filter *.nupkg |
 choco source add -n $($params.NuGetRepositoryName) -s "$($params.ServerUri)/repository/$($params.NuGetRepositoryName)/" --priority 1
 choco apikey -s "$($params.ServerUri)/repository/$($params.NuGetRepositoryName)/" -k $NugetApiKey
 
-# Install MS Edge for browsing the Nexus web portal
+# Install MS Edge for browsing the Nexus web portal (hide First-Run Experience)
 choco install microsoft-edge -y
+$RegArgs = @{
+    Path = 'HKLM:\SOFTWARE\Microsoft\Edge\'
+    Name = 'HideFirstRunExperience'
+    Type = 'Dword'
+    Value = 1
+    Force = $true
+}
+Set-ItemProperty @RegArgs
 
 # Add Nexus port 8081 access via firewall
 $FwRuleParams = @{
@@ -823,6 +833,16 @@ $FwRuleParams = @{
     Action = 'Allow'
 }
 $null = New-NetFirewallRule @FwRuleParams
+
+# Save useful params to JSON
+$NexusJson = @{
+    NexusUri = "http://localhost:8081"
+    NexusUser = "admin"
+    NexusPw = "$($Credential.GetNetworkCredential().Password)"
+    NexusRepo = "$($params.ServerUri)/repository/$($params.NuGetRepositoryName)/"
+    NuGetApiKey = $NugetApiKey
+}
+$NexusJson | ConvertTo-Json | Out-File .\nexus.json
 
 $finishOutput = @"
 ##############################################################
@@ -843,8 +863,8 @@ Nexus admin user password: $($Credential.GetNetworkCredential().Password)
 
 Write-Host "$finishOutput" -ForegroundColor Green
 
-#Stop logging
-Stop-Transcript
-
 # Set error action preference back to default
 $ErrorActionPreference = $DefaultEap
+
+#Stop logging
+Stop-Transcript
