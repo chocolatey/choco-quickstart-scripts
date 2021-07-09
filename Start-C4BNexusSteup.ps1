@@ -993,7 +993,7 @@ if ($LASTEXITCODE -eq 0) {
     Set-ItemProperty @RegArgs
 }
 else {
-    Write-Warning "Microsoft Edge install wa not succesful."
+    Write-Warning "Microsoft Edge install was not succesful."
     Write-Host "Installing Google Chrome as an alternative."
     choco install googlechrome -y
 }
@@ -1016,7 +1016,7 @@ $NexusJson = @{
     NexusRepo = "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/"
     NuGetApiKey = $NugetApiKey
 }
-$NexusJson | ConvertTo-Json | Out-File .\nexus.json
+$NexusJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\nexus.json"
 
 $finishOutput = @"
 ##############################################################

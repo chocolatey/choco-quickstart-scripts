@@ -177,7 +177,7 @@ $CcmJson = @{
     DefaultPwToBeChanged = "123qwe"
     CCMDBUser = $DatabaseUser
 }
-$CcmJson | ConvertTo-Json | Out-File .\ccm.json
+$CcmJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ccm.json"
 
 # Completion notice
 Write-Host "CCM Setup has now completed" -ForegroundColor Green

@@ -40,6 +40,10 @@ These scripts can be used to assist in setup of a brand new Windows Server as a 
 - [ ] Add `ClientSetup.ps1` script to `choco-install` raw repo
 - [ ] Add SSL configuration for Nexus and CCM Web
 - [ ] Update Readme to reflect new QuickStart process
+- [ ] Jenkins web does not come up consistently (service is started)
+- [ ] Possibly don't push one-time use packages to Nexus (speed enhancement)
+- [ ] Possibly no need to internalize as many pacakges (speed enhancement)
+- [ ] Popup web pages for user at end of scripts (enhancement)
 
 ## Outline of Current Quick-Start Process
 
@@ -98,7 +102,7 @@ As illustrated in the diagram above, there are four main components to a default
 
 1. **C4B Licensed components**: A licensed version of Chocolatey includes:
     a. Installation of the Chocolatey OSS client package itself (`chocolatey`)
-    a. your Chocolatey license installed in teh correct directory
+    a. your Chocolatey license installed in the correct directory
     a. Installation of the Chocolatey Licensed extension, giving you access to features like Package Bulder, Package Internalizer, etc. (full list here).
 1. **NuGet V2 Repository Server App**: Chocolatey works best with a NuGet V2 repository. This application hosts and manages versioning of your Chocolatey package artifacts, in their enhanced NuGet package (.nupkg) file format. This guide will help you setup [Sonatype Nexus Repository Manager (OSS)](https://www.sonatype.com/nexus-repository-oss).
 1. **Chocolatey Central Management (CCM) Server App**: This is a standalone server that hosts the Chocolatey Central Management web interface, as well as the back-end database on which it relies. Currently, this interface provides reporting on packages installed on endpoints. In future, a feature will be added to enable deployments of packages and updates from this web console, as well.  can be found on the the [Chocolatey Central Management Setup page](xref:ccm-setup).

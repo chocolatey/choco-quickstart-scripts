@@ -17,7 +17,7 @@ param(
     # Repo where you're installing Jenkins from, usually CCR
     [string]$Source = 'https://chocolatey.org/api/v2/',
     # API key of your Nexus repo, for Chocolatey Jenkins jobs to use
-    [string]$NuGetApiKey = $(Get-Content .\nexus.json | ConvertFrom-Json).NuGetApiKey
+    [string]$NuGetApiKey = $(Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
 )
 
 $DefaultEap = $ErrorActionPreference
@@ -72,7 +72,7 @@ $JenkinsPlugins = @{
     'workflow-support' = '3.8'
     'workflow-job' = '2.41'
     'checks-api' = '1.5.0'
-    'junit' = '1.50'
+    'junit' = '1.51'
     'matrix-project' = '1.18'
     'resource-disposer' = '0.16'
     'ws-cleanup' = '0.39'
@@ -155,13 +155,12 @@ $JenkinsJson = @{
     JenkinsUser = "admin"
     JenkinsPw = $(Get-Content "${env:ProgramFiles(x86)}\Jenkins\secrets\initialAdminPassword")
 }
-$JenkinsJson | ConvertTo-Json | Out-File .\jenkins.json
+$JenkinsJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\jenkins.json"
 
 Write-Host 'Jenkins setup complete' -ForegroundColor Green
 Write-Host 'Login to Jenkins at: http://locahost:8080' -ForegroundColor Green
 Write-Host 'Initial default Jenkins admin user password:' -ForegroundColor Green
 Write-Host "$(Get-Content "${env:ProgramFiles(x86)}\Jenkins\secrets\initialAdminPassword")" -ForegroundColor Green
-Write-Host 'These details have been saved in 'jenkins.json' for your convenience' -ForegroundColor Green
 
 $ErrorActionPreference = $DefaultEap
 Stop-Transcript
