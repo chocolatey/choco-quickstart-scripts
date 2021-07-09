@@ -20,13 +20,9 @@ param(
     [string]$NuGetApiKey = $(Get-Content .\nexus.json | ConvertFrom-Json).NuGetApiKey
 )
 
-# Set error action preference
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
-
-# Start logging
 Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bJenkinsSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
-
 
 # Install Jenkins
 choco install jenkins -y --source $Source --no-progress --version 2.222.4
@@ -131,18 +127,11 @@ $JenkinsPlugins = @{
     'powershell' = '1.5'
 }
 
-# Performance is killed by Invoke-WebRequest's progress bars, turning them off to speed this up
-$ProgressPreference = 'SilentlyContinue'
-
 foreach ($PluginName in $JenkinsPlugins.Keys) {
-    $PluginUri = 'https://updates.jenkins-ci.org/download/plugins/{0}/{1}/{0}.hpi' -f $PluginName, $JenkinsPlugins[$PluginName]
-    $PluginPath = '{0}/plugins/{1}.hpi' -f $jenkinsHome, $PluginName
-
-    Invoke-WebRequest -Uri $PluginUri -OutFile $PluginPath -UseBasicParsing
+    $PluginUri = 'https://updates.jenkins-ci.org/download/plugins/{0}/{1}/{0}.hpi' -f $PluginName,$JenkinsPlugins[$PluginName]
+    $PluginPath = '{0}/plugins/{1}.hpi' -f $JenkinsHome, $PluginName
+    [System.Net.WebClient]::New().DownloadFile($PluginUri,$PluginPath)
 }
-
-# Restore default progress bar setting
-$ProgressPreference = 'Continue'
 
 #region Job Config
 Write-Host "Creating Chocolatey Jobs" -ForegroundColor Green
@@ -174,8 +163,5 @@ Write-Host 'Initial default Jenkins admin user password:' -ForegroundColor Green
 Write-Host "$(Get-Content "${env:ProgramFiles(x86)}\Jenkins\secrets\initialAdminPassword")" -ForegroundColor Green
 Write-Host 'These details have been saved in 'jenkins.json' for your convenience' -ForegroundColor Green
 
-# Set error action preference back to default
 $ErrorActionPreference = $DefaultEap
-
-#Stop logging
 Stop-Transcript

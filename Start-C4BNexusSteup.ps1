@@ -15,17 +15,14 @@ C4B Quick-Start Guide Nexus setup script
 #>
 [CmdletBinding()]
 param(
-    # Local path used to build the license package.
-    #[Parameter()]
-    #[string]
-    #$PackagesPath = "$env:SystemDrive\choco-setup\packages"
+    # Choice of non-IE broswer for Nexus
+    [Parameter()]
+    [string]
+    $Browser = 'Edge'
 )
 
-# Set error action preference
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
-
-# Start logging
 Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bNexusSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
 
 function Wait-Nexus {
@@ -981,16 +978,25 @@ Get-ChildItem -Path "$env:SystemDrive\choco-setup\packages" -Filter *.nupkg |
 choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/" --priority 1
 choco apikey -s 'ChocolateyInternal' -k $NugetApiKey
 
-# Install MS Edge for browsing the Nexus web portal (hide First-Run Experience)
-choco install microsoft-edge -y
-$RegArgs = @{
-    Path = 'HKLM:\SOFTWARE\Microsoft\Edge\'
-    Name = 'HideFirstRunExperience'
-    Type = 'Dword'
-    Value = 1
-    Force = $true
+# Install a non-IE browser for browsing the Nexus web portal.
+# Edge sometimes fails install due to latest Windows Updates not being installed.
+# In that scenario, Google Chrome is installed instead.
+$null = choco install microsoft-edge -y
+if ($LASTEXITCODE -eq 0) {
+    $RegArgs = @{
+        Path = 'HKLM:\SOFTWARE\Microsoft\Edge\'
+        Name = 'HideFirstRunExperience'
+        Type = 'Dword'
+        Value = 1
+        Force = $true
+        }
+    Set-ItemProperty @RegArgs
 }
-Set-ItemProperty @RegArgs
+else {
+    Write-Warning "Microsoft Edge install wa not succesful."
+    Write-Host "Installing Google Chrome as an alternative."
+    choco install googlechrome -y
+}
 
 # Add Nexus port 8081 access via firewall
 $FwRuleParams = @{
@@ -1028,8 +1034,5 @@ Nexus 'admin' user password: $($Credential.GetNetworkCredential().Password)
 
 Write-Host "$finishOutput" -ForegroundColor Green
 
-# Set error action preference back to default
 $ErrorActionPreference = $DefaultEap
-
-#Stop logging
 Stop-Transcript

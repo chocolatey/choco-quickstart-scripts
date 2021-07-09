@@ -17,11 +17,8 @@ param(
     $DatabaseCredential = (Get-Credential -Username ChocoUser -Message 'Create a credential for the ChocolateyManagement DB user (document this somewhere)')
 )
 
-# Set error action preference
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
-
-# Start logging
 Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
 
 # DB Setup
@@ -185,8 +182,5 @@ $CcmJson | ConvertTo-Json | Out-File .\ccm.json
 # Completion notice
 Write-Host "CCM Setup has now completed" -ForegroundColor Green
 
-# Set error action preference back to default
 $ErrorActionPreference = $DefaultEap
-
-#Stop logging
 Stop-Transcript

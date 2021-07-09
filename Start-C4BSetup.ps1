@@ -21,11 +21,8 @@ param(
     $LicenseFile
 )
 
-# Set error action preference
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
-
-# Start logging
 Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
 
 function Install-ChocoLicensed {
@@ -101,6 +98,11 @@ Expand-Archive "$TempDir\main.zip" $TempDir
 Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
 Remove-Item "$TempDir\*" -Recurse
 
+# Convert license to a "choco-license" package, and install it locally to test
+Write-Host "Ceating a "chocolatey-license" package, and testing install." -ForegroundColor Green
+Set-Location $FilesDir
+.\Create-ChocoLicensePkg.ps1
+
 # Downloading all CCM setup packages below
 Write-Host "Downloading nupkg files to C:\choco-setup\packages." -ForegroundColor Green
 Write-Host "This will take some time. Feel free to get a tea or coffee." -ForegroundColor Green
@@ -132,12 +134,5 @@ $PkgsDir = "$env:SystemDrive\choco-setup\packages"
         choco download $_ --force --no-progress --source="'https://licensedpackages.chocolatey.org/api/v2/'" --ignore-dependencies --output-directory $PkgsDir
     }
 
-# Convert license to a "choco-license" package, and install it locally to test
-Set-Location $FilesDir
-.\Create-ChocoLicensePkg.ps1
-
-# Set error action preference back to default
 $ErrorActionPreference = $DefaultEap
-
-#Stop logging
 Stop-Transcript
