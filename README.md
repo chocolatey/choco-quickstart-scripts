@@ -11,28 +11,39 @@ These scripts can be used to assist in setup of a brand new Windows Server as a 
     - [X] Script to help turn your C4B license into a Chocolatey package
     - [X] Setup of local `choco-setup` directories
     - [X] Download of Chocolatey packages required for setup
+    - [X] Use repo locations for file downloads (instead of ch0.co)
+    - [X] Output data to JSON to pass between scripts
 - [X] Sonatype Nexus Repository setup
     - [X] Install of Sonatype Nexus Repository Manager OSS instance
     - [X] Edit conofiguration to allow running of scripts
     - [X] Cleanup of all demo source repositories
     - [X] `ChocolateyInternal` NuGet v2 repository
+    - [X] Add `ChocolateyTest` NuGet v2 repo
     - [X] `choco-install` raw repository, with a script for offline Chocolatey install
     - [X] Setup of `ChocolateyInternal` on C4B Server as source, with API key
     - [X] Setup of firewall rule for repository access
+    - [X] Install MS Edge, and disable first-run experience
+    - [X] Output data to JSON to pass between scripts
 - [X] Chocolatey Central Management setup
     - [X] Install of MS SQL Express
     - [X] Creation and permissions of `ChocolateyManagement` DB
     - [X] Install of all 3 CCM packages, with correct parameters
+    - [X] Output data to JSON to pass between scripts
+- [X] Add Jenkins Setup
+    - [X] Choco install of the package, pinned to version
+    - [X] Pre-downloaded Jenkins scripts for Package Internalizer automation
+    - [X] Pre-defined Jenkins jobs for the scripts above
+    - [X] Output data to JSON to pass between scripts
 
 ## TODO
 
 - [ ] Add `ClientSetup.ps1` script to `choco-install` raw repo
-- [ ] Add `ChocolateyTest` NuGet repo
-- [ ] Add Jenkins Setup
-- [ ] Add ability to pass JSON data between scripts
 - [ ] Add SSL configuration for Nexus and CCM Web
-- [ ] Disable first-run experience for MS Edge
-- [ ] Update bootstrap script to refer to repo locations (instead of ch0.co)
+- [ ] Update Readme to reflect new QuickStart process
+- [ ] Jenkins web does not come up consistently (service is started)
+- [ ] Possibly don't push one-time use packages to Nexus (speed enhancement)
+- [ ] Possibly no need to internalize as many pacakges (speed enhancement)
+- [ ] Popup web pages for user at end of scripts (enhancement)
 
 ## Outline of Current Quick-Start Process
 
@@ -46,7 +57,8 @@ These scripts can be used to assist in setup of a brand new Windows Server as a 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::tls12
-Invoke-Expression -Command ((New-Object System.Net.WebClient).DownloadString('https://ch0.co/quickstart'))
+$QuickStart = 'https://raw.githubusercontent.com/adilio/choco-quickstart-scripts/main/Start-C4BSetup.ps1'
+Invoke-Expression -Command ((New-Object System.Net.WebClient).DownloadString($QuickStart))
 ```
 
 ### Step 2: Nexus Setup
@@ -90,7 +102,7 @@ As illustrated in the diagram above, there are four main components to a default
 
 1. **C4B Licensed components**: A licensed version of Chocolatey includes:
     a. Installation of the Chocolatey OSS client package itself (`chocolatey`)
-    a. your Chocolatey license installed in teh correct directory
+    a. your Chocolatey license installed in the correct directory
     a. Installation of the Chocolatey Licensed extension, giving you access to features like Package Bulder, Package Internalizer, etc. (full list here).
 1. **NuGet V2 Repository Server App**: Chocolatey works best with a NuGet V2 repository. This application hosts and manages versioning of your Chocolatey package artifacts, in their enhanced NuGet package (.nupkg) file format. This guide will help you setup [Sonatype Nexus Repository Manager (OSS)](https://www.sonatype.com/nexus-repository-oss).
 1. **Chocolatey Central Management (CCM) Server App**: This is a standalone server that hosts the Chocolatey Central Management web interface, as well as the back-end database on which it relies. Currently, this interface provides reporting on packages installed on endpoints. In future, a feature will be added to enable deployments of packages and updates from this web console, as well.  can be found on the the [Chocolatey Central Management Setup page](xref:ccm-setup).

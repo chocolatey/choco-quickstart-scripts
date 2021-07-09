@@ -17,12 +17,9 @@ param(
     $DatabaseCredential = (Get-Credential -Username ChocoUser -Message 'Create a credential for the ChocolateyManagement DB user (document this somewhere)')
 )
 
-# Set error action preference
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
-
-# Start logging
-Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt" -IncludeInvocationHeader
+Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
 
 # DB Setup
 $PkgSrc = "$env:SystemDrive\choco-setup\packages"
@@ -172,21 +169,18 @@ choco pin add --name="'dotnetcore-windowshosting'" --version="'2.2.7'" --reason=
 #Install CCM Web package
 choco install chocolatey-management-web -y --source $PkgSrc --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
 
-# Completion ntice, and prompt for open of websites
-$Title    = "CCM Setup has now completed."
-$Question = "Would you like to open CCM and Nexus Web Portals in your broswer?"
-$Choices  = '&Yes', '&No'
-
-$decision = $Host.UI.PromptForChoice($Title, $Question, $Choices, 1)
-if ($Decision -eq 0) {
-    start msedge http://localhost/Account/Login,http://localhost:8081/#browse/browse
-    Write-Host 'Script completed. Have a wonderful day!' -ForegroundColor Green
-} else {
-    Write-Host 'Script completed. Have a wonderful day!' -ForegroundColor Green
+$CcmSvcUrl = choco config get centralManagementServiceUrl -r
+$CcmJson = @{
+    CCMServiceURL = $CcmSvcUrl
+    CCMWebPortal = "http://localhost/Account/Login"
+    DefaultUser = "ccmadmin"
+    DefaultPwToBeChanged = "123qwe"
+    CCMDBUser = $DatabaseUser
 }
+$CcmJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ccm.json"
 
-#Stop logging
-Stop-Transcript
+# Completion notice
+Write-Host "CCM Setup has now completed" -ForegroundColor Green
 
-# Set error action preference back to default
 $ErrorActionPreference = $DefaultEap
+Stop-Transcript

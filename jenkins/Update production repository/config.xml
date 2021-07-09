@@ -1,0 +1,59 @@
+<?xml version="1.1" encoding="UTF-8"?><flow-definition plugin="workflow-job@2.37">
+  <actions/>
+  <description>Determine new packages on the Test repository, test and submit them to the Production repository.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>P_PROD_REPO_URL</name>
+          <description>URL to the production repository</description>
+          <defaultValue>https://{{hostname}}:8081/nexus/repository/ChocolateyInternal/</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.PasswordParameterDefinition>
+          <name>P_PROD_REPO_API_KEY</name>
+          <description>API key for the production repository.</description>
+          <defaultValue>{{NugetApiKey}}</defaultValue>
+        </hudson.model.PasswordParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>P_TEST_REPO_URL</name>
+          <description>URL for the test repository.</description>
+          <defaultValue>https://{{hostname}}:8081/nexus/repository/ChocolateyTest/</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <jenkins.triggers.ReverseBuildTrigger>
+          <spec/>
+          <upstreamProjects>Internalize packages from the Community Repository, Update test repository from Chocolatey Community Repository, </upstreamProjects>
+          <threshold>
+            <name>SUCCESS</name>
+            <ordinal>0</ordinal>
+            <color>BLUE</color>
+            <completeBuild>true</completeBuild>
+          </threshold>
+        </jenkins.triggers.ReverseBuildTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.80">
+    <script>  node {
+      powershell '''
+          Set-Location (Join-Path -Path "$env:SystemDrive\choco-setup\files" -ChildPath 'scripts')
+          .\\Update-ProdRepoFromTest.ps1 `
+              -ProdRepo $env:P_PROD_REPO_URL `
+              -ProdRepoApiKey $env:P_PROD_REPO_API_KEY `
+              -TestRepo $env:P_TEST_REPO_URL `
+              -Verbose
+      '''
+  }
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>true</disabled>
+</flow-definition>

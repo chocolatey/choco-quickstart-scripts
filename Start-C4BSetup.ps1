@@ -13,7 +13,7 @@ C4B Quick-Start Guide initial bootstrap script
 [CmdletBinding()]
 param(
     # Full path to Chocolatey license file.
-    # Accepts any file, and moves and renames it correectly.
+    # Accepts any file, and moves and renames it correctly.
     # You can either define this as a parameter, or
     # script will prompt you for it.
     # Script will also validate expiry.
@@ -21,12 +21,9 @@ param(
     $LicenseFile
 )
 
-# Set error action preference
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
-
-# Start logging
-Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt" -IncludeInvocationHeader
+Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
 
 function Install-ChocoLicensed {
 
@@ -85,23 +82,26 @@ else {
 
 # Setup initial choco-setup directories
 Write-Host "Setting up initial directories in"$env:SystemDrive\choco-setup"" -ForegroundColor Green
-@('choco-setup','choco-setup\files','choco-setup\packages') |
+$ChocoPath = "$env:SystemDrive\choco-setup"
+$FilesDir = "$ChocoPath\files"
+$PkgsDir = "$ChocoPath\packages"
+$TempDir = "$ChocoPath\temp"
+@($ChocoPath,$FilesDir,$PkgsDir,$TempDir) |
     Foreach-Object {
-        $null = New-Item -Path "$env:SystemDrive\$_" -ItemType Directory -Force
+        $null = New-Item -Path $_ -ItemType Directory -Force
 	}
 
-$FilesDir = "$env:SystemDrive\choco-setup\files"
-$PkgsDir = "$env:SystemDrive\choco-setup\packages"
+# Download and extract C4B setup files from repo
+$QsRepo = "https://github.com/adilio/choco-quickstart-scripts/archive/main.zip"
+Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\main.zip"
+Expand-Archive "$TempDir\main.zip" $TempDir
+Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
+Remove-Item "$TempDir\*" -Recurse
 
-$C4bSetupFiles = @{
-    'https://ch0.co/quickstart' = 'Start-C4BSetup.ps1'
-    'https://ch0.co/qs-nexus' = 'Start-C4BNexusSetup.ps1'
-    'https://ch0.co/qs-ccm' = 'Start-C4bCcmSetup.ps1'
-    'https://ch0.co/licensepkg' = 'Create-ChocoLicensePkg.ps1'
-}
-$C4bSetupFiles.Keys | ForEach-Object {
-    Invoke-WebRequest -Uri $_ -UseBasicParsing -OutFile "$FilesDir\$($C4bSetupFiles[$_])"
-}
+# Convert license to a "choco-license" package, and install it locally to test
+Write-Host "Ceating a "chocolatey-license" package, and testing install." -ForegroundColor Green
+Set-Location $FilesDir
+.\Create-ChocoLicensePkg.ps1
 
 # Downloading all CCM setup packages below
 Write-Host "Downloading nupkg files to C:\choco-setup\packages." -ForegroundColor Green
@@ -134,12 +134,5 @@ $PkgsDir = "$env:SystemDrive\choco-setup\packages"
         choco download $_ --force --no-progress --source="'https://licensedpackages.chocolatey.org/api/v2/'" --ignore-dependencies --output-directory $PkgsDir
     }
 
-# Convert license to a "choco-license" package, and install it locally to test
-Set-Location $FilesDir
-.\Create-ChocoLicensePkg.ps1
-
-#Stop logging
-Stop-Transcript
-
-# Set error action preference back to default
 $ErrorActionPreference = $DefaultEap
+Stop-Transcript
