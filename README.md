@@ -57,8 +57,8 @@ These scripts can be used to assist in setup of a brand new Windows Server as a 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::tls12
-$QuickStart = 'https://raw.githubusercontent.com/adilio/choco-quickstart-scripts/main/Start-C4BSetup.ps1'
-Invoke-Expression -Command ((New-Object System.Net.WebClient).DownloadString($QuickStart))
+$QuickStart = 'https://raw.githubusercontent.com/chocolatey/choco-quickstart-scripts/main/Start-C4BSetup.ps1'
+Invoke-Expression -Command ((New-Object System.Net.WebClient).DownloadString('https://ch0.co/quickstart'))
 ```
 
 ### Step 2: Nexus Setup

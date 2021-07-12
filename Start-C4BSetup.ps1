@@ -92,7 +92,7 @@ $TempDir = "$ChocoPath\temp"
 	}
 
 # Download and extract C4B setup files from repo
-$QsRepo = "https://github.com/adilio/choco-quickstart-scripts/archive/main.zip"
+$QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/main.zip"
 Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\main.zip"
 Expand-Archive "$TempDir\main.zip" $TempDir
 Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
@@ -112,19 +112,19 @@ $PkgsDir = "$env:SystemDrive\choco-setup\packages"
 # Download Chocolatey community related items, no internalization necessary
 @('chocolatey','chocolateygui') |
     Foreach-Object {
-        choco download $_ --no-progress --force --source="'https://chocolatey.org/api/v2/'" --output-directory $PkgsDir
+        choco download $_ --no-progress --force --source="'https://community.chocolatey.org/api/v2/'" --output-directory $PkgsDir
     }
 
 # This is for SQL Server Express and Community related items
 @('sql-server-express','sql-server-management-studio','dotnet4.6.1','dotnet4.5.2') |
     Foreach-Object {
-	    choco download $_ --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source="'https://chocolatey.org/api/v2/'" --output-directory $PkgsDir
+	    choco download $_ --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source="'https://community.chocolatey.org/api/v2/'" --output-directory $PkgsDir
     }
 
 # We must use the 2.2.7 versions of these packages, so we need to download/internalize these specific items
 @('aspnetcore-runtimepackagestore','dotnetcore-windowshosting') |
     Foreach-Object {
-	    choco download $_ --version 2.2.7 --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source="'https://chocolatey.org/api/v2/'" --output-directory $PkgsDir
+	    choco download $_ --version 2.2.7 --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source="'https://community.chocolatey.org/api/v2/'" --output-directory $PkgsDir
     }
 
 # Download Licensed Packages
