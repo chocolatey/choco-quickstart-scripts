@@ -92,7 +92,7 @@ $TempDir = "$ChocoPath\temp"
 	}
 
 # Download and extract C4B setup files from repo
-$QsRepo = "https://github.com/adilio/choco-quickstart-scripts/archive/main.zip"
+$QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/main.zip"
 Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\main.zip"
 Expand-Archive "$TempDir\main.zip" $TempDir
 Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
