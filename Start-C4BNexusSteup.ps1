@@ -981,7 +981,7 @@ choco apikey -s 'ChocolateyInternal' -k $NugetApiKey
 # Install a non-IE browser for browsing the Nexus web portal.
 # Edge sometimes fails install due to latest Windows Updates not being installed.
 # In that scenario, Google Chrome is installed instead.
-$null = choco install microsoft-edge -y --source="'https://chocolatey.org/api/v2/'"
+$null = choco install microsoft-edge -y --source="'https://community.chocolatey.org/api/v2/'"
 if ($LASTEXITCODE -eq 0) {
     $RegArgs = @{
         Path = 'HKLM:\SOFTWARE\Microsoft\Edge\'
@@ -995,7 +995,7 @@ if ($LASTEXITCODE -eq 0) {
 else {
     Write-Warning "Microsoft Edge install was not succesful."
     Write-Host "Installing Google Chrome as an alternative."
-    choco install googlechrome -y --source="'https://chocolatey.org/api/v2/'"
+    choco install googlechrome -y --source="'https://community.chocolatey.org/api/v2/'"
 }
 
 # Add Nexus port 8081 access via firewall
