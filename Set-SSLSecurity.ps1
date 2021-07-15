@@ -38,12 +38,11 @@ param(
 
 begin {
 
+    $DefaultEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Stop'
+    Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslCertificate-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
+
     #region Functions
-
-    
-
-
-
     function Get-Certificate {
         [CmdletBinding()]
         param(
@@ -88,6 +87,7 @@ begin {
             Remove-Item C:\ProgramData\nexus\etc\ssl\keystore.jks -Force
         }
 
+        $KeyTool = "C:\ProgramData\nexus\jre\bin\keytool.exe"
         $password = "chocolatey" | ConvertTo-SecureString -AsPlainText -Force
         $certificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople\ | Where-Object { $_.Thumbprint -eq $Thumbprint } | Sort-Object | Select-Object -First 1
 
@@ -95,12 +95,12 @@ begin {
         $certificate | Export-PfxCertificate -FilePath C:\cert.pfx -Password $password
         Get-ChildItem -Path c:\cert.pfx | Import-PfxCertificate -CertStoreLocation Cert:\LocalMachine\My -Exportable -Password $password
         Write-Warning -Message "You'll now see prompts and other outputs, things are working as expected, don't do anything"
-        $string = ("chocolatey" | keytool -list -v -keystore C:\cert.pfx) -match '^Alias.*'
+        $string = ("chocolatey" | & $KeyTool -list -v -keystore C:\cert.pfx) -match '^Alias.*'
         $currentAlias = ($string -split ':')[1].Trim()
 
         $passkey = '9hPRGDmfYE3bGyBZCer6AUsh4RTZXbkw'
-        keytool -importkeystore -srckeystore C:\cert.pfx -srcstoretype PKCS12 -srcstorepass chocolatey -destkeystore C:\ProgramData\nexus\etc\ssl\keystore.jks -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $passkey
-        keytool -keypasswd -keystore C:\ProgramData\nexus\etc\ssl\keystore.jks -alias jetty -storepass $passkey -keypass chocolatey -new $passkey
+        & $KeyTool -importkeystore -srckeystore C:\cert.pfx -srcstoretype PKCS12 -srcstorepass chocolatey -destkeystore C:\ProgramData\nexus\etc\ssl\keystore.jks -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $passkey
+        & $KeyTool -keypasswd -keystore C:\ProgramData\nexus\etc\ssl\keystore.jks -alias jetty -storepass $passkey -keypass chocolatey -new $passkey
 
         $xmlPath = 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
         [xml]$xml = Get-Content -Path 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
@@ -137,7 +137,7 @@ begin {
             [string]
             $CertStore = "TrustedPeople"
         )
-        $ports = @('443', '24020')
+        $ports = @('24020')
 
         foreach ($port in $ports) {
             & netsh http add sslcert ipport=0.0.0.0:$($port) certhash=$($Hash) appid=$($Guid) certstorename=$($CertStore)
@@ -200,7 +200,6 @@ process {
     } until($response.StatusCode -eq '200')
     Write-Host "Nexus is ready!"
 
-
     #Stop Central Management components
     Stop-Service chocolatey-central-management
     Get-Process chocolateysoftware.chocolateymanagement.web* | Stop-Process -ErrorAction SilentlyContinue -Force
@@ -215,9 +214,11 @@ process {
     Get-WebBinding -Name ChocolateyCentralManagement | Remove-WebBinding
     New-WebBinding -Name ChocolateyCentralManagement -Protocol https -Port 443 -SslFlags 0 -IpAddress '*'
 
-
     # Hand back the created/found certificate to the caller.
     $Certificate
-    
+}
 
+end {
+    $ErrorActionPreference = $DefaultEap
+    Stop-Transcript
 }
