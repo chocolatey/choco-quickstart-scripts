@@ -23,7 +23,7 @@ param(
 
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
-Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bNexusSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
+Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bNexusSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
 function Wait-Nexus {
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::tls12
