@@ -997,7 +997,7 @@ if ($LASTEXITCODE -eq 0) {
 else {
     Write-Warning "Microsoft Edge install was not succesful."
     Write-Host "Installing Google Chrome as an alternative."
-    choco install googlechrome -y
+    choco install googlechrome -y --source="'https://community.chocolatey.org/api/v2/'"
 }
 
 # Add Nexus port 8081 access via firewall
