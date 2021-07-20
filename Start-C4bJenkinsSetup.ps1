@@ -186,7 +186,7 @@ do
 while ($Stopwatch.Elapsed -lt $Timeout)
 $Stopwatch.Stop()
 
-if (-not($keyInfo)) {
+if (-not ($keyInfo)){
     Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
     $Ccm = 'http://localhost/Account/Login'
     $Nexus = 'http://localhost:8081/#browse/browse'
