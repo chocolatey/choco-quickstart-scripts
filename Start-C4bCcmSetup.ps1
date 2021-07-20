@@ -23,7 +23,8 @@ Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Ge
 
 # DB Setup
 $PkgSrc = "$env:SystemDrive\choco-setup\packages"
-choco upgrade sql-server-express sql-server-management-studio -y --source $PkgSrc
+$Ccr = "'https://community.chocolatey.org/api/v2/'"
+choco upgrade sql-server-express sql-server-management-studio -y --source $Ccr
 
 # https://docs.microsoft.com/en-us/sql/tools/configuration-manager/tcp-ip-properties-ip-addresses-tab
 Write-Output 'SQL Server: Configuring Remote Acess on SQL Server Express.'
@@ -139,7 +140,7 @@ $DatabaseUserPw = $DatabaseCredential.GetNetworkCredential().Password
 Add-DatabaseUserAndRoles -DatabaseName 'ChocolateyManagement' -Username $DatabaseUser -SqlUserPw $DatabaseUserPw -CreateSqlUser -DatabaseRoles @('db_datareader', 'db_datawriter')
 
 # Install dotnet requirement for CCM Service
-choco install dotnet4.6.1 -y --source $PkgSrc
+choco install dotnet4.6.1 -y --source $Ccr
 
 # Find FDQN for current machine
 $hostName = [System.Net.Dns]::GetHostName()
@@ -153,21 +154,20 @@ if(-Not $hostName.endswith($domainName)) {
 choco config set --name="'centralManagementServiceUrl'" --value="'https://$($hostname):24020/ChocolateyManagementService'"
 
 #Install CCM Service
-choco install chocolatey-management-service -y --source $PkgSrc --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
+choco install chocolatey-management-service -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
 
 # Install prerequisites for CCM Web
-choco install dotnet4.6.1 --no-progress --source $PkgSrc -y
 choco install IIS-WebServer -s windowsfeatures --no-progress -y
 choco install IIS-ApplicationInit -s windowsfeatures --no-progress -y
-choco install aspnetcore-runtimepackagestore --version 2.2.7 --source $PkgSrc --no-progress -y
-choco install dotnetcore-windowshosting --version 2.2.7 --source $PkgSrc --no-progress -y
+choco install aspnetcore-runtimepackagestore --version 2.2.7 --source $Ccr --no-progress -y
+choco install dotnetcore-windowshosting --version 2.2.7 --source $Ccr --no-progress -y
 
 choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'2.2.7'" --reason="'Required for CCM website'"
 choco pin add --name="'dotnetcore-windowshosting'" --version="'2.2.7'" --reason="'Required for CCM website'"
 # "reason" only available in commercial editions
 
 #Install CCM Web package
-choco install chocolatey-management-web -y --source $PkgSrc --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
+choco install chocolatey-management-web -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
 
 $CcmSvcUrl = choco config get centralManagementServiceUrl -r
 $CcmJson = @{

@@ -108,28 +108,20 @@ Write-Host "Downloading nupkg files to C:\choco-setup\packages." -ForegroundColo
 Write-Host "This will take some time. Feel free to get a tea or coffee." -ForegroundColor Green
 Start-Sleep -Seconds 5
 $PkgsDir = "$env:SystemDrive\choco-setup\packages"
+$Ccr = "'https://community.chocolatey.org/api/v2/'"
 
 # Download Chocolatey community related items, no internalization necessary
 @('chocolatey','chocolateygui') |
     Foreach-Object {
-        choco download $_ --no-progress --force --source="'https://community.chocolatey.org/api/v2/'" --output-directory $PkgsDir
+        choco download $_ --no-progress --force --source $Ccr --output-directory $PkgsDir
     }
 
-# This is for SQL Server Express and Community related items
-@('sql-server-express','sql-server-management-studio','dotnet4.6.1','dotnet4.5.2') |
-    Foreach-Object {
-	    choco download $_ --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source="'https://community.chocolatey.org/api/v2/'" --output-directory $PkgsDir
-    }
-
-# We must use the 2.2.7 versions of these packages, so we need to download/internalize these specific items
-@('aspnetcore-runtimepackagestore','dotnetcore-windowshosting') |
-    Foreach-Object {
-	    choco download $_ --version 2.2.7 --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source="'https://community.chocolatey.org/api/v2/'" --output-directory $PkgsDir
-    }
+# Internalize dotnet4.5.2 for ChocolateyGUI (just in case)
+choco download dotnet4.5.2 --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source $Ccr  --output-directory $PkgsDir
 
 # Download Licensed Packages
 ## DO NOT RUN WITH `--internalize` and `--internalize-all-urls` - see https://github.com/chocolatey/chocolatey-licensed-issues/issues/155
-('chocolatey-agent','chocolatey.extension','chocolatey-management-database','chocolatey-management-service','chocolatey-management-web') |
+('chocolatey-agent','chocolatey.extension') |
     Foreach-Object {
         choco download $_ --force --no-progress --source="'https://licensedpackages.chocolatey.org/api/v2/'" --ignore-dependencies --output-directory $PkgsDir
     }
