@@ -983,14 +983,16 @@ choco apikey -s 'ChocolateyInternal' -k $NugetApiKey
 # In that scenario, Google Chrome is installed instead.
 $null = choco install microsoft-edge -y --source="'https://community.chocolatey.org/api/v2/'"
 if ($LASTEXITCODE -eq 0) {
-    $RegArgs = @{
+    if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Edge') {
+        $RegArgs = @{
         Path = 'HKLM:\SOFTWARE\Microsoft\Edge\'
         Name = 'HideFirstRunExperience'
         Type = 'Dword'
         Value = 1
         Force = $true
         }
-    Set-ItemProperty @RegArgs
+        Set-ItemProperty @RegArgs
+    }
 }
 else {
     Write-Warning "Microsoft Edge install was not succesful."
