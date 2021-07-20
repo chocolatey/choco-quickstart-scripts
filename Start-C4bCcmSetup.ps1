@@ -19,7 +19,7 @@ param(
 
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
-Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
+Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
 # DB Setup
 $PkgSrc = "$env:SystemDrive\choco-setup\packages"

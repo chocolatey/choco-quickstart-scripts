@@ -23,7 +23,7 @@ param(
 
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
-Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
+Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
 function Install-ChocoLicensed {
 

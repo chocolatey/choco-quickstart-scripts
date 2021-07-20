@@ -22,7 +22,7 @@ param(
 
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
-Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bJenkinsSetup-$(Get-Date -Format 'yyyyMMdd-hhmmss').txt"
+Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bJenkinsSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
 # Install Jenkins
 choco install jenkins -y --source $Source --no-progress --version 2.222.4
