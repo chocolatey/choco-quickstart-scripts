@@ -115,10 +115,21 @@ begin {
         $nexusPath = 'C:\ProgramData\sonatype-work\nexus3'
         $configPath = "$nexusPath\etc\nexus.properties"
 
-        $configString = 'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml'
-        if ((Get-Content -Raw $configPath) -notmatch [regex]::Escape($configString)) {
-            $configString | Add-Content -Path $configPath
+        $configString = @'
+jetty.https.stsMaxAge=-1
+application-port-ssl=8443
+nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml
+'@
+
+        $configString | Add-Content -Path $configPath
+        
+        $xmlPath = 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
+        [xml]$xml = Get-Content -Path 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
+        foreach ($entry in $xml.Configure.New.Where{ $_.id -match 'ssl' }.Set.Where{ $_.name -match 'password' }) {
+            $entry.InnerText = $passkey
         }
+
+        $xml.OuterXml | Set-Content -Path $xmlPath
 
     }
 
@@ -194,7 +205,7 @@ process {
             Start-Sleep -Seconds 3
         }
         catch {
-            $null
+            
         }
             
     } until($response.StatusCode -eq '200')
