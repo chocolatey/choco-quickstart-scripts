@@ -116,7 +116,7 @@ $Ccr = "'https://community.chocolatey.org/api/v2/'"
         choco download $_ --no-progress --force --source $Ccr --output-directory $PkgsDir
     }
 
-# Internalize dotnet4.5.2 for ChocolateyGUI (jsut in case)
+# Internalize dotnet4.5.2 for ChocolateyGUI (just in case)
 choco download dotnet4.5.2 --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source $Ccr  --output-directory $PkgsDir
 
 # Download Licensed Packages
