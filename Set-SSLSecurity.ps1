@@ -225,6 +225,9 @@ process {
     Get-WebBinding -Name ChocolateyCentralManagement | Remove-WebBinding
     New-WebBinding -Name ChocolateyCentralManagement -Protocol https -Port 443 -SslFlags 0 -IpAddress '*'
 
+    #Start the components back up
+    Start-Website ChocolateyCentralManagement
+    Start-Service chocolatey-central-management
     # Hand back the created/found certificate to the caller.
     $Certificate
 }
