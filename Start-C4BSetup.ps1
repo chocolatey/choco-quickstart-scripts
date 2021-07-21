@@ -96,12 +96,13 @@ $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/main.z
 Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\main.zip"
 Expand-Archive "$TempDir\main.zip" $TempDir
 Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
-Remove-Item "$TempDir\*" -Recurse
+Remove-Item "$TempDir\*" -Recurse -Force
 
 # Convert license to a "choco-license" package, and install it locally to test
 Write-Host "Ceating a "chocolatey-license" package, and testing install." -ForegroundColor Green
 Set-Location $FilesDir
 .\Create-ChocoLicensePkg.ps1
+Remove-Item "$env:SystemDrive\choco-setup\packaging" -Recurse -Force
 
 # Downloading all CCM setup packages below
 Write-Host "Downloading nupkg files to C:\choco-setup\packages." -ForegroundColor Green
@@ -116,12 +117,12 @@ $Ccr = "'https://community.chocolatey.org/api/v2/'"
         choco download $_ --no-progress --force --source $Ccr --output-directory $PkgsDir
     }
 
-# Internalize dotnet4.5.2 for ChocolateyGUI (just in case)
+# Internalize dotnet4.5.2 for ChocolateyGUI (just in case endpoints need it)
 choco download dotnet4.5.2 --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source $Ccr  --output-directory $PkgsDir
 
 # Download Licensed Packages
 ## DO NOT RUN WITH `--internalize` and `--internalize-all-urls` - see https://github.com/chocolatey/chocolatey-licensed-issues/issues/155
-('chocolatey-agent','chocolatey.extension') |
+@('chocolatey-agent','chocolatey.extension','chocolateygui.extension','chocolatey-management-database','chocolatey-management-service','chocolatey-management-web') |
     Foreach-Object {
         choco download $_ --force --no-progress --source="'https://licensedpackages.chocolatey.org/api/v2/'" --ignore-dependencies --output-directory $PkgsDir
     }
