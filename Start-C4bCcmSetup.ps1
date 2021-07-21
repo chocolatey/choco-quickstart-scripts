@@ -78,7 +78,7 @@ netsh advfirewall firewall add rule name="SQL Server Browser 1434" dir=in action
 #New-NetFirewallRule -DisplayName "Allow inbound UDP Port 1434" –Direction inbound –LocalPort 1434 -Protocol UDP -Action Allow
 
 # Install CCM DB package using Local SQL Express
-choco install chocolatey-management-database -y --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'"
+choco install chocolatey-management-database -y -s $PkgSrc --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'"
 
 # Setup SQL Login and Access
 function Add-DatabaseUserAndRoles {
@@ -154,7 +154,7 @@ if(-Not $hostName.endswith($domainName)) {
 choco config set --name="'centralManagementServiceUrl'" --value="'https://$($hostname):24020/ChocolateyManagementService'"
 
 #Install CCM Service
-choco install chocolatey-management-service -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
+choco install chocolatey-management-service -y -s $PkgSrc --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
 
 # Install prerequisites for CCM Web
 choco install IIS-WebServer -s windowsfeatures --no-progress -y
@@ -167,7 +167,7 @@ choco pin add --name="'dotnetcore-windowshosting'" --version="'2.2.7'" --reason=
 # "reason" only available in commercial editions
 
 #Install CCM Web package
-choco install chocolatey-management-web -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
+choco install chocolatey-management-web -y -s $PkgSrc --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
 
 $CcmSvcUrl = choco config get centralManagementServiceUrl -r
 $CcmJson = @{
