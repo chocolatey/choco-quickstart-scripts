@@ -962,11 +962,17 @@ New-NexusRawHostedRepository -Name choco-install -DeploymentPolicy Allow -Conten
 $NuGetApiKey = (Get-NexusNuGetApiKey -Credential $Credential).apikey
 
 #Push ChocolateyInstall.ps1 to raw repo
-$ScriptDir = "$env:SystemDrive\choco-setup\files"
+$ScriptDir = "$env:SystemDrive\choco-setup\files\scripts"
 New-NexusRawComponent -RepositoryName 'choco-install' -File "$ScriptDir\ChocolateyInstall.ps1"
 
 #Push ClientSetup.ps1 to raw repo
-#New-NexusRawComponent -RepositoryName 'choco-install' -File $PutFileHere
+$ClientScript = "$ScriptDir\ClientSetup.ps1"
+$HostName = [System.Net.Dns]::GetHostName()
+if ($env:userdnsdomain) {
+    $HostName = "$env:computername.$env:userdnsdomain"
+}
+(Get-Content -Path $ClientScript) -replace "{{hostname}}", $HostName | Set-Content -Path $ClientScript
+New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
 
 # Push all packages from previous steps to NuGet repo
 Get-ChildItem -Path "$env:SystemDrive\choco-setup\packages" -Filter *.nupkg |
