@@ -9,7 +9,7 @@ param(
     [Parameter()]
     [Alias('Url')]
     [string]
-    $RepositoryUrl = 'https://{{hostname}}/nexus/repository/ChocolateyInternal/',
+    $RepositoryUrl = 'https://{{hostname}}:8443/repository/ChocolateyInternal/',
 
     # The credential necessary to access the internal Nexus repository. This can
     # be ignored if Anonymous authentication is enabled.
