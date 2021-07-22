@@ -967,9 +967,11 @@ New-NexusRawComponent -RepositoryName 'choco-install' -File "$ScriptDir\Chocolat
 
 #Push ClientSetup.ps1 to raw repo
 $ClientScript = "$ScriptDir\ClientSetup.ps1"
-$HostName = [System.Net.Dns]::GetHostName()
-if ($env:userdnsdomain) {
-    $HostName = "$env:computername.$env:userdnsdomain"
+if (((Get-WmiObject win32_computersystem).Domain) -notlike "*WORKGROUP*") {
+    $HostName = (Get-WmiObject win32_computersystem).DNSHostName+"."+(Get-WmiObject win32_computersystem).Domain
+}
+else {
+    $HostName = [System.Net.Dns]::GetHostName()
 }
 (Get-Content -Path $ClientScript) -replace "{{hostname}}", $HostName | Set-Content -Path $ClientScript
 New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
