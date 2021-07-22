@@ -159,6 +159,7 @@ choco install chocolatey-management-service -y -s $PkgSrc --package-parameters-s
 # Install prerequisites for CCM Web
 choco install IIS-WebServer -s windowsfeatures --no-progress -y
 choco install IIS-ApplicationInit -s windowsfeatures --no-progress -y
+<<<<<<< HEAD
 choco install aspnetcore-runtimepackagestore --version 2.2.7 --source $Ccr --no-progress -y
 choco install dotnetcore-windowshosting --version 2.2.7 --source $Ccr --no-progress -y
 
@@ -176,11 +177,51 @@ $CcmJson = @{
     DefaultUser = "ccmadmin"
     DefaultPwToBeChanged = "123qwe"
     CCMDBUser = $DatabaseUser
+=======
+
+$Os = (Get-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion' -Name ProductName).ProductName
+if ($Os -like '*2016*') {
+    $CcmSvcUrl = choco config get centralManagementServiceUrl -r
+    $CcmJson = @{
+        CCMServiceURL        = $CcmSvcUrl
+        CCMWebPortal         = "http://localhost/Account/Login"
+        DefaultUser          = "ccmadmin"
+        DefaultPwToBeChanged = "123qwe"
+        CCMDBUser            = $DatabaseUser
+        CCMDBPassword        = $DatabaseUserPw
+    }
+    $CcmJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ccm.json"
+    $ErrorActionPreference = $DefaultEap
+    Stop-Transcript
+    $Comment = @"
+Chocolatey has detected that your operating system is Windows Server 2016.
+In order to complete the installation of IIS, a restart is required.
+This server will restart in 30 seconds. Once restarted, please follow
+the steps outlined in the C4B Quick-Start Guide to contiue.
+"@
+    Start-Process 'shutdown.exe' -ArgumentList "/r /f /t 30 /c `"$Comment`" /d p:4:1"
+>>>>>>> 29c03da (Add logic to handle 2016 iis reboot)
 }
-$CcmJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ccm.json"
+else {
+    choco install aspnetcore-runtimepackagestore --version 2.2.7 --source $Ccr --no-progress -y
+    choco install dotnetcore-windowshosting --version 2.2.7 --source $Ccr --no-progress -y
+    choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'2.2.7'" --reason="'Required for CCM website'"
+    choco pin add --name="'dotnetcore-windowshosting'" --version="'2.2.7'" --reason="'Required for CCM website'"
+    #Install CCM Web package
+    choco install chocolatey-management-web -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
 
-# Completion notice
-Write-Host "CCM Setup has now completed" -ForegroundColor Green
+    $CcmSvcUrl = choco config get centralManagementServiceUrl -r
+    $CcmJson = @{
+        CCMServiceURL        = $CcmSvcUrl
+        CCMWebPortal         = "http://localhost/Account/Login"
+        DefaultUser          = "ccmadmin"
+        DefaultPwToBeChanged = "123qwe"
+        CCMDBUser            = $DatabaseUser
+    }
+    $CcmJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ccm.json"
 
-$ErrorActionPreference = $DefaultEap
-Stop-Transcript
+    Write-Host "CCM Setup has now completed" -ForegroundColor Green
+
+    $ErrorActionPreference = $DefaultEap
+    Stop-Transcript
+}
