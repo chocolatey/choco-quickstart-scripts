@@ -230,7 +230,11 @@ process {
     Start-Service chocolatey-central-management
     # Hand back the created/found certificate to the caller.
     $Certificate
+
+    # Create the site hosting the certificate import script on port 80
+    .\scripts\New-IISCertificateHost.ps1
 }
+
 
 end {
     $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
