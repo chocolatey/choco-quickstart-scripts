@@ -1,14 +1,10 @@
 # C4B Quick-Start Guide - Supporting Scripts
 
-This repository contains a set of supporting scripts used for the Chocolatey for Business (C4B) Quick-Start Guide.
+This repository contains a set of supporting scripts used for the Chocolatey for Business (C4B) Quick-Start Guide (QSG).
 
 These scripts can be used to assist in setup of a brand new Windows Server as a C4B Server.
 
-## TODO
-
-- [ ] Add `ClientSetup.ps1` script to `choco-install` raw repo
-- [ ] Update Readme to reflect new QuickStart process
-- [ ] Jenkins web does not come up consistently (service is started)
+Below is the planned revision of the QSG, which will evntually be posted in the [Chocolatey Docs](https//docs.chooclatey.org).
 
 ## Chocolatey for Business (C4B) Quick-Start Guide
 
@@ -103,9 +99,9 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 > - Install of Sonatype Nexus Repository Manager OSS instance
 > - Edit conofiguration to allow running of scripts
 > - Cleanup of all demo source repositories
-> - `ChocolateyInternal` NuGet v2 repository
-> - Add `ChocolateyTest` NuGet v2 repo
-> - `choco-install` raw repository, with a script for offline Chocolatey install
+> - Creates a `ChocolateyInternal` NuGet v2 repository
+> - Creates a `ChocolateyTest` NuGet v2 repository
+> - Creates a `choco-install` raw repository
 > - Setup of `ChocolateyInternal` on C4B Server as source, with API key
 > - Setup of firewall rule for repository access
 > - Install MS Edge, and disable first-run experience
@@ -126,7 +122,20 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 > - Install of all 3 CCM packages, with correct parameters
 > - Output data to JSON to pass between scripts
 
-### Step 4: Jenkins Setup
+### Step 4: SSL Setup
+
+1. In the same PowerShell Administrator console as above, paste and run the following code:
+
+```powershell
+Set-Location "$env:SystemDrive\choco-setup\files"
+.\Set-SslSecurity.ps1
+```
+
+> :scroll: **What does this script do?**
+> - Add SSL certificate configuration for Nexus and CCM Web
+> - Popup web pages for user at end of scripts
+
+### Step 5: Jenkins Setup
 
 1. In the same PowerShell Administrator console as above, paste and run the following code:
 
@@ -141,16 +150,3 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 > - Pre-downloaded Jenkins scripts for Package Internalizer automation
 > - Setup pre-defined Jenkins jobs for the scripts above
 > - Output data to JSON to pass between scripts
-
-### Step 5: SSL Setup
-
-1. In the same PowerShell Administrator console as above, paste and run the following code:
-
-```powershell
-Set-Location "$env:SystemDrive\choco-setup\files"
-.\Set-SslSecurity.ps1
-```
-
-> :scroll: **What does this script do?**
-> - Add SSL certificate configuration for Nexus and CCM Web
-> - Popup web pages for user at end of scripts

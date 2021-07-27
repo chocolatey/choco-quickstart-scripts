@@ -86,7 +86,7 @@ if ($Credential) {
     $webClient.Credentials = $Credential.GetNetworkCredential()
 }
 
-$script = $webClient.DownloadString("https://${hostAddress}/nexus/repository/choco-install/ChocolateyInstall.ps1")
+$script = $webClient.DownloadString("https://${hostAddress}/repository/choco-install/ChocolateyInstall.ps1")
 
 & ([scriptblock]::Create($script)) @params
 

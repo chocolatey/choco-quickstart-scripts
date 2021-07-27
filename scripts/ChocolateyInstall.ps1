@@ -1,17 +1,10 @@
-# Make sure the Fully Qualified Domain Name is being used
-$hostName = [System.Net.Dns]::GetHostName()
-$domainName = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().DomainName
-
-if(-Not $hostName.endswith($domainName)) {
-  $hostName += "." + $domainName
-}
 
 $string = @"
 # Download and install Chocolatey nupkg from an OData (HTTP/HTTPS) url such as Artifactory, Nexus, ProGet (all of these are recommended for organizational use), or Chocolatey.Server (great for smaller organizations and POCs)
 # This is where you see the top level API - with xml to Packages - should look nearly the same as https://chocolatey.org/api/v2/
 # If you are using Nexus, always add the trailing slash or it won't work
 # === EDIT HERE ===
-`$packageRepo = "http://$($hostname):8081/repository/ChocolateyInternal/chocolatey/0.10.15"
+`$packageRepo = "https://{{hostname}}:8443/repository/ChocolateyInternal/chocolatey/0.10.15"
 
 # If the above `$packageRepo repository requires authentication, add the username and password here. Otherwise these leave these as empty strings.
 `$repoUsername = ''    # this must be empty is NOT using authentication
