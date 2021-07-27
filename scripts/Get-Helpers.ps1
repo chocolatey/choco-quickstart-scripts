@@ -916,10 +916,6 @@ function New-NexusRawComponent {
 
 #endregion
 
-#region Bootstrap functions (Start-C4bSetup.ps1)
-
-#endregion
-
 #region SSL functions (Set-SslSecurity.ps1)
 
 function Get-Certificate {
@@ -1077,6 +1073,57 @@ function Get-NetshSslEntries {
 
 #endregion
 
-#region Bootstrap functions (Start-C4bSetup.ps1)
+#region CCM functions (Start-C4bCcmSetup.ps1)
+function Add-DatabaseUserAndRoles {
+    param(
+        [parameter(Mandatory = $true)][string] $Username,
+        [parameter(Mandatory = $true)][string] $DatabaseName,
+        [parameter(Mandatory = $false)][string] $DatabaseServer = 'localhost\SQLEXPRESS',
+        [parameter(Mandatory = $false)] $DatabaseRoles = @('db_datareader'),
+        [parameter(Mandatory = $false)][string] $DatabaseServerPermissionsOptions = 'Trusted_Connection=true;',
+        [parameter(Mandatory = $false)][switch] $CreateSqlUser,
+        [parameter(Mandatory = $false)][string] $SqlUserPw
+    )
 
+    $LoginOptions = "FROM WINDOWS WITH DEFAULT_DATABASE=[$DatabaseName]"
+    if ($CreateSqlUser) {
+        $LoginOptions = "WITH PASSWORD='$SqlUserPw', DEFAULT_DATABASE=[$DatabaseName], CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF"
+    }
+
+    $addUserSQLCommand = @"
+USE [master]
+IF EXISTS(SELECT * FROM msdb.sys.syslogins WHERE UPPER([name]) = UPPER('$Username'))
+BEGIN
+DROP LOGIN [$Username]
+END
+
+CREATE LOGIN [$Username] $LoginOptions
+
+USE [$DatabaseName]
+IF EXISTS(SELECT * FROM sys.sysusers WHERE UPPER([name]) = UPPER('$Username'))
+BEGIN
+DROP USER [$Username]
+END
+
+CREATE USER [$Username] FOR LOGIN [$Username]
+
+"@
+
+    foreach ($DatabaseRole in $DatabaseRoles) {
+        $addUserSQLCommand += @"
+ALTER ROLE [$DatabaseRole] ADD MEMBER [$Username]
+"@
+    }
+
+    Write-Output "Adding $UserName to $DatabaseName with the following permissions: $($DatabaseRoles -Join ', ')"
+    Write-Debug "running the following: \n $addUserSQLCommand"
+    $Connection = New-Object System.Data.SQLClient.SQLConnection
+    $Connection.ConnectionString = "server='$DatabaseServer';database='master';$DatabaseServerPermissionsOptions"
+    $Connection.Open()
+    $Command = New-Object System.Data.SQLClient.SQLCommand
+    $Command.CommandText = $addUserSQLCommand
+    $Command.Connection = $Connection
+    $Command.ExecuteNonQuery()
+    $Connection.Close()
+}
 #endregion

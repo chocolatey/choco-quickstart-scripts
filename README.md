@@ -150,3 +150,25 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 > - Pre-downloaded Jenkins scripts for Package Internalizer automation
 > - Setup pre-defined Jenkins jobs for the scripts above
 > - Output data to JSON to pass between scripts
+
+### Step 6: Setting up Endpoints
+
+1. Find the `Register-C4bEndpoint.ps1` script in the `choco-setup\files\scripts\` directory on your C4B Server. Copy this script to your client endpoint.
+
+1. Open a PowerShell Administrator console, and browse (`cd`) to the location of the script above. Paste and run the following code:
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::tls12
+.\Register-C4bEndpoint.ps1
+```
+
+> :scroll: **What does this script do?**
+> - Installs Chocolatey client (`chocolatey`), using a script from your raw repository
+> - Runs `ClientSetup.ps1`, which does the following:
+>   - Licenses Chocolatey by installing the license package (`chocolatey-license`) created during QDE setup
+>   - Installs the Chocolatey Licensed Extension (`chocolatey.extension`) without context menus
+>   - Installs the Chocolatey Agent service (`chocolatey-agent`)
+>   - Configures ChocolateyInternal source
+>   - Configures Self-Service mode and innstalls Chocolatey GUI (`chocolateygui`)
+>   - Configures Central Management check-in
