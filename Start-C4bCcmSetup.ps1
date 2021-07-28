@@ -115,9 +115,6 @@ choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'2.2.7'" --re
 choco pin add --name="'dotnetcore-windowshosting'" --version="'2.2.7'" --reason="'Required for CCM website'"
 # "reason" only available in commercial editions
 
-#Install CCM Web package
-choco install chocolatey-management-web -y -s $PkgSrc --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
-
 $CcmSvcUrl = choco config get centralManagementServiceUrl -r
 $CcmJson = @{
     CCMServiceURL = $CcmSvcUrl

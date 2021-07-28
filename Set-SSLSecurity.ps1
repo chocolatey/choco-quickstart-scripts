@@ -68,6 +68,9 @@ process {
     # Generate Nexus keystore
     New-NexusCert -Thumbprint $Certificate.Thumbprint
 
+    # Add firewall rule for Nexus
+    netsh advfirewall firewall add rule name="Nexus-8443" dir=in action=allow protocol=tcp localport=8443
+    
     Write-Verbose "Starting up Nexus"
     Start-Service nexus
 
@@ -116,9 +119,6 @@ process {
         .\scripts\New-IISCertificateHost.ps1
     }
 
-    # Add firewall rule for Nexus
-    netsh advfirewall firewall add rule name="Nexus-8443" dir=in action=allow protocol=tcp localport=8443
-
     # Add updated scripts to raw repo in Nexus
 
     #Build Credential Object, Connect to Nexus
@@ -141,12 +141,14 @@ process {
 
     # Generate Register-C4bEndpoint.ps1
     $EndpointScript = "$ScriptDir\Register-C4bEndpoint.ps1"
-    (Get-Content -Path $EndpointScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $EndpointScript
-    $ScriptBlock = @"
+    (Get-Content -Path $EndpointScript) -replace "{{hostname}}", "'$SubjectWithoutCn'" | Set-Content -Path $EndpointScript
+    if ($IsSelfSigned) {
+        $ScriptBlock = @"
 `$downloader = New-Object -TypeName System.Net.WebClient
 Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-ChocoServerCertificate.ps1"))
 "@
-    (Get-Content -Path $EndpointScript) -replace "# placeholder if using a self-signed cert", $ScriptBlock | Set-Content -Path $EndpointScript
+        (Get-Content -Path $EndpointScript) -replace "# placeholder if using a self-signed cert", $ScriptBlock | Set-Content -Path $EndpointScript
+    }
 
     # Save useful params to JSON
     $SslJson = @{

@@ -23,22 +23,21 @@ Let's get started!
 
 ## Components
 
-![Components ofa C4B Server](c4b-server.png)
+![Components of a C4B Server](c4b-server.png)
 
-As illustrated in the diagram above, there are four main components to a default Chocolatey install, namely:
+As illustrated in the diagram above, there are four main components to a default C4B Server install, namely:
 
 1. **C4B Licensed components**: A licensed version of Chocolatey includes:
-    a. Installation of the Chocolatey OSS client package itself (`chocolatey`)
-    a. your Chocolatey license installed in the correct directory
-    a. Installation of the Chocolatey Licensed extension, giving you access to features like Package Bulder, Package Internalizer, etc. (full list here).
-1. **NuGet V2 Repository Server App**: Chocolatey works best with a NuGet V2 repository. This application hosts and manages versioning of your Chocolatey package artifacts, in their enhanced NuGet package (.nupkg) file format. This guide will help you setup [Sonatype Nexus Repository Manager (OSS)](https://www.sonatype.com/nexus-repository-oss).
-1. **Chocolatey Central Management (CCM) Server App**: This is a standalone server that hosts the Chocolatey Central Management web interface, as well as the back-end database on which it relies. Currently, this interface provides reporting on packages installed on endpoints. In future, a feature will be added to enable deployments of packages and updates from this web console, as well.  can be found on the the [Chocolatey Central Management Setup page](xref:ccm-setup).
-1. **Automation Pipeline**: These are the workstation or server endpoints you wish to manage packages on, with Chocolatey. Every node requires a license.
+    * Installation of the Chocolatey OSS client package itself (`chocolatey`)
+    * Chocolatey license file (`chocolatey.license.xml`) installed in the correct directory (`ProgramData\chocolatey\license`)
+    a. Installation of the Chocolatey Licensed extension (`chocolatey.extension`), giving you access to features like Package Bulder, Package Internalizer, etc. (full list [here](https://docs.chocolatey.org/en-us/features/)).
+    <p></p>
 
-Repo Options:
-- Jfrog [Artifactory](https://jfrog.com/artifactory/)
-- Inedo ProGet
-- Other NuGet V2 options discussed here: [Repository Options](xref:host-packages)
+1. **NuGet V2 Repository Server App**: Chocolatey works best with a NuGet V2 repository. This application hosts and manages versioning of your Chocolatey package artifacts, in their enhanced NuGet package (.nupkg) file format. This guide will help you setup [Sonatype Nexus Repository Manager (OSS)](https://www.sonatype.com/nexus-repository-oss).
+
+1. **Chocolatey Central Management (CCM) Server App**: CCM is the Web UI portal for your entire Chocolatey environment. Your endpoints check-in to CCM to report their package status. This includes the Chocolatey packages they have installed, and whther any of these packages are outdated. And now, with CCM Deployments, you can also deploy packages or package updates to groups of endpoints, as well as ad-hoc PowerShell commands. CCM is backed by an MS SQL Database. This guide will set up MS SQL Express for you.
+
+1. **Automation Pipeline**: A piepline tool will help you automate repetitive tasks, such checking for updates to a set of Chocolatey Packages from the Chocolatey Community Repository (CCR). If updates exist, the pipeline task will auto-internalize your list of packages, and push them into your NuGet repository for you. This guide will help you set up Jenkins as your automation pieline tool.
 
 ## Requirements
 
@@ -46,8 +45,8 @@ Below are the minimum requirements for setting up your C4B server via this guide
 - Windows Server 2019+ (ideally, Windows Server 2019)
     - Windows Server 2016 is technically supported, but not recommended as it is nearing End-of-Life; also, you will require an additional setup script.
 - 4+ CPU cores (more preferred)
-- 8 GB+ RAM (16GB preferred; 4GB of RAM reserved specifically for Nexus)
-- 500 GB+ of free space for local NuGet package artifact storage
+- 16 GB+ RAM (8GB as a bare minimum; 4GB of RAM is reserved specifically for Nexus)
+- 500 GB+ of free space for local NuGet package artifact storage (more is better, and you may have to grow this as your packages and versions increase)
 - Open outgoing (egress) Internet access
 - Administrator user rights
 
@@ -79,7 +78,7 @@ Invoke-Expression -Command ((New-Object System.Net.WebClient).DownloadString($Qu
 
 > :scroll: **What does this script do?**
 > - Install of Chocolatey from https://chocolatey.org
-> - Prompt for C4B license, with validation
+> - Prompt for your C4B license file location, with validation
 > - Script to help turn your C4B license into a Chocolatey package
 > - Setup of local `choco-setup` directories
 > - Download of setup files from "choco-quickstart-scripts" GitHub repo
@@ -96,16 +95,16 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 ```
 
 > :scroll: **What does this script do?**
-> - Install of Sonatype Nexus Repository Manager OSS instance
-> - Edit conofiguration to allow running of scripts
-> - Cleanup of all demo source repositories
-> - Creates a `ChocolateyInternal` NuGet v2 repository
-> - Creates a `ChocolateyTest` NuGet v2 repository
+> - Installs Sonatype Nexus Repository Manager OSS instance
+> - Edits configuration to allow running of scripts
+> - Cleans up all demo repositories on Nexus
+> - Creates a `ChocolateyInternal` NuGet repository
+> - Creates a `ChocolateyTest` NuGet repository
 > - Creates a `choco-install` raw repository
 > - Setup of `ChocolateyInternal` on C4B Server as source, with API key
 > - Setup of firewall rule for repository access
-> - Install MS Edge, and disable first-run experience
-> - Output data to JSON to pass between scripts
+> - Installs MS Edge, and disable first-run experience
+> - Outputs data to JSON to pass between scripts
 
 ### Step 3: CCM Setup
 
@@ -132,8 +131,9 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 ```
 
 > :scroll: **What does this script do?**
-> - Add SSL certificate configuration for Nexus and CCM Web
-> - Popup web pages for user at end of scripts
+> - Adds SSL certificate configuration for Nexus and CCM Web
+> - Outputs data to JSON to pass between scripts
+> - Generates a `Register-C4bEndpoint.ps1` script for you to easily set up endpoint clients
 
 ### Step 5: Jenkins Setup
 
@@ -145,17 +145,19 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 ```
 
 > :scroll: **What does this script do?**
-> - Choco install of Jenkins package, pinned to versio
-> - Update Jenkins plugins
-> - Pre-downloaded Jenkins scripts for Package Internalizer automation
-> - Setup pre-defined Jenkins jobs for the scripts above
-> - Output data to JSON to pass between scripts
+> - Installs Jenkins package (pinned to a specific version)
+> - Updates Jenkins plugins
+> - Configures pre-downloaded Jenkins scripts for Package Internalizer automation
+> - Sets up pre-defined Jenkins jobs for the scripts above
+> - Outputs data to JSON to pass between scripts
+> - Auto-opens web portals for CCM, Nexus, and Jenkins in your broswer
+
 
 ### Step 6: Setting up Endpoints
 
 1. Find the `Register-C4bEndpoint.ps1` script in the `choco-setup\files\scripts\` directory on your C4B Server. Copy this script to your client endpoint.
 
-1. Open a PowerShell Administrator console, and browse (`cd`) to the location of the script above. Paste and run the following code:
+1. Open a PowerShell Administrator console on your client endpoint, and browse (`cd`) to the location you copied the script above. Paste and run the following code:
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
@@ -164,11 +166,12 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 ```
 
 > :scroll: **What does this script do?**
-> - Installs Chocolatey client (`chocolatey`), using a script from your raw repository
-> - Runs `ClientSetup.ps1`, which does the following:
+> - Installs Chocolatey client (`chocolatey`), using a script from your raw "`choco-install`" repository
+> - Runs the `ClientSetup.ps1` script from your raw "`choco-install`" repository, which does the following:
 >   - Licenses Chocolatey by installing the license package (`chocolatey-license`) created during QDE setup
 >   - Installs the Chocolatey Licensed Extension (`chocolatey.extension`) without context menus
 >   - Installs the Chocolatey Agent service (`chocolatey-agent`)
 >   - Configures ChocolateyInternal source
->   - Configures Self-Service mode and innstalls Chocolatey GUI (`chocolateygui`)
->   - Configures Central Management check-in
+>   - Disables access to the public Chocolatey Community Repository (CCR)
+>   - Configures Self-Service mode and installs Chocolatey GUI (`chocolateygui`)
+>   - Configures Central Management (CCM) check-in, and opts endpoints into CCM Deployments
