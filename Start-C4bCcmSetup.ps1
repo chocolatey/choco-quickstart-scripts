@@ -22,7 +22,7 @@ $ErrorActionPreference = 'Stop'
 Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
 # Dot-source helper functions
-. /scripts/Get-Helpers.ps1
+. .\scripts\Get-Helpers.ps1
 
 # DB Setup
 $PkgSrc = "$env:SystemDrive\choco-setup\packages"
