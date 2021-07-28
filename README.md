@@ -4,7 +4,7 @@ This repository contains a set of supporting scripts used for the Chocolatey for
 
 These scripts can be used to assist in setup of a brand new Windows Server as a C4B Server.
 
-Below is the planned revision of the QSG, which will evntually be posted in the [Chocolatey Docs](https//docs.chooclatey.org).
+Below is the planned revision of the QSG, which will eventually be posted in the [Chocolatey Docs](https//docs.chooclatey.org).
 
 ## Chocolatey for Business (C4B) Quick-Start Guide
 
@@ -30,14 +30,14 @@ Chocolatey For Business installation
 1. **C4B Licensed components**: A licensed version of Chocolatey includes:
     * Installation of the Chocolatey OSS client package itself (`chocolatey`)
     * Chocolatey license file (`chocolatey.license.xml`) installed in the correct directory (`ProgramData\chocolatey\license`)
-    a. Installation of the Chocolatey Licensed extension (`chocolatey.extension`), giving you access to features like Package Bulder, Package Internalizer, etc. (full list [here](https://docs.chocolatey.org/en-us/features/)).
+    a. Installation of the Chocolatey Licensed extension (`chocolatey.extension`), giving you access to features like Package Builder, Package Internalizer, etc. (full list [here](https://docs.chocolatey.org/en-us/features/)).
     <p></p>
 
-1. **NuGet V2 Repository Server App**: Chocolatey works best with a NuGet V2 repository. This application hosts and manages versioning of your Chocolatey package artifacts, in their enhanced NuGet package (.nupkg) file format. This guide will help you setup [Sonatype Nexus Repository Manager (OSS)](https://www.sonatype.com/nexus-repository-oss).
+1. **NuGet V2 Repository Server App (Nexus)**: Chocolatey works best with a NuGet V2 repository. This application hosts and manages versioning of your Chocolatey package artifacts, in their enhanced NuGet package (.nupkg) file format. This guide will help you setup [Sonatype Nexus Repository Manager (OSS)](https://www.sonatype.com/nexus-repository-oss).
 
-1. **Chocolatey Central Management (CCM) Server App**: CCM is the Web UI portal for your entire Chocolatey environment. Your endpoints check-in to CCM to report their package status. This includes the Chocolatey packages they have installed, and whther any of these packages are outdated. And now, with CCM Deployments, you can also deploy packages or package updates to groups of endpoints, as well as ad-hoc PowerShell commands. CCM is backed by an MS SQL Database. This guide will set up MS SQL Express for you.
+1. **Chocolatey Central Management (CCM)**: CCM is the Web UI portal for your entire Chocolatey environment. Your endpoints check-in to CCM to report their package status. This includes the Chocolatey packages they have installed, and whether any of these packages are outdated. And now, with CCM Deployments, you can also deploy packages or package updates to groups of endpoints, as well as ad-hoc PowerShell commands. CCM is backed by an MS SQL Database. This guide will set up MS SQL Express for you.
 
-1. **Automation Pipeline**: A piepline tool will help you automate repetitive tasks, such checking for updates to a set of Chocolatey Packages from the Chocolatey Community Repository (CCR). If updates exist, the pipeline task will auto-internalize your list of packages, and push them into your NuGet repository for you. This guide will help you set up Jenkins as your automation pieline tool.
+1. **Automation Pipeline (Jenkins)**: A pipeline tool will help you automate repetitive tasks, such checking for updates to a set of Chocolatey Packages from the Chocolatey Community Repository (CCR). If updates exist, the pipeline task will auto-internalize your list of packages, and push them into your NuGet repository for you. This guide will help you set up Jenkins as your automation pipeline.
 
 ## Requirements
 
@@ -83,7 +83,6 @@ Invoke-Expression -Command ((New-Object System.Net.WebClient).DownloadString($Qu
 > - Setup of local `choco-setup` directories
 > - Download of setup files from "choco-quickstart-scripts" GitHub repo
 > - Download of Chocolatey packages required for setup
-> - Output data to JSON to pass between scripts
 
 ### Step 2: Nexus Setup
 
@@ -116,10 +115,10 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 ```
 
 > :scroll: **What does this script do?**
-> - Install of MS SQL Express
-> - Creation and permissions of `ChocolateyManagement` database
-> - Install of all 3 CCM packages, with correct parameters
-> - Output data to JSON to pass between scripts
+> - Installs MS SQL Express
+> - Creates `ChocolateyManagement` database, and adds appropriate `ChocoUser` permissions
+> - Installs all 3 CCM packages (`database, service, web`), with correct parameters
+> - Outputs data to JSON to pass between scripts
 
 ### Step 4: SSL Setup
 
@@ -150,7 +149,7 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 > - Configures pre-downloaded Jenkins scripts for Package Internalizer automation
 > - Sets up pre-defined Jenkins jobs for the scripts above
 > - Outputs data to JSON to pass between scripts
-> - Auto-opens web portals for CCM, Nexus, and Jenkins in your broswer
+> - Auto-opens web portals for CCM, Nexus, and Jenkins in your web browser
 
 
 ### Step 6: Setting up Endpoints
