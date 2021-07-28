@@ -25,7 +25,7 @@ Let's get started!
 
 ![Components of a C4B Server](c4b-server.png)
 
-As illustrated in the diagram above, there are four main components to a default C4B Server install, namely:
+Chocolatey For Business installation
 
 1. **C4B Licensed components**: A licensed version of Chocolatey includes:
     * Installation of the Chocolatey OSS client package itself (`chocolatey`)
