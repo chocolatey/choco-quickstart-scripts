@@ -9,7 +9,7 @@
         <hudson.model.StringParameterDefinition>
           <name>P_LOCAL_REPO_URL</name>
           <description>Internal test repository.</description>
-          <defaultValue>https://{{hostname}}:8081/nexus/repository/ChocolateyTest/</defaultValue>
+          <defaultValue>https://{{hostname}}:8443/repository/ChocolateyTest/</defaultValue>
           <trim>true</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>

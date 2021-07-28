@@ -41,142 +41,11 @@ begin {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslCertificate-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
-
-    #region Functions
-    function Get-Certificate {
-        [CmdletBinding()]
-        param(
-            [Parameter()]
-            [string]
-            $Thumbprint,
-
-            [Parameter()]
-            [string]
-            $Subject
-        )
-
-        $filter = if ($Thumbprint) {
-            { $_.Thumbprint -eq $Thumbprint }
-        }
-        else {
-            { $_.Subject -like "CN=$Subject" }
-        }
-
-        $cert = Get-ChildItem -Path Cert:\LocalMachine\My, Cert:\LocalMachine\TrustedPeople |
-        Where-Object $filter -ErrorAction Stop |
-        Select-Object -First 1
-
-        if ($null -eq $cert) {
-            throw "Certificate either not found, or other issue arose."
-        }
-        else {
-            Write-Host "Certification validation passed" -ForegroundColor Green
-            $cert
-        }
-    }
-
-
-    function New-NexusCert {
-        [CmdletBinding()]
-        param(
-            [Parameter()]
-            $Thumbprint
-        )
-
-        if ((Test-Path C:\ProgramData\nexus\etc\ssl\keystore.jks)) {
-            Remove-Item C:\ProgramData\nexus\etc\ssl\keystore.jks -Force
-        }
-
-        $KeyTool = "C:\ProgramData\nexus\jre\bin\keytool.exe"
-        $password = "chocolatey" | ConvertTo-SecureString -AsPlainText -Force
-        $certificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople\ | Where-Object { $_.Thumbprint -eq $Thumbprint } | Sort-Object | Select-Object -First 1
-
-        Write-Host "Exporting .pfx file to C:\, will remove when finished" -ForegroundColor Green
-        $certificate | Export-PfxCertificate -FilePath C:\cert.pfx -Password $password
-        Get-ChildItem -Path c:\cert.pfx | Import-PfxCertificate -CertStoreLocation Cert:\LocalMachine\My -Exportable -Password $password
-        Write-Warning -Message "You'll now see prompts and other outputs, things are working as expected, don't do anything"
-        $string = ("chocolatey" | & $KeyTool -list -v -keystore C:\cert.pfx) -match '^Alias.*'
-        $currentAlias = ($string -split ':')[1].Trim()
-
-        $passkey = '9hPRGDmfYE3bGyBZCer6AUsh4RTZXbkw'
-        & $KeyTool -importkeystore -srckeystore C:\cert.pfx -srcstoretype PKCS12 -srcstorepass chocolatey -destkeystore C:\ProgramData\nexus\etc\ssl\keystore.jks -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $passkey
-        & $KeyTool -keypasswd -keystore C:\ProgramData\nexus\etc\ssl\keystore.jks -alias jetty -storepass $passkey -keypass chocolatey -new $passkey
-
-        $xmlPath = 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
-        [xml]$xml = Get-Content -Path 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
-        foreach ($entry in $xml.Configure.New.Where{ $_.id -match 'ssl' }.Set.Where{ $_.name -match 'password' }) {
-            $entry.InnerText = $passkey
-        }
-
-        $xml.OuterXml | Set-Content -Path $xmlPath
-
-        Remove-Item C:\cert.pfx
-
-        $nexusPath = 'C:\ProgramData\sonatype-work\nexus3'
-        $configPath = "$nexusPath\etc\nexus.properties"
-
-        $configString = @'
-jetty.https.stsMaxAge=-1
-application-port-ssl=8443
-nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml
-'@
-
-        $configString | Add-Content -Path $configPath
-        
-        $xmlPath = 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
-        [xml]$xml = Get-Content -Path 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
-        foreach ($entry in $xml.Configure.New.Where{ $_.id -match 'ssl' }.Set.Where{ $_.name -match 'password' }) {
-            $entry.InnerText = $passkey
-        }
-
-        $xml.OuterXml | Set-Content -Path $xmlPath
-
-    }
-
-    function Register-NetshBinding {
-        [CmdletBinding()]
-        param(
-            [Parameter()]
-            [string]
-            $Hash = $Thumbprint,
-
-            [Parameter()]
-            [string]
-            $Guid = $((New-Guid).ToString("B")),
-
-            [Parameter()]
-            [string]
-            $CertStore = "TrustedPeople"
-        )
-        $ports = @('24020')
-
-        foreach ($port in $ports) {
-            & netsh http add sslcert ipport=0.0.0.0:$($port) certhash=$($Hash) appid=$($Guid) certstorename=$($CertStore)
-        }
-    }
-
-    function Get-NetshSslEntries {
-        $txtBindings = (& netsh http show sslcert) | Select-Object -Skip 3 | Out-String
-        $newLine = [System.Environment]::NewLine
-        $txtbindings = $txtBindings -split "$newLine$newLine"
-        $sslEntries = foreach ($binding in $txtbindings) {
-            if ($binding) {
-                $binding = $binding -replace "  ", "" -split ": "
-                $hostNameIPPort = ($binding[1] -split "`n")[0] -split ":"
-                [pscustomobject]@{
-                    HostNameIP      = $hostNameIPPort[0]
-                    Port            = $hostNameIPPort[1]
-                    CertificateHash = ($binding[2] -split "`n" -replace '[^a-zA-Z0-9]', '')[0]
-                }
-            }
-        }
-
-        # return entries, even if empty
-        return $sslEntries
-    }
     
-    #endregion Functions
+    # Dot-source helper functions
+    . .\scripts\Get-Helpers.ps1
 }
+
 process {
 
     #Collect current certificate configuration
@@ -187,13 +56,21 @@ process {
         Get-Certificate -Thumbprint $Thumbprint
     }
 
+    $SubjectWithoutCn = $Certificate.Subject -replace 'CN=',''
+
     #Nexus
     #Stop Services/Processes/Websites required
     Stop-Service nexus
 
+    # Put certificate in TrustedPeople
+    Copy-CertToStore -Certificate $Certificate
+
     # Generate Nexus keystore
     New-NexusCert -Thumbprint $Certificate.Thumbprint
 
+    # Add firewall rule for Nexus
+    netsh advfirewall firewall add rule name="Nexus-8443" dir=in action=allow protocol=tcp localport=8443
+    
     Write-Verbose "Starting up Nexus"
     Start-Service nexus
 
@@ -201,7 +78,7 @@ process {
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::tls12
     do {
         $response = try {
-            Invoke-WebRequest "https://${hostname}:8443" -ErrorAction Stop
+            Invoke-WebRequest "https://${SubjectWithoutCn}:8443" -ErrorAction Stop
             Start-Sleep -Seconds 3
         }
         catch {
@@ -216,10 +93,14 @@ process {
     Get-Process chocolateysoftware.chocolateymanagement.web* | Stop-Process -ErrorAction SilentlyContinue -Force
     Stop-Website ChocolateyCentralManagement
 
+    #Remove bindings
+    netsh http delete sslcert ipport=0.0.0.0:24020
+    netsh http delete sslcert ipport=0.0.0.0:443
+
     # Setup the new bindings
     Register-NetshBinding -Hash $Certificate.Thumbprint
 
-    Write-Verbose "Removing existing bindings and binding ${hostname}:443 to Chocolatey Central Management"
+    Write-Verbose "Removing existing bindings and binding ${SubjectWithoutCn}:443 to Chocolatey Central Management"
     $guid = [Guid]::NewGuid().ToString("B")
     netsh http add sslcert ipport=0.0.0.0:443 certhash=$Thumbprint certstorename=MY appid="$guid"
     Get-WebBinding -Name ChocolateyCentralManagement | Remove-WebBinding
@@ -232,46 +113,54 @@ process {
     $Certificate
 
     # Create the site hosting the certificate import script on port 80
-    .\scripts\New-IISCertificateHost.ps1
+    # ONluy run this if it's a self-signed cert which has 10-year validity
+    if ($Certificate.NotAfter -gt (Get-Date).AddYears(5)) {
+        $IsSelfSigned = $true
+        .\scripts\New-IISCertificateHost.ps1
+    }
+
+    # Add updated scripts to raw repo in Nexus
+
+    #Build Credential Object, Connect to Nexus
+    $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
+    $Credential = [System.Management.Automation.PSCredential]::new('admin', $securePw)
+
+    # Connect to Nexus
+    Connect-NexusServer -Hostname $SubjectWithoutCn -Credential $Credential -UseSSL
+
+    #Push ChocolateyInstall.ps1 to raw repo
+    $ScriptDir = "$env:SystemDrive\choco-setup\files\scripts"
+    $ChocoInstallScript = "$ScriptDir\ChocolateyInstall.ps1"
+    (Get-Content -Path $ChocoInstallScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ChocoInstallScript
+    New-NexusRawComponent -RepositoryName 'choco-install' -File "$ChocoInstallScript"
+
+    #Push ClientSetup.ps1 to raw repo
+    $ClientScript = "$ScriptDir\ClientSetup.ps1"
+    (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
+    New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
+
+    # Generate Register-C4bEndpoint.ps1
+    $EndpointScript = "$ScriptDir\Register-C4bEndpoint.ps1"
+    (Get-Content -Path $EndpointScript) -replace "{{hostname}}", "'$SubjectWithoutCn'" | Set-Content -Path $EndpointScript
+    if ($IsSelfSigned) {
+        $ScriptBlock = @"
+`$downloader = New-Object -TypeName System.Net.WebClient
+Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-ChocoServerCertificate.ps1"))
+"@
+        (Get-Content -Path $EndpointScript) -replace "# placeholder if using a self-signed cert", $ScriptBlock | Set-Content -Path $EndpointScript
+    }
+
+    # Save useful params to JSON
+    $SslJson = @{
+        CertSubject  = $SubjectWithoutCn
+        CertThumbprint = $Certificate.Thumbprint
+        CertExpiry = $Certificate.NotAfter
+        IsSelfSigned = $IsSelfSigned
+    }
+    $SslJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ssl.json"
 }
 
-
 end {
-    $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
-    $Timeout = New-TimeSpan -Seconds 10
-    $Stopwatch = [System.Diagnostics.Stopwatch]::new()
-    $Stopwatch.Start()
-    Write-Host $Message -NoNewline -ForegroundColor Green
-    do {
-        # wait for a key to be available:
-        if ([Console]::KeyAvailable) {
-            # read the key, and consume it so it won't
-            # be echoed to the console:
-            $keyInfo = [Console]::ReadKey($true)
-            Write-Host "`nSkipping the Opening of sites in your browser." -ForegroundColor Green
-            # exit loop
-            break
-        }
-        # write a dot and wait a second
-        Write-Host '.' -NoNewline -ForegroundColor Green
-        Start-Sleep -Seconds 1
-    }
-    while ($Stopwatch.Elapsed -lt $Timeout)
-    $Stopwatch.Stop()
-
-    if (-not ($keyInfo)) {
-        Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
-        $Ccm = "https://${hostname}/Account/Login"
-        $Nexus = "https://${hostname}:8443/#browse/browse"
-        $Jenkins = 'http://localhost:8080'
-        try {
-            Start-Process msedge.exe "$Ccm", "$Nexus", "$Jenkins"
-        }
-        catch {
-            Start-Process chrome.exe "$Ccm", "$Nexus", "$Jenkins"
-        }
-    }
-
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript
 }

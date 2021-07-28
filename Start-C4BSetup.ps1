@@ -96,7 +96,7 @@ $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/main.z
 Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\main.zip"
 Expand-Archive "$TempDir\main.zip" $TempDir
 Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
-Remove-Item "$TempDir\*" -Recurse -Force
+Remove-Item "$TempDir" -Recurse -Force
 
 # Convert license to a "choco-license" package, and install it locally to test
 Write-Host "Ceating a "chocolatey-license" package, and testing install." -ForegroundColor Green

@@ -13,7 +13,7 @@ C4B Quick-Start Guide Jenkins setup script
 [CmdletBinding()]
 param(
     # Hostname of your C4B Server
-    [string]$HostName = 'localhost',
+    [string]$HostName = $(Get-Content "$env:SystemDrive\choco-setup\logs\ssl.json" | ConvertFrom-Json).CertSubject,
     # Repo where you're installing Jenkins from, usually CCR
     [string]$Source = 'https://chocolatey.org/api/v2/',
     # API key of your Nexus repo, for Chocolatey Jenkins jobs to use
@@ -141,7 +141,7 @@ Get-ChildItem "$env:SystemDrive\choco-setup\files\jenkins" | Copy-Item -Destinat
 Get-ChildItem -Path "$JenkinsHome\jobs" -Recurse -File -Filter 'config.xml' | ForEach-Object {
     (Get-Content -Path $_.FullName -Raw) -replace
         '{{NugetApiKey}}', $NuGetApiKey -replace
-        '{{hostname}}', 'localhost' |
+        '{{hostname}}', $HostName |
         Set-Content -Path $_.FullName
 }
 #endregion
@@ -161,6 +161,41 @@ Write-Host 'Jenkins setup complete' -ForegroundColor Green
 Write-Host 'Login to Jenkins at: http://locahost:8080' -ForegroundColor Green
 Write-Host 'Initial default Jenkins admin user password:' -ForegroundColor Green
 Write-Host "$(Get-Content "${env:ProgramFiles(x86)}\Jenkins\secrets\initialAdminPassword")" -ForegroundColor Green
+
+$Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
+$Timeout = New-TimeSpan -Seconds 10
+$Stopwatch = [System.Diagnostics.Stopwatch]::new()
+$Stopwatch.Start()
+Write-Host $Message -NoNewline -ForegroundColor Green
+do {
+    # wait for a key to be available:
+    if ([Console]::KeyAvailable) {
+        # read the key, and consume it so it won't
+        # be echoed to the console:
+        $keyInfo = [Console]::ReadKey($true)
+        Write-Host "`nSkipping the Opening of sites in your browser." -ForegroundColor Green
+        # exit loop
+        break
+    }
+    # write a dot and wait a second
+    Write-Host '.' -NoNewline -ForegroundColor Green
+    Start-Sleep -Seconds 1
+}
+while ($Stopwatch.Elapsed -lt $Timeout)
+$Stopwatch.Stop()
+
+if (-not ($keyInfo)) {
+    Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
+    $Ccm = "https://${hostname}/Account/Login"
+    $Nexus = "https://${hostname}:8443/#browse/browse"
+    $Jenkins = 'http://localhost:8080'
+    try {
+        Start-Process msedge.exe "$Ccm", "$Nexus", "$Jenkins"
+    }
+    catch {
+        Start-Process chrome.exe "$Ccm", "$Nexus", "$Jenkins"
+    }
+}
 
 $ErrorActionPreference = $DefaultEap
 Stop-Transcript
