@@ -30,7 +30,7 @@ Chocolatey For Business installation
 1. **C4B Licensed components**: A licensed version of Chocolatey includes:
     * Installation of the Chocolatey OSS client package itself (`chocolatey`)
     * Chocolatey license file (`chocolatey.license.xml`) installed in the correct directory (`ProgramData\chocolatey\license`)
-    a. Installation of the Chocolatey Licensed extension (`chocolatey.extension`), giving you access to features like Package Builder, Package Internalizer, etc. (full list [here](https://docs.chocolatey.org/en-us/features/)).
+    * Installation of the Chocolatey Licensed extension (`chocolatey.extension`), giving you access to features like Package Builder, Package Internalizer, etc. (full list [here](https://docs.chocolatey.org/en-us/features/)).
     <p></p>
 
 1. **NuGet V2 Repository Server App (Nexus)**: Chocolatey works best with a NuGet V2 repository. This application hosts and manages versioning of your Chocolatey package artifacts, in their enhanced NuGet package (.nupkg) file format. This guide will help you setup [Sonatype Nexus Repository Manager (OSS)](https://www.sonatype.com/nexus-repository-oss).
