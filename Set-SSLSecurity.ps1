@@ -108,15 +108,21 @@ process {
 
     #Start the components back up
     try {
-        Start-Website ChocolateyCentralManagement
+        Start-Website ChocolateyCentralManagement -ErrorAction Stop
     }
     catch {
-        #Try again...harder.
-        Write-Warning "Unable to start Chocolatey Central Management website, retrying"
-        Get-Website ChocolateyCentralManagement | Start-Website -ErrorAction Stop
+        #Try again...
+        Start-Website ChocolateyCentralManagement  -ErrorAction SilentlyContinue
+
+        #Try again, this time with a hammer
+        if((Get-Website -Name ChocolateyCentralManagement).State -ne 'Started') {
+            Start-Website ChocolateyCentralManagement -ErrorAction SilentlyContinue
+        }
     }
     finally {
-        Write-Warning "Unable to start Chocolatey Central Management website, please start manually in IIS"
+        if((Get-Website -Name ChocolateyCentralManagement).State -ne 'Started') {
+            Write-Warning "Unable to start Chocolatey Central Management website, please start manually in IIS"
+        }
     }
     Start-Service chocolatey-central-management
     # Hand back the created/found certificate to the caller.
