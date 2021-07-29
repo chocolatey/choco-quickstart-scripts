@@ -84,14 +84,14 @@ function Connect-NexusServer {
     .EXAMPLE
     Connect-NexusServer -Hostname nexus.fabrikam.com -Credential $Cred -UseSSL -Sslport 443
     #>
-    [cmdletBinding(HelpUri='https://steviecoaster.dev/TreasureChest/Connect-NexusServer/')]
+    [cmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Connect-NexusServer/')]
     param(
-        [Parameter(Mandatory,Position=0)]
+        [Parameter(Mandatory, Position = 0)]
         [Alias('Server')]
         [String]
         $Hostname,
 
-        [Parameter(Mandatory,Position=1)]
+        [Parameter(Mandatory, Position = 1)]
         [System.Management.Automation.PSCredential]
         $Credential,
 
@@ -106,33 +106,34 @@ function Connect-NexusServer {
 
     process {
 
-        if($UseSSL){
+        if ($UseSSL) {
             $script:protocol = 'https'
             $script:port = $Sslport
-        } else {
+        }
+        else {
             $script:protocol = 'http'
             $script:port = '8081'
         }
 
         $script:HostName = $Hostname
 
-        $credPair = "{0}:{1}" -f $Credential.UserName,$Credential.GetNetworkCredential().Password
+        $credPair = "{0}:{1}" -f $Credential.UserName, $Credential.GetNetworkCredential().Password
 
         $encodedCreds = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($credPair))
 
-        $script:header = @{ Authorization = "Basic $encodedCreds"}
+        $script:header = @{ Authorization = "Basic $encodedCreds" }
 
         try {
             $url = "$($protocol)://$($Hostname):$($port)/service/rest/v1/status"
 
             $params = @{
-                Headers = $header
+                Headers     = $header
                 ContentType = 'application/json'
-                Method = 'GET'
-                Uri = $url
+                Method      = 'GET'
+                Uri         = $url
             }
 
-            $result =Invoke-RestMethod @params -ErrorAction Stop
+            $result = Invoke-RestMethod @params -ErrorAction Stop
             Write-Host "Connected to $Hostname" -ForegroundColor Green
         }
 
@@ -180,30 +181,30 @@ function Invoke-Nexus {
         $UriBase = "$($protocol)://$($Hostname):$($port)"
         $Uri = $UriBase + $UriSlug
         $Params = @{
-            Headers = $header
+            Headers     = $header
             ContentType = $ContentType
-            Uri = $Uri
-            Method = $Method
+            Uri         = $Uri
+            Method      = $Method
         }
 
-        if($Body){
-                $Params.Add('Body',$($Body | ConvertTo-Json -Depth 3))
-            } 
+        if ($Body) {
+            $Params.Add('Body', $($Body | ConvertTo-Json -Depth 3))
+        } 
         
-        if($BodyAsArray){
-            $Params.Add('Body',$($BodyAsArray | ConvertTo-Json -Depth 3))
+        if ($BodyAsArray) {
+            $Params.Add('Body', $($BodyAsArray | ConvertTo-Json -Depth 3))
         }
 
-        if($BodyAsString){
-            $Params.Add('Body',$BodyAsString)
+        if ($BodyAsString) {
+            $Params.Add('Body', $BodyAsString)
         }
 
-        if($File){
+        if ($File) {
             $Params.Remove('ContentType')
-            $Params.Add('InFile',$File)
+            $Params.Add('InFile', $File)
         }
 
-         Invoke-RestMethod @Params
+        Invoke-RestMethod @Params
         
 
     }
@@ -274,19 +275,19 @@ function Get-NexusRepository {
     .EXAMPLE
     Get-NexusRepository -Name CompanyNugetPkgs
     #>
-    [cmdletBinding(HelpUri='https://steviecoaster.dev/TreasureChest/Get-NexusRepository/',DefaultParameterSetName="default")]
+    [cmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Get-NexusRepository/', DefaultParameterSetName = "default")]
     param(
-        [Parameter(ParameterSetName="Format",Mandatory)]
+        [Parameter(ParameterSetName = "Format", Mandatory)]
         [String]
-        [ValidateSet('apt','bower','cocoapods','conan','conda','docker','gitlfs','go','helm','maven2','npm','nuget','p2','pypi','r','raw','rubygems','yum')]
+        [ValidateSet('apt', 'bower', 'cocoapods', 'conan', 'conda', 'docker', 'gitlfs', 'go', 'helm', 'maven2', 'npm', 'nuget', 'p2', 'pypi', 'r', 'raw', 'rubygems', 'yum')]
         $Format,
 
-        [Parameter(ParameterSetName="Type",Mandatory)]
+        [Parameter(ParameterSetName = "Type", Mandatory)]
         [String]
-        [ValidateSet('hosted','group','proxy')]
+        [ValidateSet('hosted', 'group', 'proxy')]
         $Type,
 
-        [Parameter(ParameterSetName="Name",Mandatory)]
+        [Parameter(ParameterSetName = "Name", Mandatory)]
         [String]
         $Name
     )
@@ -294,7 +295,7 @@ function Get-NexusRepository {
 
     begin {
 
-        if(-not $header){
+        if (-not $header) {
             throw "Not connected to Nexus server! Run Connect-NexusServer first."
         }
 
@@ -302,16 +303,16 @@ function Get-NexusRepository {
     }
     process {
 
-        switch($PSCmdlet.ParameterSetName){
-            {$Format} {
-                $filter = { $_.format -eq $Format}
+        switch ($PSCmdlet.ParameterSetName) {
+            { $Format } {
+                $filter = { $_.format -eq $Format }
 
                 $result = Invoke-Nexus -UriSlug $urislug -Method Get
                 $result | Where-Object $filter
                 
             }
 
-            {$Name} {
+            { $Name } {
                 $filter = { $_.name -eq $Name }
 
                 $result = Invoke-Nexus -UriSlug $urislug -Method Get
@@ -319,19 +320,19 @@ function Get-NexusRepository {
 
             }
 
-            {$Type} {
+            { $Type } {
                 $filter = { $_.type -eq $Type }
                 $result = Invoke-Nexus -UriSlug $urislug -Method Get
                 $result | Where-Object $filter
             }
 
             default {
-                Invoke-Nexus -UriSlug $urislug -Method Get| ForEach-Object { 
+                Invoke-Nexus -UriSlug $urislug -Method Get | ForEach-Object { 
                     [pscustomobject]@{
-                        Name = $_.SyncRoot.name
-                        Format = $_.SyncRoot.format
-                        Type = $_.SyncRoot.type
-                        Url = $_.SyncRoot.url
+                        Name       = $_.SyncRoot.name
+                        Format     = $_.SyncRoot.format
+                        Type       = $_.SyncRoot.type
+                        Url        = $_.SyncRoot.url
                         Attributes = $_.SyncRoot.attributes
                     }
                 }
@@ -361,7 +362,7 @@ function Remove-NexusRepository {
     #>
     [CmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Remove-NexusRepository/', SupportsShouldProcess, ConfirmImpact = 'High')]
     Param(
-        [Parameter(Mandatory,ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [Alias('Name')]
         [ArgumentCompleter( {
                 param($command, $WordToComplete, $CommandAst, $FakeBoundParams)
@@ -624,7 +625,7 @@ function New-NexusRawHostedRepository {
         $HasProprietaryComponents,
 
         [Parameter(Mandatory)]
-        [ValidateSet('Inline','Attachment')]
+        [ValidateSet('Inline', 'Attachment')]
         [String]
         $ContentDisposition
     )
@@ -642,20 +643,20 @@ function New-NexusRawHostedRepository {
     process {
 
         $Body = @{
-            name = $Name
-            online = [bool]$Online
-            storage = @{
-                blobStoreName = $BlobStore
+            name      = $Name
+            online    = [bool]$Online
+            storage   = @{
+                blobStoreName               = $BlobStore
                 strictContentTypeValidation = [bool]$UseStrictContentTypeValidation
-                writePolicy = $DeploymentPolicy.ToLower()
+                writePolicy                 = $DeploymentPolicy.ToLower()
             }
-            cleanup = @{
+            cleanup   = @{
                 policyNames = @($CleanupPolicy)
             }
             component = @{
                 proprietaryComponents = [bool]$HasProprietaryComponents
             }
-            raw = @{
+            raw       = @{
                 contentDisposition = $ContentDisposition.ToUpper()
             }
         }
@@ -744,17 +745,18 @@ function Enable-NexusRealm {
     [CmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Enable-NexusRealm/')]
     Param(
         [Parameter(Mandatory)]
-        [ArgumentCompleter({
-            param($Command,$Parameter,$WordToComplete,$CommandAst,$FakeBoundParams)
+        [ArgumentCompleter( {
+                param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
 
-            $r = (Get-NexusRealm).name
+                $r = (Get-NexusRealm).name
 
-            if($WordToComplete){
-                $r.Where($_ -match "^$WordToComplete")
-            } else {
-                $r
+                if ($WordToComplete) {
+                    $r.Where($_ -match "^$WordToComplete")
+                }
+                else {
+                    $r
+                }
             }
-        }
         )]
         [String[]]
         $Realm
@@ -778,16 +780,16 @@ function Enable-NexusRealm {
 
         $Realm | Foreach-Object {
 
-            switch($_){
+            switch ($_) {
                 'Conan Bearer Token Realm' { $id = 'org.sonatype.repository.conan.internal.security.token.ConanTokenRealm' }
                 'Default Role Realm' { $id = 'DefaultRole' }
                 'Docker Bearer Token Realm' { $id = 'DockerToken' }
                 'LDAP Realm' { $id = 'LdapRealm' }
-                'Local Authentication Realm' { $id = 'NexusAuthenticatingRealm'}
-                'Local Authorizing Realm' {$id = 'NexusAuthorizingRealm'}
-                'npm Bearer Token Realm' {$id = 'NpmToken'}
-                'NuGet API-Key Realm' { $id = 'NuGetApiKey'}
-                'Rut Auth Realm' { $id = 'rutauth-realm'}
+                'Local Authentication Realm' { $id = 'NexusAuthenticatingRealm' }
+                'Local Authorizing Realm' { $id = 'NexusAuthorizingRealm' }
+                'npm Bearer Token Realm' { $id = 'NpmToken' }
+                'NuGet API-Key Realm' { $id = 'NuGetApiKey' }
+                'Rut Auth Realm' { $id = 'rutauth-realm' }
             }
 
             $collection += $id
@@ -819,7 +821,7 @@ function Get-NexusNuGetApiKey {
     .NOTES
     
     #>
-    [CmdletBinding(HelpUri='https://steviecoaster.dev/TreasureChest/Security/API%20Key/Get-NexusNuGetApiKey/')]
+    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Security/API%20Key/Get-NexusNuGetApiKey/')]
     Param(
         [Parameter(Mandatory)]
         [PSCredential]
@@ -890,7 +892,7 @@ function New-NexusRawComponent {
 
     process {
 
-        if(-not $Directory){
+        if (-not $Directory) {
             $urislug = "/repository/$($RepositoryName)/$($Name)"
         }
         else {
@@ -902,11 +904,11 @@ function New-NexusRawComponent {
 
 
         $params = @{
-            Uri         = $Uri
-            Method      = 'PUT'
-            ContentType = 'text/plain'
-            InFile        = $File
-            Headers     = $header
+            Uri             = $Uri
+            Method          = 'PUT'
+            ContentType     = 'text/plain'
+            InFile          = $File
+            Headers         = $header
             UseBasicParsing = $true
         }
 
@@ -1011,22 +1013,13 @@ function New-NexusCert {
     $nexusPath = 'C:\ProgramData\sonatype-work\nexus3'
     $configPath = "$nexusPath\etc\nexus.properties"
 
-    $configString = @'
-jetty.https.stsMaxAge=-1
-application-port-ssl=8443
-nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml
-'@
-
-    $configString | Add-Content -Path $configPath
-    
-    $xmlPath = 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
-    [xml]$xml = Get-Content -Path 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
-    foreach ($entry in $xml.Configure.New.Where{ $_.id -match 'ssl' }.Set.Where{ $_.name -match 'password' }) {
-        $entry.InnerText = $passkey
+    $configStrings = @('jetty.https.stsMaxAge=-1', 'application-port-ssl=8443', 'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml')
+    $configStrings | ForEach-Object {
+        if ((Get-Content -Raw $configPath) -notmatch [regex]::Escape($_)) {
+            $configString | Add-Content -Path $configPath
+        }
     }
-
-    $xml.OuterXml | Set-Content -Path $xmlPath
-
+    
 }
 
 function Register-NetshBinding {
