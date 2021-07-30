@@ -107,7 +107,23 @@ process {
     New-WebBinding -Name ChocolateyCentralManagement -Protocol https -Port 443 -SslFlags 0 -IpAddress '*'
 
     #Start the components back up
-    Start-Website ChocolateyCentralManagement
+    try {
+        Start-Website ChocolateyCentralManagement -ErrorAction Stop
+    }
+    catch {
+        #Try again...
+        Start-Website ChocolateyCentralManagement  -ErrorAction SilentlyContinue
+
+        #Try again, this time with a hammer
+        if((Get-Website -Name ChocolateyCentralManagement).State -ne 'Started') {
+            Start-Website ChocolateyCentralManagement -ErrorAction SilentlyContinue
+        }
+    }
+    finally {
+        if((Get-Website -Name ChocolateyCentralManagement).State -ne 'Started') {
+            Write-Warning "Unable to start Chocolatey Central Management website, please start manually in IIS"
+        }
+    }
     Start-Service chocolatey-central-management
     # Hand back the created/found certificate to the caller.
     $Certificate
