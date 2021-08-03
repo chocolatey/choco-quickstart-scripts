@@ -1016,7 +1016,7 @@ function New-NexusCert {
     $configStrings = @('jetty.https.stsMaxAge=-1', 'application-port-ssl=8443', 'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml')
     $configStrings | ForEach-Object {
         if ((Get-Content -Raw $configPath) -notmatch [regex]::Escape($_)) {
-            $configString | Add-Content -Path $configPath
+            $_ | Add-Content -Path $configPath
         }
     }
     
