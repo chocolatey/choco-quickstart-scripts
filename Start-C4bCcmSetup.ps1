@@ -81,6 +81,8 @@ netsh advfirewall firewall add rule name="SQL Server Browser 1434" dir=in action
 #New-NetFirewallRule -DisplayName "Allow inbound UDP Port 1434" –Direction inbound –LocalPort 1434 -Protocol UDP -Action Allow
 
 # Install prerequisites for CCM
+choco install IIS-WebServer -s windowsfeatures --no-progress -y
+choco install IIS-ApplicationInit -s windowsfeatures --no-progress -y
 choco install aspnetcore-runtimepackagestore --version 3.1.16 --source $Ccr --no-progress -y
 choco install dotnetcore-windowshosting --version 3.1.16 --source $Ccr --no-progress -y
 
@@ -106,10 +108,6 @@ if(-Not $hostName.endswith($domainName)) {
 
 #Install CCM Service
 choco install chocolatey-management-service -y -s $PkgSrc --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
-
-# Install prerequisites for CCM Web
-choco install IIS-WebServer -s windowsfeatures --no-progress -y
-choco install IIS-ApplicationInit -s windowsfeatures --no-progress -y
 
 # Check if OS is 2016. If so, let the user know
 # they need a reboot after IIS packages install.
