@@ -80,6 +80,14 @@ Write-Output "Firewall: Enabling SQL Server browser UDP port 1434."
 netsh advfirewall firewall add rule name="SQL Server Browser 1434" dir=in action=allow protocol=UDP localport=1434 profile=any enable=yes service=any
 #New-NetFirewallRule -DisplayName "Allow inbound UDP Port 1434" –Direction inbound –LocalPort 1434 -Protocol UDP -Action Allow
 
+# Install prerequisites for CCM
+choco install aspnetcore-runtimepackagestore --version 3.1.16 --source $Ccr --no-progress -y
+choco install dotnetcore-windowshosting --version 3.1.16 --source $Ccr --no-progress -y
+
+choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'3.1.16'" --reason="'Required for CCM website'"
+choco pin add --name="'dotnetcore-windowshosting'" --version="'3.1.16'" --reason="'Required for CCM website'"
+# "reason" only available in commercial editions
+
 # Install CCM DB package using Local SQL Express
 choco install chocolatey-management-database -y -s $PkgSrc --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'"
 
@@ -87,9 +95,6 @@ choco install chocolatey-management-database -y -s $PkgSrc --package-parameters=
 $DatabaseUser = $DatabaseCredential.UserName
 $DatabaseUserPw = $DatabaseCredential.GetNetworkCredential().Password
 Add-DatabaseUserAndRoles -DatabaseName 'ChocolateyManagement' -Username $DatabaseUser -SqlUserPw $DatabaseUserPw -CreateSqlUser -DatabaseRoles @('db_datareader', 'db_datawriter')
-
-# Install dotnet requirement for CCM Service
-choco install dotnet4.6.1 -y --source $Ccr
 
 # Find FDQN for current machine
 $hostName = [System.Net.Dns]::GetHostName()
@@ -99,30 +104,16 @@ if(-Not $hostName.endswith($domainName)) {
     $hostName += "." + $domainName
 }
 
-# Set CCM Service URL
-choco config set --name="'centralManagementServiceUrl'" --value="'https://$($hostname):24020/ChocolateyManagementService'"
-
 #Install CCM Service
 choco install chocolatey-management-service -y -s $PkgSrc --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
 
 # Install prerequisites for CCM Web
 choco install IIS-WebServer -s windowsfeatures --no-progress -y
 choco install IIS-ApplicationInit -s windowsfeatures --no-progress -y
-choco install aspnetcore-runtimepackagestore --version 2.2.7 --source $Ccr --no-progress -y
-choco install dotnetcore-windowshosting --version 2.2.7 --source $Ccr --no-progress -y
 
-choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'2.2.7'" --reason="'Required for CCM website'"
-choco pin add --name="'dotnetcore-windowshosting'" --version="'2.2.7'" --reason="'Required for CCM website'"
-# "reason" only available in commercial editions
-
-$CcmSvcUrl = choco config get centralManagementServiceUrl -r
-$CcmJson = @{
-    CCMServiceURL = $CcmSvcUrl
-    CCMWebPortal = "http://localhost/Account/Login"
-    DefaultUser = "ccmadmin"
-    DefaultPwToBeChanged = "123qwe"
-    CCMDBUser = $DatabaseUser
-}
+# Check if OS is 2016. If so, let the user know
+# they need a reboot after IIS packages install.
+# Instruct user to run secondary script after reboot.
 $Os = (Get-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion' -Name ProductName).ProductName
 if ($Os -like '*2016*') {
     $CcmSvcUrl = choco config get centralManagementServiceUrl -r
@@ -146,10 +137,6 @@ the steps outlined in the C4B Quick-Start Guide to contiue.
     Start-Process 'shutdown.exe' -ArgumentList "/r /f /t 30 /c `"$Comment`" /d p:4:1"
 }
 else {
-    choco install aspnetcore-runtimepackagestore --version 2.2.7 --source $Ccr --no-progress -y
-    choco install dotnetcore-windowshosting --version 2.2.7 --source $Ccr --no-progress -y
-    choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'2.2.7'" --reason="'Required for CCM website'"
-    choco pin add --name="'dotnetcore-windowshosting'" --version="'2.2.7'" --reason="'Required for CCM website'"
     #Install CCM Web package
     choco install chocolatey-management-web -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
 
