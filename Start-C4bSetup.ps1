@@ -18,43 +18,12 @@ param(
     # script will prompt you for it.
     # Script will also validate expiry.
     [string]
-    $LicenseFile,
-    # Unattended mode. Allows you to skip running the other scripts indiviually.
-    [switch]
-    $Unattend,
-    # Specify a credential used for the ChocolateyManagement DB user.
-    # Only required in Unattend mode for the CCM setup script.
-    # If not populated, the script will prompt for credentials.
-    [System.Management.Automation.PSCredential]
-    $DatabaseCredential,
-    # The certificate thumbprint that identifies the target SSL certificate in
-    # the local machine certificate stores.
-    # Only used in Unattend mode for the SSL setup script.
-    [string]
-    $Thumbprint
+    $LicenseFile
 )
 
 $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
-
-# If variables for Unattend are not defined, prompt for them.
-if ($Unattend) {
-    if (-not($DatabaseCredential)) {
-        $DatabaseCredential = (Get-Credential -Username ChocoUser -Message 'Create a credential for the ChocolateyManagement DB user (document this somewhere)')
-    }
-    if (-not($LicenseFile)) {
-        # Have user select license, install license, and licensed extension
-        $Wshell = New-Object -ComObject Wscript.Shell
-        $null = $Wshell.Popup('Please select your Chocolatey License File in the next file dialog.')
-        $null = [System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms")
-        $OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
-        $OpenFileDialog.initialDirectory = "$env:USERPROFILE\Downloads"
-        $OpenFileDialog.filter = 'All Files (*.*)| *.*'
-        $null = $OpenFileDialog.ShowDialog()
-        $LicenseFile = $OpenFileDialog.filename
-    }
-}
 
 function Install-ChocoLicensed {
 
@@ -67,7 +36,7 @@ function Install-ChocoLicensed {
 
     process {
         # Check if choco is installed; if not, install it
-        if (-not(Test-Path "$env:ProgramData\chocolatey\choco.exe")) {
+        if(-not(Test-Path "$env:ProgramData\chocolatey\choco.exe")){
             Write-Host "Chocolatey is not installed. Installing now." -ForegroundColor Green
             Invoke-Expression -Command ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
             refreshenv
@@ -76,7 +45,7 @@ function Install-ChocoLicensed {
         if (-not(Test-Path "$env:ProgramData\chocolatey\license")) {
             $null = New-Item "$env:ProgramData\chocolatey\license" -ItemType Directory -Force
         }
-        if (-not($LicenseFile)) {
+        if (-not($LicenseFile)){
             # Have user select license, install license, and licensed extension
             $Wshell = New-Object -ComObject Wscript.Shell
             $null = $Wshell.Popup('Please select your Chocolatey License File in the next file dialog.')
@@ -117,10 +86,10 @@ $ChocoPath = "$env:SystemDrive\choco-setup"
 $FilesDir = "$ChocoPath\files"
 $PkgsDir = "$ChocoPath\packages"
 $TempDir = "$ChocoPath\temp"
-@($ChocoPath, $FilesDir, $PkgsDir, $TempDir) |
-Foreach-Object {
-    $null = New-Item -Path $_ -ItemType Directory -Force
-}
+@($ChocoPath,$FilesDir,$PkgsDir,$TempDir) |
+    Foreach-Object {
+        $null = New-Item -Path $_ -ItemType Directory -Force
+	}
 
 # Download and extract C4B setup files from repo
 $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/main.zip"
@@ -130,9 +99,9 @@ Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
 Remove-Item "$TempDir" -Recurse -Force
 
 # Convert license to a "choco-license" package, and install it locally to test
-Write-Host "Creating a "chocolatey-license" package, and testing install." -ForegroundColor Green
+Write-Host "Ceating a "chocolatey-license" package, and testing install." -ForegroundColor Green
 Set-Location $FilesDir
-.\scripts\Create-ChocoLicensePkg.ps1
+.\Create-ChocoLicensePkg.ps1
 Remove-Item "$env:SystemDrive\choco-setup\packaging" -Recurse -Force
 
 # Downloading all CCM setup packages below
@@ -143,34 +112,20 @@ $PkgsDir = "$env:SystemDrive\choco-setup\packages"
 $Ccr = "'https://community.chocolatey.org/api/v2/'"
 
 # Download Chocolatey community related items, no internalization necessary
-@('chocolatey', 'chocolateygui') |
-Foreach-Object {
-    choco download $_ --no-progress --force --source $Ccr --output-directory $PkgsDir
-}
+@('chocolatey','chocolateygui') |
+    Foreach-Object {
+        choco download $_ --no-progress --force --source $Ccr --output-directory $PkgsDir
+    }
 
 # Internalize dotnet4.5.2 for ChocolateyGUI (just in case endpoints need it)
 choco download dotnet4.5.2 --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source $Ccr  --output-directory $PkgsDir
 
 # Download Licensed Packages
 ## DO NOT RUN WITH `--internalize` and `--internalize-all-urls` - see https://github.com/chocolatey/chocolatey-licensed-issues/issues/155
-@('chocolatey-agent', 'chocolatey.extension', 'chocolateygui.extension', 'chocolatey-management-database', 'chocolatey-management-service', 'chocolatey-management-web') |
-Foreach-Object {
-    choco download $_ --force --no-progress --source="'https://licensedpackages.chocolatey.org/api/v2/'" --ignore-dependencies --output-directory $PkgsDir
-}
-
-# Kick off unattended running of remainder setup scripts.
-if ($Unattend) {
-    Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Start-C4BNexusSetup.ps1
-    .\Start-C4bCcmSetup.ps1 -DatabaseCredential $DatabaseCredential
-    if ($Thumbprint) {
-        .\Set-SslSecurity.ps1 -Thumbprint $Thumbprint
+@('chocolatey-agent','chocolatey.extension','chocolateygui.extension','chocolatey-management-database','chocolatey-management-service','chocolatey-management-web') |
+    Foreach-Object {
+        choco download $_ --force --no-progress --source="'https://licensedpackages.chocolatey.org/api/v2/'" --ignore-dependencies --output-directory $PkgsDir
     }
-    else {
-        .\Set-SslSecurity.ps1
-    }
-    .\Start-C4bJenkinsSetup.ps1
-}
 
 $ErrorActionPreference = $DefaultEap
 Stop-Transcript
