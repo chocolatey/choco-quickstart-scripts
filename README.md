@@ -79,7 +79,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     ```powershell
     Set-ExecutionPolicy Bypass -Scope Process -Force
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::tls12
-    $QuickStart = 'https://raw.githubusercontent.com/chocolatey/choco-quickstart-scripts/main/Start-C4BSetup.ps1'
+    $QuickStart = 'https://raw.githubusercontent.com/chocolatey/choco-quickstart-scripts/main/Start-C4bSetup.ps1'
     Invoke-Expression -Command ((New-Object System.Net.WebClient).DownloadString($QuickStart))
     ```
 
@@ -101,7 +101,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Start-C4BNexusSetup.ps1
+    .\Start-C4bNexusSetup.ps1
     ```
 
     > <details>
