@@ -74,6 +74,8 @@ Below are the minimum requirements for setting up your C4B server via this guide
 
 ### Step 1: Begin C4B Setup
 
+> :warning:**DISCLAIMER**: This guide utilizes code from a GitHub repository, namely: [choco-quickstart-scripts](https://github.com/chocolatey/choco-quickstart-scripts). Though we explain what each script does in drop-down boxes, please do your due diligence to review this code and ensure it meets your Organizational requirements.
+
 1. Open a PowerShell console with the `Run as Administrator` option, and paste and run the following code:
 
     ```powershell
@@ -139,6 +141,15 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > </ul>
     > </details>
 
+    <br>
+
+    > :warning:**WARNING**: **Only if** you choose to run this on a **Windows Server 2016** VM, you will **require** a **reboot** before IIS is completely installed. The script above will notify you of this. Once the reboot is complete and you log back in, you will also have to paste and run the following code in a PowerShell Administrator console:
+
+    > ```powershell
+    > Set-Location "$env:SystemDrive\choco-setup\files\scripts"
+    > .\Start-C4bCcmSetup2.ps1
+    > ```
+
 ### Step 4: SSL Setup
 
 1. In the same PowerShell Administrator console as above, paste and run the following code:
@@ -148,7 +159,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     .\Set-SslSecurity.ps1
     ```
 
-    OR
+    **OR**, if you have your own custom SSL certificate (purchased/acquired, or from your Domain CA), you can paste and run the following script with the `Thumbprint` value of your SSL certificate specified:
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
@@ -185,6 +196,8 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <li>Outputs data to JSON to pass between scripts</li>
     > </ul>
     > </details>
+
+    > :mag::eyes:**FYI**: A `Readme.html` file will now be generated on your desktop. In addition, all 3 web portals (CCM, Nexus, and Jenkins) will be opened in your browser. The `Readme.html` file contains login information for these portals. 
 
 ### Step 6: Setting up Endpoints
 
