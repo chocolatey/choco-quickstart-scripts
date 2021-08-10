@@ -151,8 +151,34 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 > - Outputs data to JSON to pass between scripts
 > - Auto-opens web portals for CCM, Nexus, and Jenkins in your web browser
 
+### Step 6: Write a Desktop README to document service information
 
-### Step 6: Setting up Endpoints
+1. In the same PowerShell Administrator console as above, paste and run the following code:
+
+```powershell
+Set-Location "$env:SystemDrive\choco-setup\files"
+.\New-QuickStartReadme.ps1
+```
+
+> :scroll: **What does this script do?**
+> - Writes a desktop README html file with the following services documented:
+> - Nexus Repository Server
+> - Jenkins
+> - Chocolatey Central Management
+
+### Step 7: Final Cleanup
+
+1. In the same PowerShell Administrator console as above, paste and run the following code:
+
+```powershell
+Set-Location "$env:SystemDrive\choco-setup\files"
+.\Start-C4bCleanup.ps1
+```
+
+> :scroll: **What does this script do?**
+> - Cleans up json data files used by the setup process
+
+### Step 8: Setting up Endpoints
 
 1. Find the `Register-C4bEndpoint.ps1` script in the `choco-setup\files\scripts\` directory on your C4B Server. Copy this script to your client endpoint.
 
