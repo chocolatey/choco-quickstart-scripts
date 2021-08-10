@@ -162,6 +162,13 @@ Write-Host 'Login to Jenkins at: http://locahost:8080' -ForegroundColor Green
 Write-Host 'Initial default Jenkins admin user password:' -ForegroundColor Green
 Write-Host "$(Get-Content "${env:ProgramFiles(x86)}\Jenkins\secrets\initialAdminPassword")" -ForegroundColor Green
 
+
+Write-Host 'Writing README to Desktop, this file contains login information for all C4B services.'
+New-QuickstartReadme
+
+Write-Host 'Cleaning up temporary data'
+Remove-JsonFiles
+
 $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
 $Timeout = New-TimeSpan -Seconds 10
 $Stopwatch = [System.Diagnostics.Stopwatch]::new()
