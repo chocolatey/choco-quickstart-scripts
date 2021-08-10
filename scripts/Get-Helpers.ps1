@@ -1190,7 +1190,7 @@ The host name of the C4B instance.
             [pscustomobject]@{
                 Name     = 'Central Management'
                 Url      = "https://${HostName}"
-                Username = "ccmadminadmin"
+                Username = "ccmadmin"
                 Password = '123qwe'
             },
             [PSCustomObject]@{

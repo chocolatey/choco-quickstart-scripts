@@ -196,11 +196,12 @@ if (-not ($keyInfo)) {
     $Ccm = "https://${hostname}/Account/Login"
     $Nexus = "https://${hostname}:8443/#browse/browse"
     $Jenkins = 'http://localhost:8080'
+    $ReadMe = 'file:///C:/Users/Public/Desktop/README.html'
     try {
-        Start-Process msedge.exe "$Ccm", "$Nexus", "$Jenkins"
+        Start-Process msedge.exe "$Ccm", "$Nexus", "$Jenkins","$ReadMe"
     }
     catch {
-        Start-Process chrome.exe "$Ccm", "$Nexus", "$Jenkins"
+        Start-Process chrome.exe "$Ccm", "$Nexus", "$Jenkins","$ReadMe"
     }
 }
 
