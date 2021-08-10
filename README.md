@@ -198,31 +198,6 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > </details>
 >>>>>>> fixed ccm 0.6.0 ccm pkg reqs and ccm logic
 
-1. In the same PowerShell Administrator console as above, paste and run the following code:
-
-```powershell
-Set-Location "$env:SystemDrive\choco-setup\files"
-.\New-QuickStartReadme.ps1
-```
-
-> :scroll: **What does this script do?**
-> - Writes a desktop README html file with the following services documented:
-> - Nexus Repository Server
-> - Jenkins
-> - Chocolatey Central Management
-
-### Step 7: Final Cleanup
-
-1. In the same PowerShell Administrator console as above, paste and run the following code:
-
-```powershell
-Set-Location "$env:SystemDrive\choco-setup\files"
-.\Start-C4bCleanup.ps1
-```
-
-> :scroll: **What does this script do?**
-> - Cleans up json data files used by the setup process
-
 ### Step 8: Setting up Endpoints
 
 1. Find the `Register-C4bEndpoint.ps1` script in the `choco-setup\files\scripts\` directory on your C4B Server. Copy this script to your client endpoint.
