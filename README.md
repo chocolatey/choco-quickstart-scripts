@@ -9,7 +9,7 @@ Below is the planned revision of the QSG, which will eventually be posted in the
 ---
 Order: 30
 xref: c4b-quick-start-guide
-Title: Chocolatey for Business (C4B) Quick Start Guide
+Title: C4B Quick Start Guide
 Description: Get up and running quickly with Chocolatey for Business
 RedirectFrom: docs/chocolatey-for-business-quick-start-guide
 ---
@@ -181,8 +181,9 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <li>Updates Jenkins plugins</li>
     > <li>Configures pre-downloaded Jenkins scripts for Package Internalizer automation</li>
     > <li>Sets up pre-defined Jenkins jobs for the scripts above</li>
-    > <li>Auto-opens web portals for CCM, Nexus, and Jenkins in your web browser</li>
-    > <li>Outputs data to JSON to pass between scripts</li>
+    > <li>Writes README to Public Desktop with account information for C4B services</li>
+    > <li>Auto-opens README, CCM, Nexus, and Jenkins in your web browser</li>
+    > <li>Removes temporary JSON files used during provisioning</li>
     > </ul>
     > </details>
 
@@ -203,12 +204,12 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <ul class="list-style-type-disc">
     > <li>Installs Chocolatey client (`chocolatey`), using a script from your raw "`choco-install`" repository</li>
     > <li>Runs the `ClientSetup.ps1` script from your raw "`choco-install`" repository, which does the following:</li>
-    > <li>- Licenses Chocolatey by installing the license package (`chocolatey-license`) created during QDE setup</li>
-    > <li>- Installs the Chocolatey Licensed Extension (`chocolatey.extension`) without context menus</li>
-    > <li>- Configures ChocolateyInternal source</li>
-    > <li>- Disables access to the `chocolatey` public Chocolatey Community Repository (CCR)</li>
-    > <li>- Configures Self-Service mode and installs Chocolatey GUI (`chocolateygui`)</li>
-    > <li>- - Configures Central Management (CCM) check-in, and opts endpoints into CCM Deployments</li>
+    > <li>Licenses Chocolatey by installing the license package (`chocolatey-license`) created during QDE setup</li>
+    > <li>Installs the Chocolatey Licensed Extension (`chocolatey.extension`) without context menus</li>
+    > <li>Configures ChocolateyInternal source</li>
+    > <li>Disables access to the `chocolatey` public Chocolatey Community Repository (CCR)</li>
+    > <li>Configures Self-Service mode and installs Chocolatey GUI (`chocolateygui`)</li>
+    > <li>Configures Central Management (CCM) check-in, and opts endpoints into CCM Deployments</li>
     > </ul>
     > </details>
 
