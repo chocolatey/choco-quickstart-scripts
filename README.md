@@ -196,12 +196,13 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <li>Updates Jenkins plugins</li>
     > <li>Configures pre-downloaded Jenkins scripts for Package Internalizer automation</li>
     > <li>Sets up pre-defined Jenkins jobs for the scripts above</li>
-    > <li>Auto-opens web portals for CCM, Nexus, and Jenkins in your web browser</li>
-    > <li>Outputs data to JSON to pass between scripts</li>
+    > <li>Writes README to Public Desktop with account information for C4B services</li>
+    > <li>Auto-opens README, CCM, Nexus, and Jenkins in your web browser</li>
+    > <li>Removes temporary JSON files used during provisioning</li>
     > </ul>
     > </details>
 
-    > :mag:**FYI**: A `Readme.html` file will now be generated on your desktop. This file contains login information for all 3 web portals (CCM, Nexus, and Jenkins). This `Readme.html`, along with all 3 web portals, will automatically be opened in your browser. 
+    > :mag: **FYI**: A `Readme.html` file will now be generated on your desktop. This file contains login information for all 3 web portals (CCM, Nexus, and Jenkins). This `Readme.html`, along with all 3 web portals, will automatically be opened in your browser. 
 
 ### Step 6: Setting up Endpoints
 
@@ -218,14 +219,14 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <details>
     > <summary><strong>What does this script do? (click to expand)</strong></summary>
     > <ul class="list-style-type-disc">
-    > <li>Installs Chocolatey client (`chocolatey`), using a script from your raw "`choco-install`" repository</li>
-    > <li>Runs the `ClientSetup.ps1` script from your raw "`choco-install`" repository, which does the following:</li>
-    > <li>- Licenses Chocolatey by installing the license package (`chocolatey-license`) created during QDE setup</li>
-    > <li>- Installs the Chocolatey Licensed Extension (`chocolatey.extension`) without context menus</li>
-    > <li>- Configures ChocolateyInternal source</li>
-    > <li>- Disables access to the `chocolatey` public Chocolatey Community Repository (CCR)</li>
-    > <li>- Configures Self-Service mode and installs Chocolatey GUI (`chocolateygui`)</li>
-    > <li>- - Configures Central Management (CCM) check-in, and opts endpoints into CCM Deployments</li>
+    > <li>Installs Chocolatey client (chocolatey), using a script from your raw "choco-install" repository</li>
+    > <li>Runs the "ClientSetup.ps1" script from your raw "choco-install" repository, which does the following:</li>
+    > <li>Licenses Chocolatey by installing the license package (chocolatey-license) created during QDE setup</li>
+    > <li>Installs the Chocolatey Licensed Extension (chocolatey.extension) without context menus</li>
+    > <li>Configures "ChocolateyInternal" source</li>
+    > <li>Disables access to the "chocolatey" public Chocolatey Community Repository (CCR)</li>
+    > <li>Configures Self-Service mode and installs Chocolatey GUI (chocolateygui)</li>
+    > <li>Configures Central Management (CCM) check-in, and opts endpoints into CCM Deployments</li>
     > </ul>
     > </details>
 
@@ -241,8 +242,7 @@ If you'd prefer to watch and follow along, we ran through this guide live on our
 
 <p>
 <div class="ratio ratio-16x9">
-    <iframe src="https://youtu.be/qbIclPMEgig?list=PLGvGJzqY88skrCm-WrqOzqOi41QfhiaKZ&t=648" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
-    </iframe>
+    <iframe src="https://www.youtube.com/embed/qbIclPMEgig" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 </div>
 <br>
 </p>
