@@ -9,19 +9,23 @@ Below is the planned revision of the QSG, which will eventually be posted in the
 ---
 Order: 30
 xref: c4b-quick-start-guide
-Title: Chocolatey for Business (C4B) Quick Start Guide
+Title: C4B Quick Start Guide
 Description: Get up and running quickly with Chocolatey for Business
 RedirectFrom: docs/chocolatey-for-business-quick-start-guide
 ---
 
-Thank you for choosing Chocolatey as your partner in Windows software automation management. We are excited to help you dive in and successfully implement a deployment of all the necessary components.
+Welcome to the Chocolatey of Business (C4B) Quick-Start Guide! This guide will walk you through the basics of configuring a C4B Server on your VM infrastructure of choice. This includes:
+* The Chocolatey Licensed components
+* A NuGet V2 Repository (Nexus)
+* Chocolatey Central Management (CCM)
+* An Automation Pipeline (Jenkins)
 
 > :memo: **NOTE**
 >
 > This quick-start guide is intended for customers who have recently purchased Chocolatey for Business (C4B), or are evaluating C4B as part of a proof-of-concept.
-> It illustrates only **one** method of setting up your Chocolatey environment, and is by **NO** means exhaustive.
-> Our goal is to get you up-and-running quickly, and testing out the feature set.
-> For a more complete reference of possible scenarios and solutions, please refer to the [Organizational Deployment Documentation](xref:organizational-deployment-guide).
+> It is **opinionated**, and thus illustrates only one method of setting up your Chocolatey environment. 
+> Our goal is to get you up-and-running smoothly and efficiently in order to fully test out the feature set.
+> For a more exhaustive reference of possible setup scenarios, you may refer to the [Organizational Deployment Documentation](xref:organizational-deployment-guide).
 
 If you have any questions or would like to discuss more involved implementations, please feel free to reach out to your Chocolatey representative.
 
@@ -197,7 +201,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > </ul>
     > </details>
 
-    > :mag::eyes:**FYI**: A `Readme.html` file will now be generated on your desktop. In addition, all 3 web portals (CCM, Nexus, and Jenkins) will be opened in your browser. The `Readme.html` file contains login information for these portals. 
+    > :mag:**FYI**: A `Readme.html` file will now be generated on your desktop. This file contains login information for all 3 web portals (CCM, Nexus, and Jenkins). This `Readme.html`, along with all 3 web portals, will automatically be opened in your browser. 
 
 ### Step 6: Setting up Endpoints
 
@@ -230,3 +234,15 @@ Below are the minimum requirements for setting up your C4B server via this guide
 Congratulations! If you followed all the steps detailed above, you should now have a fully-functioning Chocolatey for Business implementation deployed in your environment.
 
 It is worth mentioning that some customers may have a more bespoke environment, with the presence of proxies and additional configuration management applications. Chocolatey is engineered to be quite flexible, specifically to account for these scenarios. Please refer to the many options for installation referenced on the [Installation page](xref:setup-licensed#more-install-options). Again, If you have any questions or would like to discuss more involved implementations, please feel free to reach out to your Chocolatey representative.
+
+### See it in Action
+
+If you'd prefer to watch and follow along, we ran through this guide live on our Twitch stream:
+
+<p>
+<div class="ratio ratio-16x9">
+    <iframe src="https://youtu.be/qbIclPMEgig?list=PLGvGJzqY88skrCm-WrqOzqOi41QfhiaKZ&t=648" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
+    </iframe>
+</div>
+<br>
+</p>
