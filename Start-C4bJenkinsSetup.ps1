@@ -24,6 +24,9 @@ $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bJenkinsSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
+# Dot-source helper functions
+. .\scripts\Get-Helpers.ps1
+
 # Install Jenkins
 choco install jenkins -y --source $Source --no-progress --version 2.222.4
 choco pin add --name="'jenkins'" --version="'2.222.4'" --reason="'Next version is a breaking change; see online QDE documentation FAQ'"
@@ -162,6 +165,12 @@ Write-Host 'Login to Jenkins at: http://locahost:8080' -ForegroundColor Green
 Write-Host 'Initial default Jenkins admin user password:' -ForegroundColor Green
 Write-Host "$(Get-Content "${env:ProgramFiles(x86)}\Jenkins\secrets\initialAdminPassword")" -ForegroundColor Green
 
+Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
+New-QuickstartReadme
+
+Write-Host 'Cleaning up temporary data'
+Remove-JsonFiles
+
 $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
 $Timeout = New-TimeSpan -Seconds 10
 $Stopwatch = [System.Diagnostics.Stopwatch]::new()
@@ -186,14 +195,15 @@ $Stopwatch.Stop()
 
 if (-not ($keyInfo)) {
     Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
+    $Readme = 'file:///C:/Users/Public/Desktop/README.html'
     $Ccm = "https://${hostname}/Account/Login"
     $Nexus = "https://${hostname}:8443/#browse/browse"
     $Jenkins = 'http://localhost:8080'
     try {
-        Start-Process msedge.exe "$Ccm", "$Nexus", "$Jenkins"
+        Start-Process msedge.exe "$Readme","$Ccm", "$Nexus", "$Jenkins"
     }
     catch {
-        Start-Process chrome.exe "$Ccm", "$Nexus", "$Jenkins"
+        Start-Process chrome.exe "$Readme","$Ccm", "$Nexus", "$Jenkins"
     }
 }
 

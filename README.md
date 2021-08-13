@@ -92,12 +92,12 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <details>
     > <summary><strong>What does this script do? (click to expand)</strong></summary>
     > <ul class="list-style-type-disc">
-    > <li>Install of Chocolatey from https://chocolatey.org</li>
-    > <li>Prompt for your C4B license file location, with validation</li>
-    > <li>Script to help turn your C4B license into a Chocolatey package</li>
-    > <li>Setup of local `choco-setup` directories</li>
-    > <li>Download of setup files from "choco-quickstart-scripts" GitHub repo</li>
-    > <li>Download of Chocolatey packages required for setup)</li>
+    > <li>Installs Chocolatey client from https://chocolatey.org</li>
+    > <li>Prompts for your C4B license file location, with validation</li>
+    > <li>Converts your C4B license into a Chocolatey package</li>
+    > <li>Sets up of local "choco-setup" directories</li>
+    > <li>Downloads setup files from "choco-quickstart-scripts" GitHub repo</li>
+    > <li>Downloads Chocolatey packages required for setup</li>
     > </ul>
     > </details>
 
@@ -114,13 +114,12 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <summary><strong>What does this script do? (click to expand)</strong></summary>
     > <ul class="list-style-type-disc">
     > <li>Installs Sonatype Nexus Repository Manager OSS instance</li>
-    > <li>Prompt for your C4B license file location, with validation</li>
     > <li>Cleans up all demo repositories on Nexus</li>
-    > <li>Creates a `ChocolateyInternal` NuGet repository</li>
-    > <li>Creates a `ChocolateyTest` NuGet repository</li>
-    > <li>Creates a `choco-install` raw repository</li>
-    > <li>Sets up `ChocolateyInternal` on C4B Server as source, with API key</li>
-    > <li>Sets up firewall rule for repository access</li>
+    > <li>Creates a "ChocolateyInternal" NuGet repository</li>
+    > <li>Creates a "ChocolateyTest" NuGet repository</li>
+    > <li>Creates a "choco-install" raw repository</li>
+    > <li>Sets up "ChocolateyInternal" on C4B Server as source, with API key</li>
+    > <li>Adds firewall rule for repository access</li>
     > <li>Installs MS Edge, and disable first-run experience</li>
     > <li>Outputs data to JSON to pass between scripts</li>
     > </ul>
@@ -139,8 +138,8 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <summary><strong>What does this script do? (click to expand)</strong></summary>
     > <ul class="list-style-type-disc">
     > <li>Installs MS SQL Express</li>
-    > <li>Creates `ChocolateyManagement` database, and adds appropriate `ChocoUser` permissions</li>
-    > <li>Installs all 3 CCM packages (`database, service, web`), with correct parameters</li>
+    > <li>Creates "ChocolateyManagement" database, and adds appropriate `ChocoUser` permissions</li>
+    > <li>Installs all 3 CCM packages (database, service, web), with correct parameters</li>
     > <li>Outputs data to JSON to pass between scripts</li>
     > </ul>
     > </details>
@@ -173,8 +172,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <details>
     > <summary><strong>What does this script do? (click to expand)</strong></summary>
     > <ul class="list-style-type-disc">
-    > <li>Adds SSL certificate configuration for Nexus and CCM Web</li>
-    > <li>Outputs data to JSON to pass between scripts</li>
+    > <li>Adds SSL certificate configuration for Nexus and CCM web portals</li>
     > <li>Generates a `Register-C4bEndpoint.ps1` script for you to easily set up endpoint clients</li>
     > <li>Outputs data to JSON to pass between scripts</li>
     > </ul>
