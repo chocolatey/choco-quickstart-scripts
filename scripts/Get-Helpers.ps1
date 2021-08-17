@@ -1021,49 +1021,6 @@ function New-NexusCert {
     }
     
 }
-
-function Register-NetshBinding {
-    [CmdletBinding()]
-    param(
-        [Parameter()]
-        [string]
-        $Hash = $Thumbprint,
-
-        [Parameter()]
-        [string]
-        $Guid = $((New-Guid).ToString("B")),
-
-        [Parameter()]
-        [string]
-        $CertStore = "TrustedPeople"
-    )
-    $ports = @('24020')
-
-    foreach ($port in $ports) {
-        & netsh http add sslcert ipport=0.0.0.0:$($port) certhash=$($Hash) appid=$($Guid) certstorename=$($CertStore)
-    }
-}
-
-function Get-NetshSslEntries {
-    $txtBindings = (& netsh http show sslcert) | Select-Object -Skip 3 | Out-String
-    $newLine = [System.Environment]::NewLine
-    $txtbindings = $txtBindings -split "$newLine$newLine"
-    $sslEntries = foreach ($binding in $txtbindings) {
-        if ($binding) {
-            $binding = $binding -replace "  ", "" -split ": "
-            $hostNameIPPort = ($binding[1] -split "`n")[0] -split ":"
-            [pscustomobject]@{
-                HostNameIP      = $hostNameIPPort[0]
-                Port            = $hostNameIPPort[1]
-                CertificateHash = ($binding[2] -split "`n" -replace '[^a-zA-Z0-9]', '')[0]
-            }
-        }
-    }
-
-    # return entries, even if empty
-    return $sslEntries
-}
-
 #endregion
 
 #region CCM functions (Start-C4bCcmSetup.ps1)
@@ -1144,7 +1101,7 @@ The path to the JSON data files. Defaults to 'C:\choco-setup\logs'.
 
     process {
 
-        Get-Child-Item $JsonPath  -Filter '*.json' | Foreach-Object { Remove-Item $_ -Force }
+        Get-ChildItem $JsonPath  -Filter '*.json' | Foreach-Object { Remove-Item $_ -Force }
     }
 }
 
