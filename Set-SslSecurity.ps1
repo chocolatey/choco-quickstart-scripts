@@ -29,6 +29,11 @@ param(
     [string]
     $Subject,
 
+    #If using a wildcard certificate, provide a DNS name you want to use to access services secured by the certificate.
+    [Parameter()]
+    [string]
+    $CertificateDnsName,
+
     # The QDE hostname for which to generate a new self-signed certificate.
     # Ignored/unused if a certificate thumbprint or subject is supplied.
     [Parameter()]
@@ -56,7 +61,12 @@ process {
         Get-Certificate -Thumbprint $Thumbprint
     }
 
-    $SubjectWithoutCn = $Certificate.Subject -replace 'CN=',''
+    if(-not $CertificateDnsName) {
+        $SubjectWithoutCn = $Certificate.Subject -replace 'CN=',''
+    } 
+    else {
+        $SubjectWithoutCn = $CertificateDnsName
+    }
 
     #Nexus
     #Stop Services/Processes/Websites required
@@ -94,12 +104,9 @@ process {
     Stop-Website ChocolateyCentralManagement
 
     #Remove bindings
-    netsh http delete sslcert ipport=0.0.0.0:24020
     netsh http delete sslcert ipport=0.0.0.0:443
 
-    # Setup the new bindings
-    Register-NetshBinding -Hash $Certificate.Thumbprint
-
+    #Generate new bindings for Central Management Website
     Write-Verbose "Removing existing bindings and binding ${SubjectWithoutCn}:443 to Chocolatey Central Management"
     $guid = [Guid]::NewGuid().ToString("B")
     netsh http add sslcert ipport=0.0.0.0:443 certhash=$Thumbprint certstorename=MY appid="$guid"
