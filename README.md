@@ -155,40 +155,44 @@ Below are the minimum requirements for setting up your C4B server via this guide
 
 ### Step 4: SSL Setup
 
-1. In the same PowerShell Administrator console as above, paste and run the following code:
+1. In the same **elevated** PowerShell console as above, paste and run the following code:
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
     .\Set-SslSecurity.ps1
     ```
 
-    **OR**, if you have your own custom SSL certificate (purchased/acquired, or from your Domain CA), you can paste and run the following script with the `Thumbprint` value of your SSL certificate specified:
+    **ALTERNATIVE 1 : Custom SSL Certificate** - If you have your own custom SSL certificate (purchased/acquired, or from your Domain CA), you can paste and run the following script with the `Thumbprint` value of your SSL certificate specified:
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
     .\Set-SslSecurity.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>'
     ```
 
-    **OR**, if you have a wildcard certificate you will also need to provdide a DNS name you wish to use for that certificate
+    > :warning:**REMINDER**: If you are using your own SSL certificate, be sure to place this certificate in the `Local Machine > Personal` certificate store before running the above script, and ensure that the private key is exportable.
+
+    **ALTERNATIVE 2 : Wildcard SSL Certificate** - If you have a wildcard certificate, you will also need to provide a DNS name you wish to use for that certificate:
 
     ```powershell
     Set-Location "$env:\SystemDrive\choco-setup\files"
     .\Set-SslSecurity.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>' -CertificateDnsName '<YOUR_DESIRED_FQDN_HERE>'
     ```
 
-    E.g.: With a wildcard certificate with a thumbprint of deee9b2fabb24bdaae71d82286e08de1 you wish to use chocolatey.foo.org, the following would be required:
+    For example, with a wildcard certificate with a thumbprint of `deee9b2fabb24bdaae71d82286e08de1` you wish to use `chocolatey.foo.org`, the following would be required:
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
     .\Set-SslSecurity.ps1 -Thumbprint deee9b2fabb24bdaae71d82286e08de1 -CertificateDnsName chocolatey.foo.org
     ```
 
+    <br>
+
     > <details>
     > <summary><strong>What does this script do? (click to expand)</strong></summary>
     > <ul class="list-style-type-disc">
     > <li>Adds SSL certificate configuration for Nexus and CCM web portals</li>
     > <li>Generates a `Register-C4bEndpoint.ps1` script for you to easily set up endpoint clients</li>
-    > <li>Outputs data to JSON to pass between scripts</li>
+    > <li>Outputs data to a JSON file to pass between scripts</li>
     > </ul>
     > </details>
 
