@@ -1101,7 +1101,7 @@ The path to the JSON data files. Defaults to 'C:\choco-setup\logs'.
 
     process {
 
-        Get-ChildItem $JsonPath  -Filter '*.json' | Foreach-Object { Remove-Item $_ -Force }
+        Get-ChildItem $JsonPath  -Filter '*.json' | Foreach-Object { Remove-Item $_.FullName -Force }
     }
 }
 
