@@ -24,9 +24,14 @@ Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Ge
 # Dot-source helper functions
 . .\scripts\Get-Helpers.ps1
 
-# DB Setup
+# Parameterize sources
 $PkgSrc = "$env:SystemDrive\choco-setup\packages"
 $Ccr = "'https://community.chocolatey.org/api/v2/'"
+
+# Install agent for logging/reporting of CCM
+choco upgrade chocolatey-agent --source $PkgSrc
+
+# DB prerequisite installs
 choco upgrade sql-server-express sql-server-management-studio -y --source $Ccr
 
 # https://docs.microsoft.com/en-us/sql/tools/configuration-manager/tcp-ip-properties-ip-addresses-tab
