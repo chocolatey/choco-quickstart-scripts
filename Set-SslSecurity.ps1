@@ -98,6 +98,11 @@ process {
     } until($response.StatusCode -eq '200')
     Write-Host "Nexus is ready!"
 
+    # Update Repository URI
+    choco source remove --name="'ChocolateyInternal'"
+    $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/"
+    choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --allow-self-service --priority=1
+
     #Stop Central Management components
     Stop-Service chocolatey-central-management
     Get-Process chocolateysoftware.chocolateymanagement.web* | Stop-Process -ErrorAction SilentlyContinue -Force
