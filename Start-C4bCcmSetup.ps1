@@ -82,14 +82,14 @@ netsh advfirewall firewall add rule name="SQL Server Browser 1434" dir=in action
 
 # Install prerequisites for CCM
 
-#Needed for CCM DB package in V 0.6.2+
 choco install dotnetcore-sdk --version 3.1.410 --source $Ccr --no-progress -y
-# Needed for CCM Service and Web packages
+# "reason" Depenpdency for CCM DB package in V 0.6.2+
+
 choco install IIS-WebServer -s windowsfeatures --no-progress -y
 choco install IIS-ApplicationInit -s windowsfeatures --no-progress -y
 choco install aspnetcore-runtimepackagestore --version 3.1.16 --source $Ccr --no-progress -y
 choco install dotnetcore-windowshosting --version 3.1.16 --source $Ccr --no-progress -y
-
+# "reason" Dependencies for CCM Service and Web packages V 0.6.0+
 
 choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'3.1.16'" --reason="'Required for CCM website'"
 choco pin add --name="'dotnetcore-windowshosting'" --version="'3.1.16'" --reason="'Required for CCM website'"
