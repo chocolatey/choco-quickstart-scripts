@@ -154,6 +154,10 @@ Foreach-Object {
 # Internalize dotnet4.5.2 for ChocolateyGUI (just in case endpoints need it)
 choco download dotnet4.5.2 --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source $Ccr  --output-directory $PkgsDir
 
+# Starting with v0.6.2 of the CCM Database package, it uses dotnetcore-sdk so that it may be installed on a system without requiring IIS.
+# At the time of publishing, the most recent version of this package is 3.1.410, but later package versions (within the 3.x.x release) are expected to work.
+choco download dotnetcore-sdk --version 3.1.410 --force --internalize --internalize-all-urls --append-use-original-location --source $Ccr  --output-directory $PkgsDir
+
 # Download Licensed Packages
 ## DO NOT RUN WITH `--internalize` and `--internalize-all-urls` - see https://github.com/chocolatey/chocolatey-licensed-issues/issues/155
 @('chocolatey-agent', 'chocolatey.extension', 'chocolateygui.extension', 'chocolatey-management-database', 'chocolatey-management-service', 'chocolatey-management-web') |
