@@ -90,6 +90,10 @@ choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'3.1.16'" --r
 choco pin add --name="'dotnetcore-windowshosting'" --version="'3.1.16'" --reason="'Required for CCM website'"
 # "reason" only available in commercial editions
 
+# Starting with v0.6.2 of the CCM Database package, it uses dotnetcore-sdk so that it may be installed on a system without requiring IIS.
+# At the time of publishing, the most recent version of this package is 3.1.410, but later package versions (within the 3.x.x release) are expected to work
+choco install dotnetcore-sdk --version 3.1.410 --source $Ccr
+
 # Install CCM DB package using Local SQL Express
 choco install chocolatey-management-database -y -s $PkgSrc --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'"
 
