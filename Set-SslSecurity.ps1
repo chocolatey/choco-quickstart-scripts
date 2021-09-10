@@ -101,11 +101,15 @@ process {
     } until($response.StatusCode -eq '200')
     Write-Host "Nexus is ready!"
 
-    # Update Repository URI
+    # Update Repository URI and API key
     choco source remove --name="'ChocolateyInternal'"
     $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/"
     choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --priority=1
-    choco apikey --source="'$RepositoryUrl'" --apikey $NuGetApiKey
+    $ChocoArgs = @{
+        source = $RepositoryUrl
+        apikey = $NuGetApiKey
+        }
+    & choco apikey @ChocoArgs
 
     #Stop Central Management components
     Stop-Service chocolatey-central-management
