@@ -38,7 +38,10 @@ param(
     # Ignored/unused if a certificate thumbprint or subject is supplied.
     [Parameter()]
     [string]
-    $Hostname = [System.Net.Dns]::GetHostName()
+    $Hostname = [System.Net.Dns]::GetHostName(),
+
+    # API key of your Nexus repo, to add to the source setup on C4B Server.
+    [string]$NuGetApiKey = $(Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
 )
 
 begin {
@@ -102,6 +105,7 @@ process {
     choco source remove --name="'ChocolateyInternal'"
     $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/"
     choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --priority=1
+    choco apikey --source="'$RepositoryUrl'" --apikey $NuGetApiKey
 
     #Stop Central Management components
     Stop-Service chocolatey-central-management

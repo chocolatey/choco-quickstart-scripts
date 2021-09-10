@@ -59,7 +59,6 @@ Get-ChildItem -Path "$env:SystemDrive\choco-setup\packages" -Filter *.nupkg |
 
 # Add ChooclateyInternal as a source repository
 choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/" --priority 1
-choco apikey -s 'ChocolateyInternal' -k $NugetApiKey
 
 # Install a non-IE browser for browsing the Nexus web portal.
 # Edge sometimes fails install due to latest Windows Updates not being installed.
