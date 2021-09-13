@@ -105,7 +105,8 @@ process {
     choco source remove --name="'ChocolateyInternal'"
     $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/"
     choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --priority=1
-    $ChocoArgs = @{
+$chocoArgs = @('apikey',"--source='$RepositoryUrl'","--api-key='$NuGetApiKey'")
+& choco @chocoArgs
         source = $RepositoryUrl
         apikey = $NuGetApiKey
         }
