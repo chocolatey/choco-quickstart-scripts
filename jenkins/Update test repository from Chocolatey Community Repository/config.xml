@@ -29,8 +29,8 @@
   <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.80">
     <script>node {
     powershell '''
-        Set-Location (Join-Path "$env:SystemDrive\choco-setup\files" -ChildPath 'scripts')
-        .\\Get-UpdatedPackage.ps1  -LocalRepo $env:P_LOCAL_REPO_URL `
+        Set-Location (Join-Path "$env:SystemDrive/choco-setup/files" -ChildPath 'scripts')
+        .//Get-UpdatedPackage.ps1  -LocalRepo $env:P_LOCAL_REPO_URL `
         -LocalRepoApiKey $env:P_LOCAL_REPO_API_KEY `
         -RemoteRepo $env:P_REMOTE_REPO_URL `
         -Verbose
