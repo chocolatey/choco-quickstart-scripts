@@ -396,14 +396,14 @@ function Remove-NexusRepository {
             $Uri = $urislug + "/$_"
 
             try {
-           
+
                 if ($Force -and -not $Confirm) {
                     $ConfirmPreference = 'None'
                     if ($PSCmdlet.ShouldProcess("$_", "Remove Repository")) {
                         $result = Invoke-Nexus -UriSlug $Uri -Method 'DELETE' -ErrorAction Stop
                         [pscustomobject]@{
                             Status     = 'Success'
-                            Repository = $_     
+                            Repository = $_
                         }
                     }
                 }
@@ -916,6 +916,411 @@ function New-NexusRawComponent {
     }
 }
 
+function Get-NexusUser {
+    <#
+    .SYNOPSIS
+    Retrieve a list of users. Note if the source is not 'default' the response is limited to 100 users.
+    
+    .DESCRIPTION
+    Retrieve a list of users. Note if the source is not 'default' the response is limited to 100 users.
+    
+    .PARAMETER User
+    The username to fetch
+    
+    .PARAMETER Source
+    The source to fetch from
+    
+    .EXAMPLE
+    Get-NexusUser
+    
+    .EXAMPLE
+    Get-NexusUser -User bob
+
+    .EXAMPLE
+    Get-NexusUser -Source default
+
+    .NOTES
+    
+    #>
+    [CmdletBinding(HelpUri='https://steviecoaster.dev/NexuShell/Security/User/Get-NexusUser/')]
+    Param(
+        [Parameter()]
+        [String]
+        $User,
+
+        [Parameter()]
+        [String]
+        $Source
+    )
+
+    begin {
+        if (-not $header) {
+            throw "Not connected to Nexus server! Run Connect-NexusServer first."
+        }
+    }
+
+    process {
+        $urislug = '/service/rest/v1/security/users'
+
+        if($User){
+            $urislug = "/service/rest/v1/security/users?userId=$User"
+        }
+
+        if($Source){
+            $urislug = "/service/rest/v1/security/users?source=$Source"
+        }
+
+        if($User -and $Source){
+            $urislug = "/service/rest/v1/security/users?userId=$User&source=$Source"
+        }
+
+        $result = Invoke-Nexus -Urislug $urislug -Method GET
+
+        $result | Foreach-Object {
+            [pscustomobject]@{
+                Username = $_.userId
+                FirstName = $_.firstName
+                LastName = $_.lastName
+                EmailAddress = $_.emailAddress
+                Source = $_.source
+                Status = $_.status
+                ReadOnly = $_.readOnly
+                Roles = $_.roles
+                ExternalRoles = $_.externalRoles
+            }
+        }
+    }
+}
+
+function Get-NexusRole {
+    <#
+    .SYNOPSIS
+    Retrieve Nexus Role information
+    
+    .DESCRIPTION
+    Retrieve Nexus Role information
+    
+    .PARAMETER Role
+    The role to retrieve
+    
+    .PARAMETER Source
+    The source to retrieve from
+    
+    .EXAMPLE
+    Get-NexusRole
+
+    .EXAMPLE
+    Get-NexusRole -Role ExampleRole
+    
+    .NOTES
+    
+    #>
+    [CmdletBinding(HelpUri='https://steviecoaster.dev/NexuShell/Security/Roles/Get-NexusRole/')]
+    Param(
+        [Parameter()]
+        [Alias('id')]
+        [String]
+        $Role,
+
+        [Parameter()]
+        [String]
+        $Source
+    )
+    begin { if (-not $header) { throw 'Not connected to Nexus server! Run Connect-NexusServer first.' } }
+    process {
+        
+        $urislug = '/service/rest/v1/security/roles'
+
+        if ($Role) {
+            $urislug = "/service/rest/v1/security/roles/$Role"
+        }
+
+        if ($Source) {
+            $urislug = "/service/rest/v1/security/roles?source=$Source"
+        }
+
+        if ($Role -and $Source) {
+            $urislug = "/service/rest/v1/security/roles/$($Role)?source=$Source"
+        }
+
+        Write-verbose $urislug
+        $result = Invoke-Nexus -Urislug $urislug -Method GET
+
+        $result | ForEach-Object {
+            [PSCustomObject]@{
+                Id          = $_.id
+                Source       = $_.source
+                Name        = $_.name
+                Description = $_.description
+                Privileges  = $_.privileges
+                Roles       = $_.roles
+            }
+        }
+    }
+}
+
+function New-NexusUser {
+    <#
+    .SYNOPSIS
+    Create a new user in the default source.
+    
+    .DESCRIPTION
+    Create a new user in the default source.
+    
+    .PARAMETER Username
+    The userid which is required for login. This value cannot be changed.
+    
+    .PARAMETER Password
+    The password for the new user.
+    
+    .PARAMETER FirstName
+    The first name of the user.
+    
+    .PARAMETER LastName
+    The last name of the user.
+    
+    .PARAMETER EmailAddress
+    The email address associated with the user.
+    
+    .PARAMETER Status
+    The user's status, e.g. active or disabled.
+    
+    .PARAMETER Roles
+    The roles which the user has been assigned within Nexus.
+    
+    .EXAMPLE
+    $params = @{
+        Username = 'jimmy'
+        Password = ("sausage" | ConvertTo-SecureString -AsPlainText -Force)
+        FirstName = 'Jimmy'
+        LastName = 'Dean'
+        EmailAddress = 'sausageking@jimmydean.com'
+        Status = Active
+        Roles = 'nx-admin'
+    }
+
+    New-NexusUser @params
+    
+    .NOTES
+    
+    #>
+    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/NexuShell/Security/User/New-NexusUser/')]
+    Param(
+        [Parameter(Mandatory)]
+        [String]
+        $Username,
+
+        [Parameter(Mandatory)]
+        [SecureString]
+        $Password,
+
+        [Parameter(Mandatory)]
+        [String]
+        $FirstName,
+
+        [Parameter(Mandatory)]
+        [String]
+        $LastName,
+
+        [Parameter(Mandatory)]
+        [String]
+        $EmailAddress,
+
+        [Parameter(Mandatory)]
+        [ValidateSet('Active', 'Locked', 'Disabled', 'ChangePassword')]
+        [String]
+        $Status,
+
+        [Parameter(Mandatory)]
+        [ArgumentCompleter({
+                param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
+            (Get-NexusRole).Id.Where{ $_ -like "*$WordToComplete*" }
+            })]
+        [String[]]
+        $Roles
+    )
+
+    process {
+        $urislug = '/service/rest/v1/security/users'
+
+        $Body = @{
+            userId       = $Username
+            firstName    = $FirstName
+            lastName     = $LastName
+            emailAddress = $EmailAddress
+            password     = [System.Net.NetworkCredential]::new($Username, $Password).Password
+            status       = $Status
+            roles        = $Roles
+        }
+
+        Write-Verbose ($Body | ConvertTo-Json)
+        $result = Invoke-Nexus -Urislug $urislug -Body $Body -Method POST
+
+        [pscustomObject]@{
+            Username      = $result.userId
+            FirstName     = $result.firstName
+            LastName      = $result.lastName
+            EmailAddress  = $result.emailAddress
+            Source        = $result.source
+            Status        = $result.status
+            Roles         = $result.roles
+            ExternalRoles = $result.externalRoles
+        }
+    }
+}
+
+function New-NexusRole {
+    <#
+    .SYNOPSIS
+    Creates a new Nexus Role
+    
+    .DESCRIPTION
+    Creates a new Nexus Role
+    
+    .PARAMETER Id
+    The ID of the role
+    
+    .PARAMETER Name
+    The friendly name of the role
+    
+    .PARAMETER Description
+    A description of the role
+    
+    .PARAMETER Privileges
+    Included privileges for the role
+    
+    .PARAMETER Roles
+    Included nested roles
+    
+    .EXAMPLE
+    New-NexusRole -Id SamepleRole
+
+    .EXAMPLE
+    New-NexusRole -Id SampleRole -Description "A sample role" -Privileges nx-all
+    
+    .NOTES
+    
+    #>
+    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/NexuShell/Security/Roles/New-NexusRole/')]
+    Param(
+        [Parameter(Mandatory)]
+        [String]
+        $Id,
+
+        [Parameter(Mandatory)]
+        [String]
+        $Name,
+
+        [Parameter()]
+        [String]
+        $Description,
+
+        [Parameter(Mandatory)]
+        [String[]]
+        $Privileges,
+
+        [Parameter()]
+        [String[]]
+        $Roles
+    )
+
+    begin {
+        if (-not $header) { 
+            throw 'Not connected to Nexus server! Run Connect-NexusServer first.' 
+        } 
+    }
+    
+    process {
+
+        $urislug = '/service/rest/v1/security/roles'
+        $Body = @{
+            
+            id          = $Id
+            name        = $Name
+            description = $Description
+            privileges  = @($Privileges)
+            roles       = $Roles
+            
+        }
+
+        Invoke-Nexus -Urislug $urislug -Body $Body -Method POST | Foreach-Object {
+            [PSCustomobject]@{
+                Id          = $_.id
+                Name        = $_.name
+                Description = $_.description
+                Privileges  = $_.privileges
+                Roles       = $_.roles
+            }
+        }
+
+    }
+}
+
+function Set-NexusAnonymousAuth {
+    <#
+    .SYNOPSIS
+    Turns Anonymous Authentication on or off in Nexus
+    
+    .DESCRIPTION
+    Turns Anonymous Authentication on or off in Nexus
+    
+    .PARAMETER Enabled
+    Turns on Anonymous Auth
+    
+    .PARAMETER Disabled
+    Turns off Anonymous Auth
+    
+    .EXAMPLE
+    Set-NexusAnonymousAuth -Enabled
+    #>
+    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/NexuShell/Set-NexusAnonymousAuth/')]
+    Param(
+        [Parameter()]
+        [Switch]
+        $Enabled,
+
+        [Parameter()]
+        [Switch]
+        $Disabled
+    )
+
+    begin {
+
+        if (-not $header) {
+            throw "Not connected to Nexus server! Run Connect-NexusServer first."
+        }
+
+        $urislug = "/service/rest/v1/security/anonymous"
+    }
+
+    process {
+
+        Switch ($true) {
+
+            $Enabled {
+                $Body = @{
+                    enabled   = $true
+                    userId    = 'anonymous'
+                    realmName = 'NexusAuthorizingRealm'
+                }
+
+                Invoke-Nexus -UriSlug $urislug -Body $Body -Method 'PUT'
+            }
+
+            $Disabled {
+                $Body = @{
+                    enabled   = $false
+                    userId    = 'anonymous'
+                    realmName = 'NexusAuthorizingRealm'
+                }
+
+                Invoke-Nexus -UriSlug $urislug -Body $Body -Method 'PUT'
+
+            }
+        }
+    }
+}
+
 #endregion
 
 #region SSL functions (Set-SslSecurity.ps1)
@@ -1021,6 +1426,27 @@ function New-NexusCert {
     }
     
 }
+
+function Test-SelfSignedCertificate {
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline = $true)]
+        $Certificate = (Get-ChildItem -Path Cert:LocalMachine\My | Where-Object { $_.FriendlyName -eq $SubjectWithoutCn })
+    )
+
+    process {
+
+        if ($Certificate.Subject -eq $Certificate.Issuer) {
+            return $true
+        }
+        else {
+            return $false
+        }
+
+    }
+
+}
+
 #endregion
 
 #region CCM functions (Start-C4bCcmSetup.ps1)
@@ -1076,6 +1502,65 @@ ALTER ROLE [$DatabaseRole] ADD MEMBER [$Username]
     $Command.ExecuteNonQuery()
     $Connection.Close()
 }
+
+function New-CcmSalt {
+    [CmdletBinding()]
+    param(
+        [Parameter()]
+        [int]
+        $MinLength = 32,
+        [Parameter()]
+        [int]
+        $SpecialCharCount = 12
+    )
+    process {
+        [System.Web.Security.Membership]::GeneratePassword($MinLength, $SpecialCharCount)
+    }
+}
+
+function Stop-CCMService {
+    #Stop Central Management components
+    Stop-Service chocolatey-central-management
+    Get-Process chocolateysoftware.chocolateymanagement.web* | Stop-Process -ErrorAction SilentlyContinue -Force
+}
+
+function Remove-CcmBinding {
+    [CmdletBinding()]
+    param()
+
+    process {
+        Write-Verbose "Removing existing bindings"
+        netsh http delete sslcert ipport=0.0.0.0:443
+    }
+}
+
+function New-CcmBinding {
+    [CmdletBinding()]
+    param()
+    Write-Verbose "Adding new binding https://${SubjectWithoutCn} to Chocolatey Central Management"
+
+    $guid = [Guid]::NewGuid().ToString("B")
+    netsh http add sslcert ipport=0.0.0.0:443 certhash=$Thumbprint certstorename=MY appid="$guid"
+    Get-WebBinding -Name ChocolateyCentralManagement | Remove-WebBinding
+    New-WebBinding -Name ChocolateyCentralManagement -Protocol https -Port 443 -SslFlags 0 -IpAddress '*'
+}
+
+function Start-CcmService {
+    try {
+        Start-Service chocolatey-central-management -ErrorAction Stop
+    }
+    catch {
+        #Try again...
+        Start-Service chocolatey-central-management -ErrorAction SilentlyContinue
+    }
+    finally {
+        if ((Get-Service chocolatey-central-management).Status -ne 'Running') {
+            Write-Warning "Unable to start Chocolatey Central Management service, please start manually in Services.msc"
+        }
+    }
+
+}
+
 #endregion
 
 #region README functions
@@ -1135,7 +1620,7 @@ The host name of the C4B instance.
                 Url      = "https://${HostName}:8443"
                 Username = "admin"
                 Password = $nexusPassword
-                ApiKey = $nexusApiKey
+                ApiKey   = $nexusApiKey
             },
             [pscustomobject]@{
                 Name     = 'Central Management'

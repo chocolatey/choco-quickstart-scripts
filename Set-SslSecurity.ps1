@@ -21,7 +21,7 @@ param(
     # Ignored if supplied alongside -Subject.
     [Parameter(ValueFromPipeline)]
     [string]
-    $Thumbprint = (Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Select-Object -ExpandProperty thumbprint),
+    $Thumbprint = (Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Select-Object -ExpandProperty Thumbprint),
 
     # The certificate subject that identifies the target SSL certificate in
     # the local machine certificate stores.
@@ -33,6 +33,14 @@ param(
     [Parameter()]
     [string]
     $CertificateDnsName,
+
+    # This option security hardens your C4B server, in scenarios where you have a non-self-signed certificate.
+    # It adds a role and user credential to the Nexus server, which is used to authenticate the source setup on a client endpoint.
+    # It also adds a Client and Service Salt to further secure the SSL conneciton with CCM.
+    # Finally, it updates the Register-C4bEndpoint.ps1 script to use these new credentials.
+    [Parameter()]
+    [switch]
+    $Hardened,
 
     # The QDE hostname for which to generate a new self-signed certificate.
     # Ignored/unused if a certificate thumbprint or subject is supplied.
@@ -64,11 +72,18 @@ process {
         Get-Certificate -Thumbprint $Thumbprint
     }
 
-    if(-not $CertificateDnsName) {
-        $SubjectWithoutCn = $Certificate.Subject -replace 'CN=',''
+    if (-not $CertificateDnsName) {
+        $SubjectWithoutCn = $Certificate.Subject -replace 'CN=', ''
     } 
     else {
         $SubjectWithoutCn = $CertificateDnsName
+    }
+
+    if ($Hardened) {
+        $CertValidation = Test-SelfSignedCertificate -Certificate $Certificate
+        if ($CertValidation) {
+            throw "Self-Signed Certificates not valid for Internet-Hardened configurations. Please use a valid purchased or generated certificate."
+        }
     }
 
     #Nexus
@@ -101,65 +116,17 @@ process {
     } until($response.StatusCode -eq '200')
     Write-Host "Nexus is ready!"
 
-    # Update Repository URI and API key
     choco source remove --name="'ChocolateyInternal'"
     $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/"
-    choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --priority=1
-    $chocoArgs = @('apikey',"--source='$RepositoryUrl'","--api-key='$NuGetApiKey'")
-    & choco @chocoArgs
-
-    #Stop Central Management components
-    Stop-Service chocolatey-central-management
-    Get-Process chocolateysoftware.chocolateymanagement.web* | Stop-Process -ErrorAction SilentlyContinue -Force
-    Stop-Website ChocolateyCentralManagement
-
-    #Remove bindings
-    netsh http delete sslcert ipport=0.0.0.0:443
-
-    #Generate new bindings for Central Management Website
-    Write-Verbose "Removing existing bindings and binding ${SubjectWithoutCn}:443 to Chocolatey Central Management"
-    $guid = [Guid]::NewGuid().ToString("B")
-    netsh http add sslcert ipport=0.0.0.0:443 certhash=$Thumbprint certstorename=MY appid="$guid"
-    Get-WebBinding -Name ChocolateyCentralManagement | Remove-WebBinding
-    New-WebBinding -Name ChocolateyCentralManagement -Protocol https -Port 443 -SslFlags 0 -IpAddress '*'
-
-    #Start the components back up
-    try {
-        Start-Website ChocolateyCentralManagement -ErrorAction Stop
-    }
-    catch {
-        #Try again...
-        Start-Website ChocolateyCentralManagement  -ErrorAction SilentlyContinue
-
-        #Try again, this time with a hammer
-        if((Get-Website -Name ChocolateyCentralManagement).State -ne 'Started') {
-            Start-Website ChocolateyCentralManagement -ErrorAction SilentlyContinue
-        }
-    }
-    finally {
-        if((Get-Website -Name ChocolateyCentralManagement).State -ne 'Started') {
-            Write-Warning "Unable to start Chocolatey Central Management website, please start manually in IIS"
-        }
-    }
-    Start-Service chocolatey-central-management
-    # Hand back the created/found certificate to the caller.
-    $Certificate
-
-    # Create the site hosting the certificate import script on port 80
-    # ONluy run this if it's a self-signed cert which has 10-year validity
-    if ($Certificate.NotAfter -gt (Get-Date).AddYears(5)) {
-        $IsSelfSigned = $true
-        .\scripts\New-IISCertificateHost.ps1
-    }
-
-    # Add updated scripts to raw repo in Nexus
 
     #Build Credential Object, Connect to Nexus
     $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
     $Credential = [System.Management.Automation.PSCredential]::new('admin', $securePw)
-
+    
     # Connect to Nexus
     Connect-NexusServer -Hostname $SubjectWithoutCn -Credential $Credential -UseSSL
+
+    # Add updated scripts to raw repo in Nexus
 
     #Push ChocolateyInstall.ps1 to raw repo
     $ScriptDir = "$env:SystemDrive\choco-setup\files\scripts"
@@ -172,28 +139,143 @@ process {
     (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
     New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
 
+    if ($Hardened) {        
+        # Disable anonymous authentication
+        Set-NexusAnonymousAuth -Disabled
+        
+        if (-not (Get-NexusRole -Role 'chocorole')) {
+            # Create Nexus role
+            $RoleParams = @{
+                Id          = "chocorole"
+                Name        = "chocorole"
+                Description = "Role for web enabled choco clients"
+                Privileges  = @('nx-repository-view-nuget-*-browse', 'nx-repository-view-nuget-*-read', 'nx-repository-view-raw-*-read', 'nx-repository-view-raw-*-browse')
+            }
+            New-NexusRole @RoleParams
+        }
+
+        if (-not (Get-NexusUser -User 'chocouser')) {
+        $NexusPw = [System.Web.Security.Membership]::GeneratePassword(32, 12)
+        # Create Nexus user
+        $UserParams = @{
+                Username     = 'chocouser'
+                Password     = ($NexusPw | ConvertTo-SecureString -AsPlainText -Force)
+                FirstName    = 'Choco'
+                LastName     = 'User'
+                EmailAddress = 'chocouser@foo.com'
+                Status       = 'Active'
+                Roles        = 'chocorole'
+            }
+            New-NexusUser @UserParams
+        }
+
+        $ChocoArgs = @(
+            'source',
+            'add',
+            "--name='ChocolateyInternal'",
+            "--source='$RepositoryUrl'",
+            '--priority=1',
+            "--user='chocouser'",
+            "--password='$NexusPw'"
+        )
+        & choco @ChocoArgs
+    
+    }
+    
+    else {
+        $ChocoArgs = @(
+            'source',
+            'add',
+            "--name='ChocolateyInternal'",
+            "--source='$RepositoryUrl'",
+            '--priority=1'
+        )
+        & choco @ChocoArgs
+    }
+
+    # Update Repository API key
+    $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
+    & choco @chocoArgs
+
+    # Remove old CCM web binding, and add new CCM web binding
+    Stop-CcmService
+    Remove-CcmBinding
+    New-CcmBinding
+    Start-CcmService
+
+    # Create the site hosting the certificate import script on port 80
+    # Only run this if it's a self-signed cert which has 10-year validity
+    if ($Certificate.NotAfter -gt (Get-Date).AddYears(5)) {
+        $IsSelfSigned = $true
+        .\scripts\New-IISCertificateHost.ps1
+    }
+
     # Generate Register-C4bEndpoint.ps1
     $EndpointScript = "$ScriptDir\Register-C4bEndpoint.ps1"
-    (Get-Content -Path $EndpointScript) -replace "{{hostname}}", "'$SubjectWithoutCn'" | Set-Content -Path $EndpointScript
-    if ($IsSelfSigned) {
+
+    if ($Hardened) {
+
+        $ClientSaltValue = New-CCMSalt
+        $ServiceSaltValue = New-CCMSalt
         $ScriptBlock = @"
+`$ClientCommunicationSalt = '$ClientSaltValue'
+`$ServiceCommunicationSalt = '$ServiceSaltValue'
+`$FQDN = '$SubjectWithoutCN'
+`$NexusUserPW = '$NexusPw'
+
+# Touch NOTHING below this line
+`$User = 'chocouser'
+`$SecurePassword = `$NexusUserPW | ConvertTo-SecureString -AsPlainText -Force
+`$RepositoryUrl = "https://`$(`$fqdn):8443/repository/ChocolateyInternal/"
+
+`$credential = [pscredential]::new(`$user, `$securePassword)
+
+`$downloader = [System.Net.WebClient]::new()
+`$downloader.Credentials = `$credential
+
+`$script =  `$downloader.DownloadString("https://`$(`$FQDN):8443/repository/choco-install/ClientSetup.ps1")
+
+`$params = @{
+    Credential      = `$Credential
+    ClientSalt      = `$ClientCommunicationSalt
+    ServerSalt      = `$ServiceCommunicationSalt
+    InternetEnabled = `$true
+    RepositoryUrl   = `$RepositoryUrl
+}
+
+& ([scriptblock]::Create(`$script)) @params
+"@
+
+        $ScriptBlock | Set-Content -Path $EndpointScript
+    }
+
+    else {
+        (Get-Content -Path $EndpointScript) -replace "{{hostname}}", "'$SubjectWithoutCn'" | Set-Content -Path $EndpointScript
+        if ($IsSelfSigned) {
+            $ScriptBlock = @"
 `$downloader = New-Object -TypeName System.Net.WebClient
 Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-ChocoServerCertificate.ps1"))
 "@
         (Get-Content -Path $EndpointScript) -replace "# placeholder if using a self-signed cert", $ScriptBlock | Set-Content -Path $EndpointScript
+        }
     }
+    
 
     # Save useful params to JSON
     $SslJson = @{
-        CertSubject  = $SubjectWithoutCn
+        CertSubject    = $SubjectWithoutCn
         CertThumbprint = $Certificate.Thumbprint
-        CertExpiry = $Certificate.NotAfter
-        IsSelfSigned = $IsSelfSigned
+        CertExpiry     = $Certificate.NotAfter
+        IsSelfSigned   = $IsSelfSigned
     }
     $SslJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ssl.json"
 }
 
 end {
+
+    # Hand back the created/found certificate to the caller.
+    $Certificate
+
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript
 }
