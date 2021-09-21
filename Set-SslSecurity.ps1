@@ -155,9 +155,9 @@ process {
         }
 
         if (-not (Get-NexusUser -User 'chocouser')) {
-        $NexusPw = [System.Web.Security.Membership]::GeneratePassword(32, 12)
-        # Create Nexus user
-        $UserParams = @{
+            $NexusPw = [System.Web.Security.Membership]::GeneratePassword(32, 12)
+            # Create Nexus user
+            $UserParams = @{
                 Username     = 'chocouser'
                 Password     = ($NexusPw | ConvertTo-SecureString -AsPlainText -Force)
                 FirstName    = 'Choco'
