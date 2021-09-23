@@ -143,7 +143,7 @@ process {
         # Disable anonymous authentication
         Set-NexusAnonymousAuth -Disabled
         
-        if (-not (Get-NexusRole -Role 'chocorole')) {
+        if (-not (Get-NexusRole -Role 'chocorole' -ErrorAction SilentlyContinue)) {
             # Create Nexus role
             $RoleParams = @{
                 Id          = "chocorole"
@@ -154,7 +154,7 @@ process {
             New-NexusRole @RoleParams
         }
 
-        if (-not (Get-NexusUser -User 'chocouser')) {
+        if (-not (Get-NexusUser -User 'chocouser' -ErrorAction SilentlyContinue)) {
             $NexusPw = [System.Web.Security.Membership]::GeneratePassword(32, 12)
             # Create Nexus user
             $UserParams = @{
