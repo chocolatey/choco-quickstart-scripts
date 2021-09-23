@@ -34,6 +34,14 @@ choco pin add --name="'jenkins'" --version="'2.222.4'" --reason="'Next version i
 Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
 Start-Sleep -Seconds 30  # Jenkins needs a moment
 
+# Long winded way to get the scripts for Jenkins jobs into the right place, but easier to mainntain going forward
+$root = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$systemRoot = $env:SystemDrive + '\'
+$JenkinsRoot = Join-Path $root -ChildPath 'jenkins'
+$jenkinsScripts = Join-Path $JenkinsRoot -ChildPath 'scripts'
+
+Move-Item $jenkinsScripts $systemRoot -Force
+
 Stop-Service -Name Jenkins
 $JenkinsHome = "${env:ProgramFiles(x86)}\Jenkins"
 $JenkinsConfigPath = Join-Path $JenkinsHome "config.xml"

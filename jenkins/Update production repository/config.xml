@@ -43,7 +43,7 @@
   <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.80">
     <script>  node {
       powershell '''
-          Set-Location (Join-Path -Path "$env:SystemDrive\choco-setup\files" -ChildPath 'scripts')
+          Set-Location (Join-Path -Path "$env:SystemDrive" -ChildPath 'scripts')
           .\\Update-ProdRepoFromTest.ps1 `
               -ProdRepo $env:P_PROD_REPO_URL `
               -ProdRepoApiKey $env:P_PROD_REPO_API_KEY `
