@@ -28,7 +28,9 @@ Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bJenkinsSetup-
 . .\scripts\Get-Helpers.ps1
 
 # Install Jenkins
-choco install jenkins -y --source $Source --no-progress --version 2.222.4
+$chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress',"--version='2.222.4'")
+& choco @chocoArgs
+
 choco pin add --name="'jenkins'" --version="'2.222.4'" --reason="'Next version is a breaking change; see online QDE documentation FAQ'"
 
 Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
