@@ -209,7 +209,7 @@ process {
         $IsSelfSigned = $true
         .\scripts\New-IISCertificateHost.ps1
     }
-
+    
     # Generate Register-C4bEndpoint.ps1
     $EndpointScript = "$ScriptDir\Register-C4bEndpoint.ps1"
 
@@ -247,9 +247,27 @@ process {
 "@
 
         $ScriptBlock | Set-Content -Path $EndpointScript
+
+        #Agent Setup
+        $agentArgs = @{
+            CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
+            ServiceSalt = $ServiceSaltValue
+            ClientSalt = $ClientSaltValue
+        }
+
+        Install-ChocolateyAgent @agentArgs
     }
 
     else {
+
+         #Agent Setup
+         $agentArgs = @{
+            CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
+        }
+
+        Install-ChocolateyAgent @agentArgs
+
+        #Register endpoint script
         (Get-Content -Path $EndpointScript) -replace "{{hostname}}", "'$SubjectWithoutCn'" | Set-Content -Path $EndpointScript
         if ($IsSelfSigned) {
             $ScriptBlock = @"
