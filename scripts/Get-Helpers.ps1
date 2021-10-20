@@ -1678,3 +1678,55 @@ Document your new credentials in a password manager, or whatever system you use.
     }
 }
 #endregion
+
+#region Agent Setup
+function Install-ChocolateyAgent {
+    [CmdletBinding()]
+    Param(
+        [Parameter()]
+        [String]
+        $Source,
+
+        [Parameter(Mandatory)]
+        [String]
+        $CentralManagementServiceUrl,
+
+        [Parameter()]
+        [String]
+        $ServiceSalt,
+
+        [Parameter()]
+        [String]
+        $ClientSalt
+    )
+
+    process {
+        if($Source){
+            $chocoArgs = @('install','chocolatey-agent','-y',"--source='$Source'")
+            & choco @chocoArgs
+        }
+        else {
+            $chocoArgs = @('install','chocolatey-agent','-y')
+            & choco @chocoArgs
+        }
+        
+
+        $chocoArgs = @('config','set','centralMangementServiceUrl',"$CentralManagementServiceUrl")
+        & choco @chocoArgs
+
+        $chocoArgs = @('feature','enable','--name="useChocolateyCentralManagement"')
+        & choco @chocoArgs
+
+        $chocoArgs = @('feature','enable','--name="useChocolateyCentralManagementDeployments"')
+        & choco @chocoArgs
+
+        if($ServiceSalt -and $ClientSalt){
+            $chocoArgs = @('config','set','centralManagementClientCommunicationSaltAdditivePassword',"$ClientSalt")
+            & choco @chocoArgs
+
+            $chocoArgs = @('config','set','centralManagementServiceCommunicationSaltAdditivePassword',"$ServiceSalt")
+            & choco @chocoArgs
+        }
+    }
+}
+#endregion
