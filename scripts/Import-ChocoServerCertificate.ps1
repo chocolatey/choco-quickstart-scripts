@@ -44,9 +44,10 @@ function Get-RemoteCertificate {
     )
 
     $tcpClient = New-Object System.Net.Sockets.TcpClient($ComputerName, $Port)
+    $sslProtocolType = [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
     try {
         $tlsClient = New-Object System.Net.Security.SslStream($tcpClient.GetStream(),'false',$callback)
-        $tlsClient.AuthenticateAsClient($ComputerName)
+        $tlsClient.AuthenticateAsClient($ComputerName,$null,$sslProtocolType,$false)
 
         return $tlsClient.RemoteCertificate -as [System.Security.Cryptography.X509Certificates.X509Certificate2]
     }
