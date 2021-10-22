@@ -1617,20 +1617,20 @@ The host name of the C4B instance.
 
         $tableData = @([pscustomobject]@{
                 Name     = 'Nexus'
-                Url      = "<a>$(https://${HostName}:8443)</a>"
+                Url      = "https://${HostName}:8443"
                 Username = "admin"
                 Password = $nexusPassword
                 ApiKey   = $nexusApiKey
             },
             [pscustomobject]@{
                 Name     = 'Central Management'
-                Url      = "<a>$(https://${HostName})</a>"
+                Url      = "https://${HostName}"
                 Username = "ccmadmin"
                 Password = '123qwe'
             },
             [PSCustomObject]@{
                 Name     = 'Jenkins'
-                Url      = "<a>$(http://${HostName}:8080)</a>"
+                Url      = "http://${HostName}:8080"
                 Username = "admin"
                 Password = $jenkinsPassword
             }
