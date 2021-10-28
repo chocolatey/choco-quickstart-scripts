@@ -106,7 +106,7 @@ process {
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::tls12
     do {
         $response = try {
-            Invoke-WebRequest "https://${SubjectWithoutCn}:8443" -ErrorAction Stop
+            Invoke-WebRequest "https://${SubjectWithoutCn}:8443" -UseBasicParsing -ErrorAction Stop
             Start-Sleep -Seconds 3
         }
         catch {
