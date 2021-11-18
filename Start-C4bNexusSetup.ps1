@@ -29,7 +29,8 @@ Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bNexusSetup-$(
 . .\scripts\Get-Helpers.ps1
 
 # Install base nexus-repository package
-choco install nexus-repository -y --source="'https://chocolatey.org/api/v2/'"
+$chocoArgs = @('install','nexus-repository','-y',"--source='https://chocolatey.org/api/v2'",'--no-progress')
+& choco @chocoArgs
 
 #Build Credential Object, Connect to Nexus
 $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force

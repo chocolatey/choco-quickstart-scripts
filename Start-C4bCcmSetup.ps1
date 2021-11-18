@@ -27,7 +27,9 @@ Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Ge
 # DB Setup
 $PkgSrc = "$env:SystemDrive\choco-setup\packages"
 $Ccr = "'https://community.chocolatey.org/api/v2/'"
-choco upgrade sql-server-express sql-server-management-studio -y --source $Ccr
+
+$chocoArgs = @('upgrade', 'sql-server-express', 'sql-server-management-studio', '-y', "--source='$Ccr'", '--no-progress')
+& choco @chocoArgs
 
 # https://docs.microsoft.com/en-us/sql/tools/configuration-manager/tcp-ip-properties-ip-addresses-tab
 Write-Output 'SQL Server: Configuring Remote Acess on SQL Server Express.'
@@ -81,10 +83,17 @@ netsh advfirewall firewall add rule name="SQL Server Browser 1434" dir=in action
 #New-NetFirewallRule -DisplayName "Allow inbound UDP Port 1434" –Direction inbound –LocalPort 1434 -Protocol UDP -Action Allow
 
 # Install prerequisites for CCM
-choco install IIS-WebServer -s windowsfeatures --no-progress -y
-choco install IIS-ApplicationInit -s windowsfeatures --no-progress -y
-choco install aspnetcore-runtimepackagestore --version 3.1.16 --source $Ccr --no-progress -y
-choco install dotnetcore-windowshosting --version 3.1.16 --source $Ccr --no-progress -y
+$chocoArgs = @('install', 'IIS-WebServer', "--source='windowsfeatures'", '--no-progress', '-y')
+& choco @chocoArgs
+
+$chocoArgs = @('install', 'IIS-ApplicationInit', "--source='windowsfeatures'" ,'--no-progress', '-y')
+& choco @chocoArgs
+
+$chocoArgs = @('install', 'aspnetcore-runtimepackagestore', "--version='3.1.16'", "--source='$Ccr'", '--no-progress', '-y')
+& choco @chocoArgs
+
+$chocoArgs = @('dotnetcore-windowshosting', "--version='3.1.16'", "--source='$Ccr'", '--no-progress', '-y')
+& choco @chocoArgs
 
 choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'3.1.16'" --reason="'Required for CCM website'"
 choco pin add --name="'dotnetcore-windowshosting'" --version="'3.1.16'" --reason="'Required for CCM website'"
@@ -95,7 +104,7 @@ choco pin add --name="'dotnetcore-windowshosting'" --version="'3.1.16'" --reason
 choco install dotnetcore-sdk --version 3.1.410 --source $Ccr --no-progress -y
 
 # Install CCM DB package using Local SQL Express
-choco install chocolatey-management-database -y -s $PkgSrc --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'"
+choco install chocolatey-management-database -y -s $PkgSrc --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'" --no-progress
 
 # Add Local Windows User:
 $DatabaseUser = $DatabaseCredential.UserName
@@ -111,7 +120,8 @@ if(-Not $hostName.endswith($domainName)) {
 }
 
 #Install CCM Service
-choco install chocolatey-management-service -y -s $PkgSrc --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
+$chocoArgs = @('install', 'chocolatey-management-service', '-y', "--source='$PkgSrc'", "--package-parameters-sensitive='/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'", '--no-progress')
+& choco @chocoArgs
 
 # Check if OS is 2016. If so, let the user know
 # they need a reboot after IIS packages install.
@@ -140,7 +150,7 @@ the steps outlined in the C4B Quick-Start Guide to contiue.
 }
 else {
     #Install CCM Web package
-    choco install chocolatey-management-web -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'"
+    choco install chocolatey-management-web -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'" --no-progress
 
     $CcmSvcUrl = choco config get centralManagementServiceUrl -r
     $CcmJson = @{
