@@ -1711,7 +1711,7 @@ function Install-ChocolateyAgent {
         }
         
 
-        $chocoArgs = @('config','set','centralMangementServiceUrl',"$CentralManagementServiceUrl")
+        $chocoArgs = @('config','set','centralManagementServiceUrl',"$CentralManagementServiceUrl")
         & choco @chocoArgs
 
         $chocoArgs = @('feature','enable','--name="useChocolateyCentralManagement"')
