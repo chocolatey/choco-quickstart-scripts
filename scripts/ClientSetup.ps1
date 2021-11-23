@@ -102,12 +102,12 @@ else {
 
 choco source disable --name="'Chocolatey'"
 
-choco install chocolatey-license -y --source="'ChocolateyInternal'"
-choco install chocolatey.extension -y --params="'/NoContextMenu'" --source="'ChocolateyInternal'" --no-progress
-choco install chocolateygui -y --source="'ChocolateyInternal'" --no-progress
-choco install chocolateygui.extension -y --source="'ChocolateyInternal'" --no-progress
+choco upgrade chocolatey-license -y --source="'ChocolateyInternal'"
+choco upgrade chocolatey.extension -y --params="'/NoContextMenu'" --source="'ChocolateyInternal'" --no-progress
+choco upgrade chocolateygui -y --source="'ChocolateyInternal'" --no-progress
+choco upgrade chocolateygui.extension -y --source="'ChocolateyInternal'" --no-progress
 
-choco install chocolatey-agent -y --source="'ChocolateyInternal'"
+choco upgrade chocolatey-agent -y --source="'ChocolateyInternal'"
 
 #Self-Service configuration
 choco feature disable --name="'showNonElevatedWarnings'"
