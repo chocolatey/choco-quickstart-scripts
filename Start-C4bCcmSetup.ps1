@@ -26,7 +26,7 @@ Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Ge
 
 # DB Setup
 $PkgSrc = "$env:SystemDrive\choco-setup\packages"
-$Ccr = "'https://community.chocolatey.org/api/v2/'"
+$Ccr = 'https://community.chocolatey.org/api/v2/'
 
 $chocoArgs = @('upgrade', 'sql-server-express', 'sql-server-management-studio', '-y', "--source='$Ccr'", '--no-progress')
 & choco @chocoArgs
