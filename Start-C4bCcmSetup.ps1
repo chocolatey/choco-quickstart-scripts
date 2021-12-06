@@ -26,7 +26,7 @@ Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Ge
 
 # DB Setup
 $PkgSrc = "$env:SystemDrive\choco-setup\packages"
-$Ccr = "'https://community.chocolatey.org/api/v2/'"
+$Ccr = 'https://community.chocolatey.org/api/v2/'
 
 $chocoArgs = @('upgrade', 'sql-server-express', 'sql-server-management-studio', '-y', "--source='$Ccr'", '--no-progress')
 & choco @chocoArgs
@@ -92,7 +92,7 @@ $chocoArgs = @('install', 'IIS-ApplicationInit', "--source='windowsfeatures'" ,'
 $chocoArgs = @('install', 'aspnetcore-runtimepackagestore', "--version='3.1.16'", "--source='$Ccr'", '--no-progress', '-y')
 & choco @chocoArgs
 
-$chocoArgs = @('dotnetcore-windowshosting', "--version='3.1.16'", "--source='$Ccr'", '--no-progress', '-y')
+$chocoArgs = @('install', 'dotnetcore-windowshosting', "--version='3.1.16'", "--source='$Ccr'", '--no-progress', '-y')
 & choco @chocoArgs
 
 choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'3.1.16'" --reason="'Required for CCM website'"
