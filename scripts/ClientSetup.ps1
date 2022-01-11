@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Completes client setup for a client machine to communicate with QDE.
+Completes client setup for a client machine to communicate with the C4B Server.
 #>
 [CmdletBinding(DefaultParameterSetName = 'Default')]
 param(
@@ -13,7 +13,7 @@ param(
 
     # The credential necessary to access the internal Nexus repository. This can
     # be ignored if Anonymous authentication is enabled.
-    # This parameter will be necessary if your QDE setup is web-enabled.
+    # This parameter will be necessary if your C4B server is web-enabled.
     [Parameter()]
     [pscredential]
     $Credential,

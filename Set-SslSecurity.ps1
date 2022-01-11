@@ -42,7 +42,7 @@ param(
     [switch]
     $Hardened,
 
-    # The QDE hostname for which to generate a new self-signed certificate.
+    # The C4B server hostname for which to generate a new self-signed certificate.
     # Ignored/unused if a certificate thumbprint or subject is supplied.
     [Parameter()]
     [string]
