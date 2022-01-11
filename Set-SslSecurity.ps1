@@ -53,17 +53,20 @@ param(
 )
 
 begin {
+    if($host.name -ne 'ConsoleHost') {
+        Write-Warning "This script cannot be ran from within PowerShell ISE"
+        Write-Warning "Please launch powershell.exe as an administrator, and run this script again"
+        break
+    }
+}
 
+process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslCertificate-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
     
     # Dot-source helper functions
     . .\scripts\Get-Helpers.ps1
-}
-
-process {
-
     #Collect current certificate configuration
     $Certificate = if ($Subject) {
         Get-Certificate -Subject $Subject
