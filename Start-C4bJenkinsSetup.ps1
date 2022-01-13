@@ -5,7 +5,6 @@ C4B Quick-Start Guide Jenkins setup script
 .DESCRIPTION
 - Performs the following Jenkins setup
     - Install of Jenkins package
-    - Pin to version 2.222.4
     - Silent upgrade of Jenkins plugins
     - Creation of Chocolatey-specific jobs from template files
     - Disable of first-run prompts
@@ -38,10 +37,8 @@ process {
     . .\scripts\Get-Helpers.ps1
 
     # Install Jenkins
-    $chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress',"--version='2.222.4'")
+    $chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress')
     & choco @chocoArgs
-
-    choco pin add --name="'jenkins'" --version="'2.222.4'" --reason="'Next version is a breaking change; see online QDE documentation FAQ'"
 
     Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
     Start-Sleep -Seconds 30  # Jenkins needs a moment
