@@ -14,7 +14,12 @@ param(
     [Parameter()]
     [ValidateNotNull()]
     [System.Management.Automation.PSCredential]
-    $DatabaseCredential = (Get-Credential -Username ChocoUser -Message 'Create a credential for the ChocolateyManagement DB user (document this somewhere)')
+    $DatabaseCredential = (Get-Credential -Username ChocoUser -Message 'Create a credential for the ChocolateyManagement DB user (document this somewhere)'),
+
+    #Certificate to use for CCM service
+    [Parameter()]
+    [String]
+    $CertificateThumbprint
 )
 
 begin {
@@ -130,8 +135,28 @@ process {
     }
 
     #Install CCM Service
-    $chocoArgs = @('install', 'chocolatey-management-service', '-y', "--source='$PkgSrc'", "--package-parameters-sensitive='/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'", '--no-progress')
-    & choco @chocoArgs
+    if($CertificateThumbprint){
+        Write-Verbose "Validating certificate is in LocalMachine\TrustedPeople Store"
+        if($CertificateThumbprint -notin (Get-ChildItem Cert:\LocalMachine\TrustedPeople | Select-Object -Expand Thumbprint)){
+            Write-Warning "You specified $CertificateThumbprint for use with CCM service, but the certificate is not in the required LocalMachine\TrustedPeople store!"
+            Write-Warning "Please place certificate with thumbprint: $CertificateThumbprint in the LocalMachine\TrustedPeople store and re-run this step"
+            throw "Certificate not in correct location....exiting."
+        } 
+        else {
+            Write-Verbose "Certificate has been successfully found in correct store"
+            $chocoArgs = @('install','chocolatey-management-service','-y',"--source='$PkgSrc'","--package-parameters-sensitive='/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User Id=$DatabaseUser;Password=$DatabaseUserPw'")
+            & choco @chocoArgs
+
+            $jsonData = Get-Content $env:ChocolateyInstall\lib\chocolatey-management-service\tools\service\appsettings.json | ConvertFrom-Json
+            $jsonData.CertificateThumbprint = $CertificateThumbprint
+            $jsonData | ConvertTo-Json | Set-Content $env:chocolateyInstall\lib\chocolatey-management-service\tools\service\appsettings.json
+        }
+    }
+
+    else {
+        $chocoArgs = @('install', 'chocolatey-management-service', '-y', "--source='$PkgSrc'", "--package-parameters-sensitive=`"/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'`"", '--no-progress')
+        & choco @chocoArgs
+    }
 
     # Check if OS is 2016. If so, let the user know
     # they need a reboot after IIS packages install.
