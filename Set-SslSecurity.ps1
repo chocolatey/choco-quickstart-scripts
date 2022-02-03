@@ -241,7 +241,7 @@ process {
 `$params = @{
     Credential      = `$Credential
     ClientSalt      = `$ClientCommunicationSalt
-    ServerSalt      = `$ServiceCommunicationSalt
+    ServiceSalt      = `$ServiceCommunicationSalt
     InternetEnabled = `$true
     RepositoryUrl   = `$RepositoryUrl
 }
