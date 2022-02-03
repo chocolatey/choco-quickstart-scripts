@@ -45,11 +45,11 @@ param(
     [string]
     $ClientSalt,
 
-    # Server salt value used to populate the centralManagementServerCommunicationSaltAdditivePassword
+    # Server salt value used to populate the centralManagementServiceCommunicationSaltAdditivePassword
     # value in the Chocolatey config file
     [Parameter()]
     [string]
-    $ServerSalt,
+    $ServiceSalt,
 
     [Parameter()]
     [Switch]
@@ -121,8 +121,8 @@ choco config set CentralManagementServiceUrl "https://${hostName}:24020/Chocolat
 if ($ClientSalt) {
     choco config set centralManagementClientCommunicationSaltAdditivePassword $ClientSalt
 }
-if ($ServerSalt) {
-    choco config set centralManagementServiceCommunicationSaltAdditivePassword $ServerSalt
+if ($ServiceSalt) {
+    choco config set centralManagementServiceCommunicationSaltAdditivePassword $ServiceSalt
 }
 choco feature enable --name="'useChocolateyCentralManagement'"
 choco feature enable --name="'useChocolateyCentralManagementDeployments'"
