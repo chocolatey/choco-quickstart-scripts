@@ -53,7 +53,7 @@ $Packages | ForEach-Object {
         else {
             Write-Verbose "Package testing failed."
         }
-        Remove-Item -Path $pkgPath -Force
+        Remove-Item -Path $tempPath -Recurse -Force
     }
     else {
         Write-Verbose "Could not download package."
