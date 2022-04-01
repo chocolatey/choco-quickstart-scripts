@@ -28,7 +28,7 @@ param(
     [string]
     $NexusApiKey,
 
-    # The remote repo to check against. Defaults to https://chocolatey.org/api/v2
+    # The remote repo to check against. Defaults to https://community.chocolatey.org/api/v2
     [Parameter(Position = 2)]
     [string]
     $RemoteRepo = 'https://community.chocolatey.org/api/v2'

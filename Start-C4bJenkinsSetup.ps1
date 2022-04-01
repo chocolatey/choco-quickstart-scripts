@@ -14,7 +14,7 @@ param(
     # Hostname of your C4B Server
     [string]$HostName = $(Get-Content "$env:SystemDrive\choco-setup\logs\ssl.json" | ConvertFrom-Json).CertSubject,
     # Repo where you're installing Jenkins from, usually CCR
-    [string]$Source = 'https://chocolatey.org/api/v2/',
+    [string]$Source = 'https://community.chocolatey.org/api/v2/',
     # API key of your Nexus repo, for Chocolatey Jenkins jobs to use
     [string]$NuGetApiKey = $(Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
 )

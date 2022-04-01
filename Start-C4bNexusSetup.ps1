@@ -39,7 +39,7 @@ process {
     . .\scripts\Get-Helpers.ps1
 
     # Install base nexus-repository package
-    $chocoArgs = @('install','nexus-repository','-y',"--source='https://chocolatey.org/api/v2'",'--no-progress')
+    $chocoArgs = @('install','nexus-repository','-y',"--source='https://community.chocolatey.org/api/v2'",'--no-progress')
     & choco @chocoArgs
 
     #Build Credential Object, Connect to Nexus
