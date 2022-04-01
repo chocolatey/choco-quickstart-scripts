@@ -31,7 +31,7 @@ param(
     # The remote repo to check against. Defaults to https://chocolatey.org/api/v2
     [Parameter(Position = 2)]
     [string]
-    $RemoteRepo = 'https://chocolatey.org/api/v2'
+    $RemoteRepo = 'https://community.chocolatey.org/api/v2'
 )
 begin {
     if (!(Test-Path "$env:ChocolateyInstall\license")) {

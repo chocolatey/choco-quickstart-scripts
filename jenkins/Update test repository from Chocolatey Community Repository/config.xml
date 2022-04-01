@@ -15,7 +15,7 @@
         <hudson.model.StringParameterDefinition>
           <name>P_REMOTE_REPO_URL</name>
           <description>Remote repository containing updated package versions.</description>
-          <defaultValue>https://chocolatey.org/api/v2</defaultValue>
+          <defaultValue>https://community.chocolatey.org/api/v2</defaultValue>
           <trim>true</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.PasswordParameterDefinition>
