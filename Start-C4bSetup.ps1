@@ -130,7 +130,8 @@ process {
     $FilesDir = "$ChocoPath\files"
     $PkgsDir = "$ChocoPath\packages"
     $TempDir = "$ChocoPath\temp"
-    @($ChocoPath, $FilesDir, $PkgsDir, $TempDir) |
+    $TestDir = "$ChocoPath\tests"
+    @($ChocoPath, $FilesDir, $PkgsDir, $TempDir,$Test) |
     Foreach-Object {
         $null = New-Item -Path $_ -ItemType Directory -Force
     }
