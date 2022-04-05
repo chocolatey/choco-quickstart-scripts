@@ -942,7 +942,7 @@ function Get-NexusUser {
     .NOTES
     
     #>
-    [CmdletBinding(HelpUri='https://steviecoaster.dev/NexuShell/Security/User/Get-NexusUser/')]
+    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/NexuShell/Security/User/Get-NexusUser/')]
     Param(
         [Parameter()]
         [String]
@@ -962,15 +962,15 @@ function Get-NexusUser {
     process {
         $urislug = '/service/rest/v1/security/users'
 
-        if($User){
+        if ($User) {
             $urislug = "/service/rest/v1/security/users?userId=$User"
         }
 
-        if($Source){
+        if ($Source) {
             $urislug = "/service/rest/v1/security/users?source=$Source"
         }
 
-        if($User -and $Source){
+        if ($User -and $Source) {
             $urislug = "/service/rest/v1/security/users?userId=$User&source=$Source"
         }
 
@@ -978,14 +978,14 @@ function Get-NexusUser {
 
         $result | Foreach-Object {
             [pscustomobject]@{
-                Username = $_.userId
-                FirstName = $_.firstName
-                LastName = $_.lastName
-                EmailAddress = $_.emailAddress
-                Source = $_.source
-                Status = $_.status
-                ReadOnly = $_.readOnly
-                Roles = $_.roles
+                Username      = $_.userId
+                FirstName     = $_.firstName
+                LastName      = $_.lastName
+                EmailAddress  = $_.emailAddress
+                Source        = $_.source
+                Status        = $_.status
+                ReadOnly      = $_.readOnly
+                Roles         = $_.roles
                 ExternalRoles = $_.externalRoles
             }
         }
@@ -1015,7 +1015,7 @@ function Get-NexusRole {
     .NOTES
     
     #>
-    [CmdletBinding(HelpUri='https://steviecoaster.dev/NexuShell/Security/Roles/Get-NexusRole/')]
+    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/NexuShell/Security/Roles/Get-NexusRole/')]
     Param(
         [Parameter()]
         [Alias('id')]
@@ -1049,7 +1049,7 @@ function Get-NexusRole {
         $result | ForEach-Object {
             [PSCustomObject]@{
                 Id          = $_.id
-                Source       = $_.source
+                Source      = $_.source
                 Name        = $_.name
                 Description = $_.description
                 Privileges  = $_.privileges
@@ -1561,6 +1561,23 @@ function Start-CcmService {
 
 }
 
+function Set-CcmCertificate {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory)]
+        [String]
+        $CertificateThumbprint
+    )
+
+    process {
+        Stop-Service chocolatey-central-management
+        $jsonData = Get-Content $env:ChocolateyInstall\lib\chocolatey-management-service\tools\service\appsettings.json | ConvertFrom-Json
+        $jsonData.CertificateThumbprint = $CertificateThumbprint
+        $jsonData | ConvertTo-Json | Set-Content $env:chocolateyInstall\lib\chocolatey-management-service\tools\service\appsettings.json
+        Start-Service chocolatey-central-management
+    }
+}
+
 #endregion
 
 #region README functions
@@ -1701,30 +1718,30 @@ function Install-ChocolateyAgent {
     )
 
     process {
-        if($Source){
-            $chocoArgs = @('install','chocolatey-agent','-y',"--source='$Source'")
+        if ($Source) {
+            $chocoArgs = @('install', 'chocolatey-agent', '-y', "--source='$Source'")
             & choco @chocoArgs
         }
         else {
-            $chocoArgs = @('install','chocolatey-agent','-y')
+            $chocoArgs = @('install', 'chocolatey-agent', '-y')
             & choco @chocoArgs
         }
         
 
-        $chocoArgs = @('config','set','centralManagementServiceUrl',"$CentralManagementServiceUrl")
+        $chocoArgs = @('config', 'set', 'centralManagementServiceUrl', "$CentralManagementServiceUrl")
         & choco @chocoArgs
 
-        $chocoArgs = @('feature','enable','--name="useChocolateyCentralManagement"')
+        $chocoArgs = @('feature', 'enable', '--name="useChocolateyCentralManagement"')
         & choco @chocoArgs
 
-        $chocoArgs = @('feature','enable','--name="useChocolateyCentralManagementDeployments"')
+        $chocoArgs = @('feature', 'enable', '--name="useChocolateyCentralManagementDeployments"')
         & choco @chocoArgs
 
-        if($ServiceSalt -and $ClientSalt){
-            $chocoArgs = @('config','set','centralManagementClientCommunicationSaltAdditivePassword',"$ClientSalt")
+        if ($ServiceSalt -and $ClientSalt) {
+            $chocoArgs = @('config', 'set', 'centralManagementClientCommunicationSaltAdditivePassword', "$ClientSalt")
             & choco @chocoArgs
 
-            $chocoArgs = @('config','set','centralManagementServiceCommunicationSaltAdditivePassword',"$ServiceSalt")
+            $chocoArgs = @('config', 'set', 'centralManagementServiceCommunicationSaltAdditivePassword', "$ServiceSalt")
             & choco @chocoArgs
         }
     }
