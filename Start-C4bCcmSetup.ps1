@@ -147,9 +147,7 @@ process {
             $chocoArgs = @('install','chocolatey-management-service','-y',"--source='$PkgSrc'","--package-parameters-sensitive='/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User Id=$DatabaseUser;Password=$DatabaseUserPw'")
             & choco @chocoArgs
 
-            $jsonData = Get-Content $env:ChocolateyInstall\lib\chocolatey-management-service\tools\service\appsettings.json | ConvertFrom-Json
-            $jsonData.CertificateThumbprint = $CertificateThumbprint
-            $jsonData | ConvertTo-Json | Set-Content $env:chocolateyInstall\lib\chocolatey-management-service\tools\service\appsettings.json
+            Set-CcmCertificate -CertificateThumbprint $CertificateThumbprint
         }
     }
 
