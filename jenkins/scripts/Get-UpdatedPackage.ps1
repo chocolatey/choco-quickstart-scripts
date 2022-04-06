@@ -43,6 +43,7 @@ $localPkgs | ForEach-Object {
         else {
             Write-Verbose "Failed to download package '$($_.name)'"
         }
+        Remove-Item $tempPath -Recurse -Force
     }
 
     else {
