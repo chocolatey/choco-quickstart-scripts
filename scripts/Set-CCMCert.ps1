@@ -5,12 +5,11 @@ Certificate renewal script for Chocolatey Central Management(CCM)
 .DESCRIPTION
 This script will go through and renew the certificate association with both the Chocolatey Central Management Service and IIS Web hosted dashboard.
 
-.PARAMETER CertificateThumprint
+.PARAMETER CertificateThumbprint
 Thumbprint value of the certificate you would like the Chocolatey Central Management Service and Web to run on.
 Please make sure the certificate is located in both the Cert:\LocalMachine\TrustedPeople\ and Cert:\LocalMachine\My certificate stores.
 
 .EXAMPLE
-
 PS> .\Set-CCMCert.ps1 -CertificateThumbprint 'Your_Certificate_Thumbprint_Value'
 #>
 

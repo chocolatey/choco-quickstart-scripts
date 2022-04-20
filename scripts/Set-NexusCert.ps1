@@ -1,10 +1,8 @@
 <#
 .SYNOPSIS
-
 Certificate renewal script for Nexus.
 
 .DESCRIPTION
-
 Helps edit the java keystore file for Nexus when doing a certificate renewal.
 
 .PARAMETER Thumbprint
@@ -14,8 +12,7 @@ Thumbprint value of certificate you want to run Nexus on. Make sure certificate 
 Port you have Nexus configured to run on.
 
 .EXAMPLE
-
-PS> .\New-NexusCert.ps1 -Thumbprint 'Your_Certificate_Thumbprint_Value' -NexusPort 'Port_Number'
+PS> .\Set-NexusCert.ps1 -Thumbprint 'Your_Certificate_Thumbprint_Value' -NexusPort 'Port_Number'
 #>
 
 [CmdletBinding()]
