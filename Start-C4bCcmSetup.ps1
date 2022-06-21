@@ -104,22 +104,8 @@ process {
     $chocoArgs = @('install', 'IIS-ApplicationInit', "--source='windowsfeatures'" ,'--no-progress', '-y')
     & choco @chocoArgs
 
-    $chocoArgs = @('install', 'aspnetcore-runtimepackagestore', "--version='3.1.16'", "--source='$Ccr'", '--no-progress', '-y')
-    & choco @chocoArgs
-
-    $chocoArgs = @('install', 'dotnetcore-windowshosting', "--version='3.1.16'", "--source='$Ccr'", '--no-progress', '-y')
-    & choco @chocoArgs
-
-    choco pin add --name="'aspnetcore-runtimepackagestore'" --version="'3.1.16'" --reason="'Required for CCM website'"
-    choco pin add --name="'dotnetcore-windowshosting'" --version="'3.1.16'" --reason="'Required for CCM website'"
-    # "reason" only available in commercial editions
-
-    # Starting with v0.6.2 of the CCM Database package, it uses dotnetcore-sdk so that it may be installed on a system without requiring IIS.
-    # At the time of publishing, the most recent version of this package is 3.1.410, but later package versions (within the 3.x.x release) are expected to work
-    choco install dotnetcore-sdk --version 3.1.410 --source $Ccr --no-progress -y
-
     # Install CCM DB package using Local SQL Express
-    choco install chocolatey-management-database -y -s $PkgSrc --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'" --no-progress
+    choco install chocolatey-management-database -y --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'" --no-progress
 
     # Add Local Windows User:
     $DatabaseUser = $DatabaseCredential.UserName
@@ -144,7 +130,7 @@ process {
         } 
         else {
             Write-Verbose "Certificate has been successfully found in correct store"
-            $chocoArgs = @('install','chocolatey-management-service','-y',"--source='$PkgSrc'","--package-parameters-sensitive='/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User Id=$DatabaseUser;Password=$DatabaseUserPw'")
+            $chocoArgs = @('install','chocolatey-management-service','-y',"--package-parameters-sensitive='/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User Id=$DatabaseUser;Password=$DatabaseUserPw'")
             & choco @chocoArgs
 
             Set-CcmCertificate -CertificateThumbprint $CertificateThumbprint
@@ -152,7 +138,7 @@ process {
     }
 
     else {
-        $chocoArgs = @('install', 'chocolatey-management-service', '-y', "--source='$PkgSrc'", "--package-parameters-sensitive=`"/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'`"", '--no-progress')
+        $chocoArgs = @('install', 'chocolatey-management-service', '-y', "--package-parameters-sensitive=`"/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'`"", '--no-progress')
         & choco @chocoArgs
     }
 

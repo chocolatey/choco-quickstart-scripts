@@ -166,7 +166,7 @@ process {
 
     # Download Licensed Packages
     ## DO NOT RUN WITH `--internalize` and `--internalize-all-urls` - see https://github.com/chocolatey/chocolatey-licensed-issues/issues/155
-    @('chocolatey-agent', 'chocolatey.extension', 'chocolateygui.extension', 'chocolatey-management-database', 'chocolatey-management-service', 'chocolatey-management-web') |
+    @('chocolatey-agent', 'chocolatey.extension', 'chocolateygui.extension') |
     Foreach-Object {
         choco download $_ --force --no-progress --source="'https://licensedpackages.chocolatey.org/api/v2/'" --ignore-dependencies --output-directory $PkgsDir
     }

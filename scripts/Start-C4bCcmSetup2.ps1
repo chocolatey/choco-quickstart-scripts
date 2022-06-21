@@ -17,9 +17,7 @@ $DefaultEap = $ErrorActionPreference
 $ErrorActionPreference = 'Stop'
 Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup2-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
-$PkgSrc = "$env:SystemDrive\choco-setup\packages"
-
-$chocoArgs = @('install', 'chocolatey-management-web', '-y', "--source='$PkgSrc'", "--package-parameters-sensitive='/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=ChocoUser;Password=$DatabaseUserPw;''",'--no-progress')
+$chocoArgs = @('install', 'chocolatey-management-web', '-y', "--package-parameters-sensitive='/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=ChocoUser;Password=$DatabaseUserPw;''",'--no-progress')
 & choco @chocoArgs
 Write-Host "CCM Setup has now completed" -ForegroundColor Green
 
