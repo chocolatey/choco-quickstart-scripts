@@ -49,7 +49,7 @@ process {
     $JenkinsRoot = Join-Path $root -ChildPath 'jenkins'
     $jenkinsScripts = Join-Path $JenkinsRoot -ChildPath 'scripts'
 
-    Copy-Item $jenkinsScripts $systemRoot -Force
+    Copy-Item $jenkinsScripts $systemRoot -Recurse -Force
 
     Stop-Service -Name Jenkins
     $JenkinsHome = "${env:ProgramFiles(x86)}\Jenkins"
