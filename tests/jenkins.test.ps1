@@ -3,14 +3,15 @@ Describe "Jenkins Configuration" {
         BeforeAll {
             $jenkins = choco list -lo -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version | Where-Object Package -eq 'jenkins'
             $service = Get-Service jenkins
+            $jenkinsVersion = '2.222.4'
         }
 
         It "Jenkins is installed" {
-            $Jenkins | Should -Not -BeNullOrEmpty
+            $jenkins | Should -Not -BeNullOrEmpty
         }
 
-        It "Jenkins is version '2.222.4'" {
-            $jenkins.version | Should -Be '2.222.4'
+        It "Jenkins is the correct version" {
+            $jenkins.version | Should -Be $jenkinsVersion
         }
 
         It "Service is installed" {
