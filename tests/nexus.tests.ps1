@@ -5,6 +5,8 @@ Param(
     $Fqdn
 )
 
+. $PSScriptRoot/packages.ps1
+
 Describe "Nexus Configuration" {
     Context "Installation Integrity" {
         BeforeAll {
@@ -26,10 +28,10 @@ Describe "Nexus Configuration" {
     }
     Context "Services" {
         BeforeAll {
-    
+
             $certStoreCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object {$_.Subject -match "CN=$Fqdn"}
             $serviceCertificate = Get-RemoteCertificate -ComputerName $Fqdn -Port 8443
-            
+
             $ConfigurationFile = Get-Content "C:\ProgramData\sonatype-work\nexus3\etc\nexus.properties"
             $expectedConfiguation = @'
 # Jetty section
@@ -50,7 +52,7 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
 
 '@
         }
-    
+
         It "Service has HSTS disabled" {
             $ConfigurationFile[12] -eq 'jetty.https.stsMaxAge=-1' | Should -Be $true
         }
@@ -103,120 +105,8 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
             $packages = choco list -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version
         }
 
-        It "Chocolatey is in the repository" {
-            'chocolatey' -in $packages.Package | Should -Be $true
-        }
-
-        It "Chocolatey is latest version" {
-            ($packages | Where-Object Package -eq 'chocolatey').Version | Should -Be '1.1.0'
-        }
-
-        It "chocolatey.extension is in the repository" {
-            'chocolatey.extension' -in $packages.Package | Should -Be $true
-        }
-
-        It "chocolatey.extension is version 4.2.0" {
-            ($packages | Where-Object Package -eq 'chocolatey.extension').Version | Should -Be '4.2.0'
-        }
-
-        It "chocolatey-agent is in the repository" {
-            'chocolatey-agent' -in $packages.Package | Should -Be $true
-        }
-       
-        It "chocolatey-agent is version '1.0.0'" {
-            ($packages | Where-Object Package -eq 'chocolatey-agent').Version | Should -Be '1.0.0'
-        }
-
-        It "chocolatey-core.extension is in the repository" {
-            'chocolatey-core.extension' -in $packages.Package | Should -Be $true
-        }
-
-        It "chocolatey-core.extension is version '1.4.0'" {
-            ($packages | Where-Object Package -eq 'chocolatey-core.extension').Version | Should -Be '1.4.0'
-        }
-
-        It "chocolatey-dotnetfx.extension is in the repository" {
-            'chocolatey-dotnetfx.extension' -in $packages.Package | Should -Be $true
-        }
-        
-        It "chocolatey-dotnetfx.extension is version '1.0.1'" {
-            ($packages | Where-Object Package -eq 'chocolatey-dotnetfx.extension').Version | Should -Be '1.0.1'
-        }
-
-        It "chocolateygui is in the repository" {
-            'chocolateygui' -in $packages.Package | Should -Be $true
-        }
-
-        It "chocolateygui is version '1.0.0'" {
-            ($packages | Where-Object Package -eq 'chocolateygui').Version | Should -Be '1.0.0'
-        }
-
-        It "chocolateygui.extension is in the repository" {
-            'chocolateygui.extension' -in $packages.Package | Should -Be $true
-        }
-
-        It "chocolateygui.extension is version '1.0.0'" {
-            ($packages | Where-Object Package -eq 'chocolateygui.extension').Version | Should -Be '1.0.0'
-        }
-
-        It "chocolatey-license is in the repository" {
-            'chocolatey-license' -in $packages.Package | Should -Be $true
-        }
-
-        It "chocolatey-management-database is in the repository" {
-            'chocolatey-management-database' -in $packages.Package | Should -Be $true
-        }
-
-        It "chocolatey-management-database is version '0.9.0'" {
-            ($packages | Where-Object Package -eq 'chocolatey-management-database').Version | Should -Be '0.9.0'
-        }
-
-        It "chocolatey-management-service is in the repository" {
-            'chocolatey-management-service' -in $packages.Package | should -Be $true
-        }
-
-        It "chocolatey-management-service is version '0.9.0'" {
-            ($packages | Where-Object Package -eq 'chocolatey-management-service').Version | Should -Be '0.9.0'
-        }
-
-        It "chocolatey-management-web is in the repository" {
-            'chocolatey-management-web' -in $packages.Package | Should -Be $true
-        }
-
-        It "chocolatey-management-web is version '0.9.0'" {
-            ($packages | Where-Object Package -eq 'chocolatey-management-web').Version | Should -Be '0.9.0'
-        }
-
-        It "DotNet4.5.2 is in the repository" {
-            'dotnet4.5.2' -in $Packages.Package | Should -Be $true
-        }
-
-        It "dotnet4.5.2 is version '4.5.2.20140902'" {
-            ($packages | Where-Object Package -eq 'dotnet4.5.2').Version | Should -Be '4.5.2.20140902'
-        }
-
-        It "dotnetfx is in the repository" {
-            'dotnetfx' -in $packages.Package | Should -Be $true
-        }
-
-        It "dotnetfx is version '4.8.0.20220524'" {
-            ($packages | Where-Object Package -eq 'dotnetfx').Version | Should -Be '4.8.0.20220524'
-        }
-
-        It "KB2919355 is in the repository" {
-            'KB2919355' -in $packages.Package | Should -Be $true
-        }
-
-        It "KB2919355 is version '1.0.20160915'" {
-            ($packages | Where-Object Package -eq 'KB2919355').Version | Should -Be '1.0.20160915'
-        }
-
-        It "KB2919442 is in the repository" {
-            'KB2919442' -in $packages.Package | Should -Be $true
-        }
-
-        It "KB2919442 is version '1.0.20160915'" {
-            ($packages | Where-Object Package -eq 'KB2919442').Version | Should -Be '1.0.20160915'
+        It "<Name> is in the repository" -ForEach @( $JointPackages + $RepositoryOnlyPackages ) {
+            $Name -in $packages.Package | Should -Be $true
         }
     }
 }

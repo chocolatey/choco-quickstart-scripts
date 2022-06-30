@@ -1,37 +1,12 @@
+. $PSScriptRoot/packages.ps1
 Describe "Server Integrity" {
     Context "Required Packages" {
         BeforeAll {
             $packages = choco list -lo -r | ConvertFrom-Csv -Delimiter '|' -Header Package, Version
         }
-        
-        It "<name> is installed"  -Foreach @(
-            @{Name = 'dotnet-aspnetcoremodule-v2'}
-            @{Name = 'dotnet-6.0-runtime'}
-            @{Name = 'dotnet-6.0-aspnetruntime'}
-            @{Name = 'chocolatey-management-web'}
-            @{Name = 'chocolatey'}
-            @{Name = 'chocolatey-management-database'}
-            @{Name = 'chocolatey-windowsupdate.extension'}
-            @{Name = 'sql-server-express'}
-            @{Name = 'KB3033929'}
-            @{Name = 'Temurinjre'}
-            @{Name = 'jenkins'}
-            @{Name = 'nexus-repository'}
-            @{Name = 'KB2919355'}
-            @{Name = 'microsoft-edge'}
-            @{Name = 'vcredist140'}
-            @{Name = 'chocolatey-management-service'} 
-            @{Name = 'KB3063858'}
-            @{Name = 'chocolatey-license'}
-            @{Name = 'KB2999226'}
-            @{Name = 'KB2919442'}
-            @{Name = 'chocolatey-core.extension'}
-            @{Name = 'KB3035131'}
-            @{Name = 'chocolatey.extension'}
-            @{Name = 'sql-server-management-studio'}
-            @{Name = 'chocolatey-agent'}
-        ) {
-            $_.Name -in $packages.Package | Should -Be $true
+
+        It "<Name> is installed"  -Foreach @( $JointPackages + $ServerOnlyPackages ) {
+            $Name -in $packages.Package | Should -Be $true
         }
     }
 
