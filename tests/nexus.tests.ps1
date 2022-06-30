@@ -107,7 +107,7 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
             'chocolatey' -in $packages.Package | Should -Be $true
         }
 
-        It "Chocolatey is version 1.1.0" {
+        It "Chocolatey is latest version" {
             ($packages | Where-Object Package -eq 'chocolatey').Version | Should -Be '1.1.0'
         }
 
@@ -115,8 +115,8 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
             'chocolatey.extension' -in $packages.Package | Should -Be $true
         }
 
-        It "chocolatey.extension is version 4.1.0" {
-            ($packages | Where-Object Package -eq 'chocolatey.extension').Version | Should -Be '4.1.0'
+        It "chocolatey.extension is version 4.2.0" {
+            ($packages | Where-Object Package -eq 'chocolatey.extension').Version | Should -Be '4.2.0'
         }
 
         It "chocolatey-agent is in the repository" {
@@ -131,8 +131,8 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
             'chocolatey-core.extension' -in $packages.Package | Should -Be $true
         }
 
-        It "chocolatey-core.extension is version '1.3.5.1'" {
-            ($packages | Where-Object Package -eq 'chocolatey-core.extension').Version | Should -Be '1.3.5.1'
+        It "chocolatey-core.extension is version '1.4.0'" {
+            ($packages | Where-Object Package -eq 'chocolatey-core.extension').Version | Should -Be '1.4.0'
         }
 
         It "chocolatey-dotnetfx.extension is in the repository" {
@@ -167,24 +167,24 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
             'chocolatey-management-database' -in $packages.Package | Should -Be $true
         }
 
-        It "chocolatey-management-database is version '0.8.0'" {
-            ($packages | Where-Object Package -eq 'chocolatey-management-database').Version | Should -Be '0.8.0'
+        It "chocolatey-management-database is version '0.9.0'" {
+            ($packages | Where-Object Package -eq 'chocolatey-management-database').Version | Should -Be '0.9.0'
         }
 
         It "chocolatey-management-service is in the repository" {
             'chocolatey-management-service' -in $packages.Package | should -Be $true
         }
 
-        It "chocolatey-management-service is version '0.8.0'" {
-            ($packages | Where-Object Package -eq 'chocolatey-management-service').Version | Should -Be '0.8.0'
+        It "chocolatey-management-service is version '0.9.0'" {
+            ($packages | Where-Object Package -eq 'chocolatey-management-service').Version | Should -Be '0.9.0'
         }
 
         It "chocolatey-management-web is in the repository" {
             'chocolatey-management-web' -in $packages.Package | Should -Be $true
         }
 
-        It "chocolatey-management-web is version '0.8.0'" {
-            ($packages | Where-Object Package -eq 'chocolatey-management-web').Version | Should -Be '0.8.0'
+        It "chocolatey-management-web is version '0.9.0'" {
+            ($packages | Where-Object Package -eq 'chocolatey-management-web').Version | Should -Be '0.9.0'
         }
 
         It "DotNet4.5.2 is in the repository" {
@@ -199,8 +199,8 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
             'dotnetfx' -in $packages.Package | Should -Be $true
         }
 
-        It "dotnetfx is version '4.8.0.20190930'" {
-            ($packages | Where-Object Package -eq 'dotnetfx').Version | Should -Be '4.8.0.20190930'
+        It "dotnetfx is version '4.8.0.20220524'" {
+            ($packages | Where-Object Package -eq 'dotnetfx').Version | Should -Be '4.8.0.20220524'
         }
 
         It "KB2919355 is in the repository" {

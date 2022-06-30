@@ -7,7 +7,7 @@ Param(
 
 process {
     #Load helper functions in scope for tests
-    $HelperPath  = Join-Path $MyInvocation.MyCommand.Definition -ChildPath 'scripts'
+    $HelperPath  = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) -ChildPath 'scripts'
     $Helpers = Join-Path $HelperPath -ChildPath 'Get-Helpers.ps1'
     . $Helpers
 
