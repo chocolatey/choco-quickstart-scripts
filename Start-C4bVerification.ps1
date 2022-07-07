@@ -15,7 +15,7 @@ process {
     $chocoArgs = @('install', 'pester', '-y', '--source="https://community.chocolatey.org/api/v2/"')
     & choco @chocoArgs
 
-    $files = (Get-ChildItem C:\choco-setup\tests\ -Recurse -Filter *.ps1).Fullname
+    $files = (Get-ChildItem C:\choco-setup\files\tests\ -Recurse -Filter *.ps1).Fullname
     Write-Host "Configuring Pester to complete verification tests"
     $containers = $files | Foreach-Object { New-PesterContainer -Path $_ -Data @{ Fqdn = $Fqdn } }
     $configuration = [PesterConfiguration]@{
