@@ -76,7 +76,9 @@ process {
     }
 
     if (-not $CertificateDnsName) {
-        $SubjectWithoutCn = $Certificate.Subject -replace 'CN=', ''
+        $matcher = 'CN\s?=\s?[^,\s]+'
+        $null = $Certificate.Subject -match $matcher
+        $SubjectWithoutCn = $matches[0] -replace 'CN=', ''
     } 
     else {
         $SubjectWithoutCn = $CertificateDnsName
