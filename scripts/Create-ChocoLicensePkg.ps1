@@ -50,8 +50,11 @@ Write-Warning "This script will OVERWRITE any existing license file you might ha
 & choco | Out-String -Stream | Write-Host
 Write-Warning "If there is is a note about invalid license above, you're going to run into issues."
 
+# Get license expiration date and node count
 [xml]$licenseXml = Get-Content -Path $LicensePath
 $licenseExpiration = [datetimeoffset]::Parse("$($licenseXml.SelectSingleNode('/license').expiration) +0")
+$licenseXml.license.name -match "(?<=\[).*(?=\])"
+$licenseNodeCount = $Matches.Values -replace '\[]',''
 
 if ($licenseExpiration -lt [datetimeoffset]::UtcNow) {
     Write-Warning "THE LICENSE FILE AT '$LicensePath' is EXPIRED. This is the file used by this script to generate this package, not at '$licensePackageFolder'"
@@ -60,7 +63,7 @@ if ($licenseExpiration -lt [datetimeoffset]::UtcNow) {
 }
 
 if (-not $LicensePackageVersion) {
-    $LicensePackageVersion = $licenseExpiration | Get-Date -Format 'yyyy.MM.dd'
+    $LicensePackageVersion = ($licenseExpiration | Get-Date -Format 'yyyy.MM.dd') + '.' + "$licenseNodeCount"
 }
 
 # Ensure the packaging folder exists
