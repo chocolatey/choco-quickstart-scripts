@@ -54,7 +54,7 @@ Write-Warning "If there is is a note about invalid license above, you're going t
 [xml]$licenseXml = Get-Content -Path $LicensePath
 $licenseExpiration = [datetimeoffset]::Parse("$($licenseXml.SelectSingleNode('/license').expiration) +0")
 $null = $licenseXml.license.name -match "(?<=\[).*(?=\])"
-$licenseNodeCount = $Matches.Values -replace '\[]',''
+$licenseNodeCount = $Matches.Values -replace '\s[A-Za-z]+',''
 
 if ($licenseExpiration -lt [datetimeoffset]::UtcNow) {
     Write-Warning "THE LICENSE FILE AT '$LicensePath' is EXPIRED. This is the file used by this script to generate this package, not at '$licensePackageFolder'"
