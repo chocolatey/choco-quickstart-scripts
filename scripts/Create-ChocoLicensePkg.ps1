@@ -53,7 +53,7 @@ Write-Warning "If there is is a note about invalid license above, you're going t
 # Get license expiration date and node count
 [xml]$licenseXml = Get-Content -Path $LicensePath
 $licenseExpiration = [datetimeoffset]::Parse("$($licenseXml.SelectSingleNode('/license').expiration) +0")
-$licenseXml.license.name -match "(?<=\[).*(?=\])"
+$null = $licenseXml.license.name -match "(?<=\[).*(?=\])"
 $licenseNodeCount = $Matches.Values -replace '\[]',''
 
 if ($licenseExpiration -lt [datetimeoffset]::UtcNow) {
