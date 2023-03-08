@@ -151,48 +151,21 @@ process {
         & choco @chocoArgs
     }
 
-    # Check if OS is 2016. If so, let the user know
-    # they need a reboot after IIS packages install.
-    # Instruct user to run secondary script after reboot.
-    $Os = (Get-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion' -Name ProductName).ProductName
-    if ($Os -like '*2016*') {
-        $CcmSvcUrl = choco config get centralManagementServiceUrl -r
-        $CcmJson = @{
-            CCMServiceURL        = $CcmSvcUrl
-            CCMWebPortal         = "http://localhost/Account/Login"
-            DefaultUser          = "ccmadmin"
-            DefaultPwToBeChanged = "123qwe"
-            CCMDBUser            = $DatabaseUser
-            CCMDBPassword        = $DatabaseUserPw
-        }
-        $CcmJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ccm.json"
-        $ErrorActionPreference = $DefaultEap
-        Stop-Transcript
-        $Comment = @"
-    Chocolatey has detected that your operating system is Windows Server 2016.
-    In order to complete the installation of IIS, a restart is required.
-    This server will restart in 30 seconds. Once restarted, please follow
-    the steps outlined in the C4B Quick-Start Guide to contiue.
-"@
-        Start-Process 'shutdown.exe' -ArgumentList "/r /f /t 30 /c `"$Comment`" /d p:4:1"
+    #Install CCM Web package
+    choco install chocolatey-management-web -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'" --no-progress
+
+    $CcmSvcUrl = choco config get centralManagementServiceUrl -r
+    $CcmJson = @{
+        CCMServiceURL        = $CcmSvcUrl
+        CCMWebPortal         = "http://localhost/Account/Login"
+        DefaultUser          = "ccmadmin"
+        DefaultPwToBeChanged = "123qwe"
+        CCMDBUser            = $DatabaseUser
     }
-    else {
-        #Install CCM Web package
-        choco install chocolatey-management-web -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'" --no-progress
+    $CcmJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ccm.json"
 
-        $CcmSvcUrl = choco config get centralManagementServiceUrl -r
-        $CcmJson = @{
-            CCMServiceURL        = $CcmSvcUrl
-            CCMWebPortal         = "http://localhost/Account/Login"
-            DefaultUser          = "ccmadmin"
-            DefaultPwToBeChanged = "123qwe"
-            CCMDBUser            = $DatabaseUser
-        }
-        $CcmJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ccm.json"
+    Write-Host "CCM Setup has now completed" -ForegroundColor Green
 
-        Write-Host "CCM Setup has now completed" -ForegroundColor Green
-
-        $ErrorActionPreference = $DefaultEap
-        Stop-Transcript
-    }
+    $ErrorActionPreference = $DefaultEap
+    Stop-Transcript
 }

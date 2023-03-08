@@ -47,8 +47,7 @@ As illustrated in the diagram above, there are four main components to a Chocola
 
 Below are the minimum requirements for setting up your C4B server via this guide:
 
-- Windows Server 2019+ (ideally, Windows Server 2019)
-  - Windows Server 2016 is technically supported, but not recommended as it is nearing End-of-Life; also, you will require an additional setup script.
+- Windows Server 2019+ (ideally, Windows Server 2022)
 - 4+ CPU cores (more preferred)
 - 16 GB+ RAM (8GB as a bare minimum; 4GB of RAM is reserved specifically for Nexus)
 - 500 GB+ of free space for local NuGet package artifact storage (more is better, and you may have to grow this as your packages and versions increase)
@@ -140,12 +139,6 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <li>Outputs data to a JSON file to pass between scripts</li>
     > </ul>
     > </details>
-
-    > :warning:**WARNING**: **Only if** you choose to run this on a **Windows Server 2016** VM, you will **require** a **reboot** before IIS is completely installed. The script above will notify you of this. Once the reboot is complete and you log back in, you will also have to paste and run the following code in a PowerShell Administrator console:
-    > ```powershell
-    > Set-Location "$env:SystemDrive\choco-setup\files\scripts"
-    > .\Start-C4bCcmSetup2.ps1
-    > ```
 
 ### Step 4: SSL Setup
 
