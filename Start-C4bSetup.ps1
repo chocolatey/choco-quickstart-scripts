@@ -40,6 +40,13 @@ begin {
         Write-Warning "Please launch powershell.exe as an administrator, and run this script again"
         break
     }
+
+    if($env:CHOCO_QSG_DEVELOP){
+        $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/refs/heads/develop.zip"
+    }
+    else {
+        $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/main.zip"
+    }
 }
 
 process {
@@ -137,7 +144,6 @@ process {
     }
 
     # Download and extract C4B setup files from repo
-    $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/main.zip"
     Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\main.zip"
     Expand-Archive "$TempDir\main.zip" $TempDir
     Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
