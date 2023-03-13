@@ -17,7 +17,7 @@ git checkout -b $NewBranchName
 Test your changes before raising a Pull Request to merge your changes. In order to set things up for testing do the following:
 
 1. Set `$env:CHOCO_QSG_DEVELOP = $true`
-1. The very step of the Guide should be ammended to fetch from the `develop` branch:
+1. The first step of the Guide will need amended to fetch from the `develop` branch:
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
