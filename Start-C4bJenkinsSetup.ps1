@@ -37,7 +37,7 @@ process {
     . .\scripts\Get-Helpers.ps1
 
     # Install Jenkins
-    $chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress')
+    $chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress', "--version='2.222.4'", '--pin', "--pin-reason='Future releases of this package will be a breaking change from this pinned version. Please reference the packages code on its source page, https://community.chocolatey.org/packages/jenkins, before unpinning and upgrading.'")
     & choco @chocoArgs
 
     Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
