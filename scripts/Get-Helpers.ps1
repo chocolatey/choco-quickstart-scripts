@@ -1654,7 +1654,7 @@ The host name of the C4B instance.
 
     process {
         $nexusPassword = Get-Content -Path 'C:\ProgramData\sonatype-work\nexus3\admin.password'
-        $jenkinsPassword = Get-Content -path 'C:\Program Files (x86)\Jenkins\secrets\initialAdminPassword'
+        $jenkinsPassword = Get-Content -path 'C:\ProgramData\Jenkins\.jenkins\secrets\initialAdminPassword'
         $nexusApiKey = (Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
 
         $tableData = @([pscustomobject]@{

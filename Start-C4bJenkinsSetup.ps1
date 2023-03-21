@@ -36,23 +36,29 @@ process {
     # Dot-source helper functions
     . .\scripts\Get-Helpers.ps1
 
+    # Install temurin11jre to meet JRE11 depdency of Jenkins
+    $chocoArgs = @('install', 'temurin11jre', '-y', "--source='$Source'", '--no-progress')
+    & choco @chocoArgs
+
     # Install Jenkins
-    $chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress', "--version='2.222.4'", '--pin', "--pin-reason='Future releases of this package will be a breaking change from this pinned version. Please reference the packages code on its source page, https://community.chocolatey.org/packages/jenkins, before unpinning and upgrading.'")
+    $chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress', "--version='2.387.1'")
     & choco @chocoArgs
 
     Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
     Start-Sleep -Seconds 30  # Jenkins needs a moment
 
-    # Long winded way to get the scripts for Jenkins jobs into the right place, but easier to mainntain going forward
+    # Long winded way to get the scripts for Jenkins jobs into the right place, but easier to maintain going forward
     $root = Split-Path -Parent $MyInvocation.MyCommand.Definition
     $systemRoot = $env:SystemDrive + '\'
     $JenkinsRoot = Join-Path $root -ChildPath 'jenkins'
     $jenkinsScripts = Join-Path $JenkinsRoot -ChildPath 'scripts'
 
+    #Set home directory of Jenkins install
+    $JenkinsHome = 'C:\ProgramData\Jenkins\.jenkins'
+
     Copy-Item $jenkinsScripts $systemRoot -Recurse -Force
 
     Stop-Service -Name Jenkins
-    $JenkinsHome = "${env:ProgramFiles(x86)}\Jenkins"
     $JenkinsConfigPath = Join-Path $JenkinsHome "config.xml"
     Copy-Item -Path $JenkinsConfigPath -Destination "$($JenkinsConfigPath).old" -Force
 
@@ -64,87 +70,89 @@ process {
 
     Write-Host "Updating Jenkins plugins" -ForegroundColor Green
     $JenkinsPlugins = @{
-        'cloudbees-folder' = '6.15'
-        'trilead-api' = '1.0.13'
-        'antisamy-markup-formatter' = '2.1'
-        'structs' = '1.23'
-        'workflow-step-api' = '2.23'
-        'token-macro' = '2.13'
-        'build-timeout' = '1.20'
-        'credentials' = '2.5'
-        'plain-credentials' = '1.7'
-        'ssh-credentials' = '1.18.1'
-        'credentials-binding' = '1.24'
-        'scm-api' = '2.6.4'
-        'workflow-api' = '2.46'
-        'timestamper' = '1.13'
-        'caffeine-api' = '2.9.1-23.v51c4e2c879c8'
-        'script-security' = '1.77'
-        'plugin-util-api' = '1.7.1'
-        'font-awesome-api' = '5.15.2-1'
-        'popper-api' = '1.16.1-1'
-        'jquery3-api' = '3.5.1-2'
-        'bootstrap4-api' = '4.6.0-1'
-        'snakeyaml-api' = '1.29.1'
-        'jackson2-api' = '2.12.3'
-        'echarts-api' = '4.9.0-3'
-        'display-url-api' = '2.3.5'
-        'workflow-support' = '3.8'
-        'workflow-job' = '2.41'
-        'checks-api' = '1.5.0'
-        'junit' = '1.51'
-        'matrix-project' = '1.18'
-        'resource-disposer' = '0.16'
-        'ws-cleanup' = '0.39'
-        'ant' = '1.11'
-        'durable-task' = '1.37'
-        'workflow-durable-task-step' = '2.35'
-        'command-launcher' = '1.6'
-        'jdk-tool' = '1.5'
-        'bouncycastle-api' = '2.20'
-        'ace-editor' = '1.1'
-        'workflow-scm-step' = '2.13'
-        'workflow-cps' = '2.92'
-        'apache-httpcomponents-client-4-api' = '4.5.13-1.0'
-        'mailer' = '1.32.1'
-        'workflow-basic-steps' = '2.21'
-        'gradle' = '1.36'
-        'pipeline-milestone-step' = '1.3.2'
-        'pipeline-input-step' = '2.12'
-        'pipeline-stage-step' = '2.5'
-        'pipeline-graph-analysis' = '1.11'
-        'pipeline-rest-api' = '2.19'
-        'handlebars' = '3.0.8'
-        'momentjs' = '1.1.1'
-        'pipeline-stage-view' = '2.19'
-        'pipeline-build-step' = '2.13'
-        'pipeline-model-api' = '1.8.5'
-        'pipeline-model-extensions' = '1.8.5'
-        'jsch' = '0.1.55.2'
-        'git-client' = '3.6.0'
-        'git-server' = '1.9'
-        'workflow-cps-global-lib' = '2.19'
-        'branch-api' = '2.6.2'
-        'workflow-multibranch' = '2.24'
-        'pipeline-stage-tags-metadata' = '1.8.5'
-        'pipeline-model-definition' = '1.8.5'
-        'lockable-resources' = '2.11'
-        'workflow-aggregator' = '2.6'
-        'jjwt-api' = '0.11.2-9.c8b45b8bb173'
-        'okhttp-api' = '3.14.9'
-        'github-api' = '1.123'
-        'git' = '4.6.0'
-        'github' = '1.33.1'
-        'github-branch-source' = '2.9.9'
-        'pipeline-github-lib' = '1.0'
-        'mapdb-api' = '1.0.9.0'
-        'subversion' = '2.14.4'
-        'ssh-slaves' = '1.31.5'
-        'matrix-auth' = '2.6.7'
-        'pam-auth' = '1.6'
-        'ldap' = '1.25'
-        'email-ext' = '2.83'
-        'powershell' = '1.5'
+        'ant' = '481.v7b_09e538fcca'
+        'apache-httpcomponents-client-4-api' = '4.5.14-150.v7a_b_9d17134a_5'
+        'bootstrap5-api' = '5.2.2-1'
+        'bouncycastle-api' = '2.27'
+        'branch-api' = '2.1071.v1a_188a_562481'
+        'build-timeout' = '1.28'
+        'caffeine-api' = '2.9.3-65.v6a_47d0f4d1fe'
+        'checks-api' = '2.0.0'
+        'commons-lang3-api' = '3.12.0-36.vd97de6465d5b_'
+        'commons-text-api' = '1.10.0-36.vc008c8fcda_7b_'
+        'credentials-binding' = '523.vd859a_4b_122e6'
+        'credentials' = '1224.vc23ca_a_9a_2cb_0'
+        'display-url-api' = '2.3.7'
+        'durable-task' = '504.vb10d1ae5ba2f'
+        'echarts-api' = '5.4.0-2'
+        'email-ext' = '2.95'
+        'cloudbees-folder' = '6.815.v0dd5a_cb_40e0e'
+        'font-awesome-api' = '6.3.0-1'
+        'git-client' = '4.2.0'
+        'git' = '5.0.0'
+        'github-api' = '1.303-417.ve35d9dd78549'
+        'github-branch-source' = '1701.v00cc8184df93'
+        'github' = '1.37.0'
+        'gradle' = '2.3.2'
+        'instance-identity' = '142.v04572ca_5b_265'
+        'ionicons-api' = '45.vf54fca_5d2154'
+        'jackson2-api' = '2.14.2-319.v37853346a_229'
+        'jakarta-activation-api' = '2.0.1-3'
+        'jakarta-mail-api' = '2.0.1-3'
+        'jjwt-api' = '0.11.5-77.v646c772fddb_0'
+        'javax-activation-api' = '1.2.0-6'
+        'javax-mail-api' = '1.6.2-9'
+        'jaxb' = '2.3.8-1'
+        'jquery3-api' = '3.6.3-1'
+        'junit' = '1189.v1b_e593637fa_e'
+        'ldap' = '671.v2a_9192a_7419d'
+        'mailer' = '448.v5b_97805e3767'
+        'matrix-auth' = '3.1.6'
+        'matrix-project' = '785.v06b_7f47b_c631'
+        'mina-sshd-api-common' = '2.9.2-50.va_0e1f42659a_a'
+        'mina-sshd-api-core' = '2.9.2-50.va_0e1f42659a_a'
+        'okhttp-api' = '4.10.0-132.v7a_7b_91cef39c'
+        'antisamy-markup-formatter' = '159.v25b_c67cd35fb_'
+        'pam-auth' = '1.10'
+        'workflow-aggregator' = '596.v8c21c963d92d'
+        'pipeline-graph-analysis' = '202.va_d268e64deb_3'
+        'workflow-api' = '1208.v0cc7c6e0da_9e'
+        'workflow-basic-steps' = '1010.vf7a_b_98e847c1'
+        'pipeline-build-step' = '487.va_823138eee8b_'
+        'pipeline-model-definition' = '2.2121.vd87fb_6536d1e'
+        'pipeline-model-extensions' = '2.2121.vd87fb_6536d1e'
+        'pipeline-github-lib' = '42.v0739460cda_c4'
+        'workflow-cps' = '3641.vf58904a_b_b_5d8'
+        'pipeline-groovy-lib' = '629.vb_5627b_ee2104'
+        'pipeline-input-step' = '466.v6d0a_5df34f81'
+        'workflow-job' = '1284.v2fe8ed4573d4'
+        'pipeline-milestone-step' = '111.v449306f708b_7'
+        'pipeline-model-api' = '2.2121.vd87fb_6536d1e'
+        'workflow-multibranch' = '733.v109046189126'
+        'workflow-durable-task-step' = '1234.v019404b_3832a'
+        'pipeline-rest-api' = '2.31'
+        'workflow-scm-step' = '400.v6b_89a_1317c9a_'
+        'pipeline-stage-step' = '305.ve96d0205c1c6'
+        'pipeline-stage-tags-metadata' = '2.2121.vd87fb_6536d1e'
+        'pipeline-stage-view' = '2.31'
+        'workflow-step-api' = '639.v6eca_cd8c04a_a_'
+        'workflow-support' = '839.v35e2736cfd5c'
+        'plain-credentials' = '143.v1b_df8b_d3b_e48'
+        'plugin-util-api' = '3.1.0'
+        'powershell' = '2.0'
+        'resource-disposer' = '0.21'
+        'scm-api' = '631.v9143df5b_e4a_a'
+        'script-security' = '1229.v4880b_b_e905a_6'
+        'snakeyaml-api' = '1.33-95.va_b_a_e3e47b_fa_4'
+        'ssh-slaves' = '2.877.v365f5eb_a_b_eec'
+        'ssh-credentials' = '305.v8f4381501156'
+        'sshd' = '3.275.v9e17c10f2571'
+        'structs' = '324.va_f5d6774f3a_d'
+        'timestamper' = '1.22'
+        'token-macro' = '321.vd7cc1f2a_52c8'
+        'trilead-api' = '2.84.v72119de229b_7'
+        'variant' = '59.vf075fe829ccb'
+        'ws-cleanup' = '0.44'  
     }
 
     foreach ($PluginName in $JenkinsPlugins.Keys) {
@@ -173,14 +181,14 @@ process {
     $JenkinsJson = @{
         JenkinsUri = "http://localhost:8080"
         JenkinsUser = "admin"
-        JenkinsPw = $(Get-Content "${env:ProgramFiles(x86)}\Jenkins\secrets\initialAdminPassword")
+        JenkinsPw = $(Get-Content "$JenkinsHome\secrets\initialAdminPassword")
     }
     $JenkinsJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\jenkins.json"
 
     Write-Host 'Jenkins setup complete' -ForegroundColor Green
     Write-Host 'Login to Jenkins at: http://locahost:8080' -ForegroundColor Green
     Write-Host 'Initial default Jenkins admin user password:' -ForegroundColor Green
-    Write-Host "$(Get-Content "${env:ProgramFiles(x86)}\Jenkins\secrets\initialAdminPassword")" -ForegroundColor Green
+    Write-Host "$(Get-Content "$JenkinsHome\secrets\initialAdminPassword")" -ForegroundColor Green
 
     Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
     New-QuickstartReadme
