@@ -7,7 +7,6 @@ C4B Quick-Start Guide Jenkins setup script
     - Install of Jenkins package
     - Silent upgrade of Jenkins plugins
     - Creation of Chocolatey-specific jobs from template files
-    - Disable of first-run prompts
 #>
 [CmdletBinding()]
 param(
@@ -59,14 +58,6 @@ process {
     Copy-Item $jenkinsScripts $systemRoot -Recurse -Force
 
     Stop-Service -Name Jenkins
-    $JenkinsConfigPath = Join-Path $JenkinsHome "config.xml"
-    Copy-Item -Path $JenkinsConfigPath -Destination "$($JenkinsConfigPath).old" -Force
-
-    # Ignore "first startup"
-    Write-Host "Disabling Jenkins first-run prompts" -ForegroundColor Green
-    Get-Content -Path "$($JenkinsConfigPath).old" |
-        Where-Object { $_ -notlike "*<installStateName>*" } |
-        Set-Content -Path $JenkinsConfigPath
 
     Write-Host "Updating Jenkins plugins" -ForegroundColor Green
     $JenkinsPlugins = @{
