@@ -40,7 +40,7 @@ process {
     & choco @chocoArgs
 
     # Install Jenkins
-    $chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress', "--version='2.387.1'")
+    $chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress')
     & choco @chocoArgs
 
     Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green

@@ -104,7 +104,7 @@ process {
     $chocoArgs = @('install', 'IIS-ApplicationInit', "--source='windowsfeatures'" ,'--no-progress', '-y')
     & choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='16.0.23055'", "--source='$Ccr'", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-web V 0.10.1"', '-y')
+    $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='16.0.23083'", "--source='$Ccr'", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-web V 0.10.1"', '-y')
     & choco @chocoArgs
 
     $chocoArgs = @('install', 'dotnet-6.0-runtime', "--source='$Ccr'", '--no-progress', '-y')
