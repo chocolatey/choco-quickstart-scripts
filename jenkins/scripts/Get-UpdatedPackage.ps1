@@ -16,12 +16,12 @@ Param (
 . "$PSScriptRoot\ConvertTo-ChocoObject.ps1"
 
 Write-Verbose "Getting list of local packages from '$LocalRepo'."
-$localPkgs = choco list --source $LocalRepo -r | ConvertTo-ChocoObject
+$localPkgs = choco search --source $LocalRepo -r | ConvertTo-ChocoObject
 Write-Verbose "Retrieved list of $(($localPkgs).count) packages from '$Localrepo'."
 
 $localPkgs | ForEach-Object {
     Write-Verbose "Getting remote package information for '$($_.name)'."
-    $remotePkg = choco list $_.name --source $RemoteRepo --exact -r | ConvertTo-ChocoObject
+    $remotePkg = choco search $_.name --source $RemoteRepo --exact -r | ConvertTo-ChocoObject
     if ([version]($remotePkg.version) -gt ([version]$_.version)) {
         Write-Verbose "Package '$($_.name)' has a remote version of '$($remotePkg.version)' which is later than the local version '$($_.version)'."
         Write-Verbose "Internalizing package '$($_.name)' with version '$($remotePkg.version)'."

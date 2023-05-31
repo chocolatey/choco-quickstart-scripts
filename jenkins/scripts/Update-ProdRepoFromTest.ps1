@@ -14,8 +14,8 @@ param (
 )
 
 Write-Verbose "Checking the list of packages available in the test and prod repositories"
-$testPkgs = choco list --source $TestRepo --all-versions --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version
-$prodPkgs = choco list --source $ProdRepo --all-versions --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version
+$testPkgs = choco search --source $TestRepo --all-versions --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version
+$prodPkgs = choco search --source $ProdRepo --all-versions --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version
 $tempPath = Join-Path -Path $env:TEMP -ChildPath ([GUID]::NewGuid()).GUID
 
 $Packages = if ($null -eq $testPkgs) {
