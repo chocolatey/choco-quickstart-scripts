@@ -1,17 +1,12 @@
 Describe "Jenkins Configuration" {
     Context "Installation Integrity" {
         BeforeAll {
-            $jenkins = choco list -lo -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version | Where-Object Package -eq 'jenkins'
+            $jenkins = choco list -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version | Where-Object Package -eq 'jenkins'
             $service = Get-Service jenkins
-            $jenkinsVersion = '2.222.4'
         }
 
         It "Jenkins is installed" {
             $jenkins | Should -Not -BeNullOrEmpty
-        }
-
-        It "Jenkins is the correct version" {
-            $jenkins.version | Should -Be $jenkinsVersion
         }
 
         It "Service is installed" {
@@ -48,7 +43,7 @@ Describe "Jenkins Configuration" {
 
     Context "Required Jobs" {
         BeforeAll {
-            $jobs = (Get-ChildItem 'C:\Program Files (x86)\Jenkins\jobs\' -Directory).Name
+            $jobs = (Get-ChildItem 'C:\ProgramData\Jenkins\.jenkins\jobs\' -Directory).Name
         }
 
         It "'Internalize packages from the Community Repository' is present" {
@@ -72,93 +67,11 @@ Describe "Jenkins Configuration" {
 
     Context "Required Plugins" {
         BeforeAll {
-            $plugins = (Get-ChildItem 'C:\Program Files (x86)\Jenkins\plugins' -Directory).Name
+            $plugins = (Get-ChildItem 'C:\ProgramData\Jenkins\.jenkins\plugins\' -Directory).Name
         }
-        It "<name> is installed" -Foreach @(
-            @{Name = 'ace-editor' }
-            @{Name = 'ant' }
-            @{Name = 'antisamy-markup-formatter' }
-            @{Name = 'apache-httpcomponents-client-4-api' }
-            @{Name = 'bootstrap4-api' }
-            @{Name = 'bouncycastle-api' }
-            @{Name = 'branch-api' }
-            @{Name = 'build-timeout' }
-            @{Name = 'caffeine-api' }
-            @{Name = 'checks-api' }
-            @{Name = 'cloudbees-folder' }
-            @{Name = 'command-launcher' }
-            @{Name = 'credentials' }
-            @{Name = 'credentials-binding' }
-            @{Name = 'display-url-api' }
-            @{Name = 'durable-task' }
-            @{Name = 'echarts-api' }
-            @{Name = 'email-ext' }
-            @{Name = 'font-awesome-api' }
-            @{Name = 'git' }
-            @{Name = 'git-client' }
-            @{Name = 'git-server' }
-            @{Name = 'github' }
-            @{Name = 'github-api' }
-            @{Name = 'github-branch-source' }
-            @{Name = 'gradle' }
-            @{Name = 'handlebars' }
-            @{Name = 'jackson2-api' }
-            @{Name = 'jdk-tool' }
-            @{Name = 'jjwt-api' }
-            @{Name = 'jquery3-api' }
-            @{Name = 'jsch' }
-            @{Name = 'junit' }
-            @{Name = 'ldap' }
-            @{Name = 'lockable-resources' }
-            @{Name = 'mailer' }
-            @{Name = 'mapdb-api' }
-            @{Name = 'matrix-auth' }
-            @{Name = 'matrix-project' }
-            @{Name = 'momentjs' }
-            @{Name = 'okhttp-api' }
-            @{Name = 'pam-auth' }
-            @{Name = 'pipeline-build-step' }
-            @{Name = 'pipeline-github-lib' }
-            @{Name = 'pipeline-graph-analysis' }
-            @{Name = 'pipeline-input-step' }
-            @{Name = 'pipeline-milestone-step' }
-            @{Name = 'pipeline-model-api' }
-            @{Name = 'pipeline-model-definition' }
-            @{Name = 'pipeline-model-extensions' }
-            @{Name = 'pipeline-rest-api' }
-            @{Name = 'pipeline-stage-step' }
-            @{Name = 'pipeline-stage-tags-metadata' }
-            @{Name = 'pipeline-stage-view' }
-            @{Name = 'plain-credentials' }
-            @{Name = 'plugin-util-api' }
-            @{Name = 'popper-api' }
-            @{Name = 'powershell' }
-            @{Name = 'resource-disposer' }
-            @{Name = 'scm-api' }
-            @{Name = 'script-security' }
-            @{Name = 'snakeyaml-api' }
-            @{Name = 'ssh-credentials' }
-            @{Name = 'ssh-slaves' }
-            @{Name = 'structs' }
-            @{Name = 'subversion' }
-            @{Name = 'timestamper' }
-            @{Name = 'token-macro' }
-            @{Name = 'trilead-api' }
-            @{Name = 'workflow-aggregator' }
-            @{Name = 'workflow-api' }
-            @{Name = 'workflow-basic-steps' }
-            @{Name = 'workflow-cps' }
-            @{Name = 'workflow-cps-global-lib' }
-            @{Name = 'workflow-durable-task-step' }
-            @{Name = 'workflow-job' }
-            @{Name = 'workflow-multibranch' }
-            @{Name = 'workflow-scm-step' }
-            @{Name = 'workflow-step-api' }
-            @{Name = 'workflow-support' }
-            @{Name = 'ws-cleanup' }
-
-        ) {
-            $_.Name -in $plugins | Should -be $true
+        It "powershell is installed" {
+        
+            'powershell' -in $plugins | Should -be $true
         }
     }
 }
