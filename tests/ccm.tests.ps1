@@ -21,7 +21,7 @@ Describe "Chocolatey Central Management Configuration" {
                 ([System.Net.WebRequest]::Create("https://$($Fqdn):24020/ChocolateyManagementService") -as [System.net.HttpWebRequest]).GetResponse().StatusCode 
             } 
             catch { 
-                $_.Exception.Message -match '500'
+                $_.Exception.Message -match '400'
             } 
 
         }

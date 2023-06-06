@@ -2,7 +2,7 @@
 Describe "Server Integrity" {
     Context "Required Packages" {
         BeforeAll {
-            $packages = choco list -lo -r | ConvertFrom-Csv -Delimiter '|' -Header Package, Version
+            $packages = choco list -r | ConvertFrom-Csv -Delimiter '|' -Header Package, Version
         }
 
         It "<Name> is installed"  -Foreach @( $JointPackages + $ServerOnlyPackages ) {
