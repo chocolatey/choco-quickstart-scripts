@@ -1605,6 +1605,41 @@ function Set-CcmCertificate {
 
 #endregion
 
+#region Jenkins Setup
+
+# Function to generate Jenkins password 
+function New-ServicePassword {
+    <#
+        .Synopsis
+            Generates and returns a suitably secure password suited for support calls
+    #>
+    [CmdletBinding()]
+    [OutputType([System.Security.SecureString])]
+    param(
+        [ValidateRange(1,128)]
+        [int]$Length = 64,
+
+        [char[]]$AvailableCharacters = @(
+            # Specifically excluding $, `, ;, #, etc such that pasting
+            # passwords into support scripts will be more predictable.
+            "!%()*+,-./<=>?@[\]^_"
+            48..57   # 0-9
+            65..90   # A-Z
+            97..122  # a-z
+        ).ForEach{[char[]]$_}
+    )
+    end {
+        $NewPassword = [System.Security.SecureString]::new()
+
+        while ($NewPassword.Length -lt $Length) {
+            $NewPassword.AppendChar(($AvailableCharacters | Get-Random))
+        }
+
+        $NewPassword
+    }
+}
+#endregion
+
 #region README functions
 function Remove-JsonFiles {
     <#
@@ -1654,7 +1689,7 @@ The host name of the C4B instance.
 
     process {
         $nexusPassword = Get-Content -Path 'C:\ProgramData\sonatype-work\nexus3\admin.password'
-        $jenkinsPassword = Get-Content -path 'C:\ProgramData\Jenkins\.jenkins\secrets\initialAdminPassword'
+        $jenkinsPassword = (Get-Content "$env:SystemDrive\choco-setup\logs\jenkins.json" | ConvertFrom-Json).JenkinsPw
         $nexusApiKey = (Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
 
         $tableData = @([pscustomobject]@{
@@ -1701,7 +1736,7 @@ The host name of the C4B instance.
     }</style>
     <body>
     <blockquote>
-<p>📝 <strong>Note</strong></p>
+<p><strong>Note</strong></p>
 <p>The following table provides the default credentials to login to each of the services made available as part of the Quickstart Guide setup process.</p> 
 You'll be asked to change the credentials upon logging into each service for the first time.
 Document your new credentials in a password manager, or whatever system you use.
