@@ -13,6 +13,11 @@ param (
     $TestRepo
 )
 
+if (([version] (choco --version).Split('-')[0]) -ge [version] '2.1.0') {
+    Write-Verbose "Clearing Chocolatey CLI cache to ensure latest package information is retrieved."
+    choco cache remove
+}
+
 Write-Verbose "Checking the list of packages available in the test and prod repositories"
 $testPkgs = choco search --source $TestRepo --all-versions --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version
 $prodPkgs = choco search --source $ProdRepo --all-versions --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version

@@ -102,6 +102,10 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
 
     Context "Package Availability" {
         BeforeAll {
+            if (([version] (choco --version).Split('-')[0]) -ge [version] '2.1.0') {
+                choco cache remove
+            }
+
             $packages = choco search -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version
         }
 

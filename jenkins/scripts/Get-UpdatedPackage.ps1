@@ -15,6 +15,11 @@ Param (
 
 . "$PSScriptRoot\ConvertTo-ChocoObject.ps1"
 
+if (([version] (choco --version).Split('-')[0]) -ge [version] '2.1.0') {
+    Write-Verbose "Clearing Chocolatey CLI cache to ensure latest package information is retrieved."
+    choco cache remove
+}
+
 Write-Verbose "Getting list of local packages from '$LocalRepo'."
 $localPkgs = choco search --source $LocalRepo -r | ConvertTo-ChocoObject
 Write-Verbose "Retrieved list of $(($localPkgs).count) packages from '$Localrepo'."
