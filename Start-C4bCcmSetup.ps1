@@ -104,13 +104,13 @@ process {
     $chocoArgs = @('install', 'IIS-ApplicationInit', "--source='windowsfeatures'" ,'--no-progress', '-y')
     & choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='16.0.23170'", "--source='$Ccr'", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-web V 0.10.1"', '-y')
+    $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='16.0.23172'", "--source='$Ccr'", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-web V 0.10.1"', '-y')
     & choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-6.0-runtime', '--version=16.0.19', "--source='$Ccr'", '--no-progress', '-y')
+    $chocoArgs = @('install', 'dotnet-6.0-runtime', '--version=6.0.20', "--source='$Ccr'", '--no-progress', '-y')
     & choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-6.0-aspnetruntime', '--version=16.0.19', "--source='$Ccr'", '--no-progress', '-y')
+    $chocoArgs = @('install', 'dotnet-6.0-aspnetruntime', '--version=6.0.20', "--source='$Ccr'", '--no-progress', '-y')
     & choco @chocoArgs
 
     # Install CCM DB package using Local SQL Express
