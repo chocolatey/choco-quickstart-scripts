@@ -25,7 +25,6 @@ $ServerOnlyPackages = @(
     @{Name = 'Pester' }
     @{Name = 'sql-server-express' }
     @{Name = 'sql-server-management-studio' }
-    @{Name = 'Temurinjre' }
     @{Name = 'Temurin11jre' }
     @{Name = 'vcredist140' }
 )
