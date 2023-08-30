@@ -43,7 +43,7 @@ process {
     [Environment]::SetEnvironmentVariable('JAVA_OPTS', '-Djenkins.install.runSetupWizard=false', 'Machine')
 
     # Install Jenkins
-    $chocoArgs = @('install', 'jenkins', '--version=2.414.1', '-y', "--source='$Source'", '--no-progress')
+    $chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress')
     & choco @chocoArgs
 
     Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
