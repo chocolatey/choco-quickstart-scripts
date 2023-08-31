@@ -162,14 +162,11 @@ process {
     $PkgsDir = "$env:SystemDrive\choco-setup\packages"
     $Ccr = "'https://community.chocolatey.org/api/v2/'"
 
-    # Download Chocolatey community related items, no internalization necessary
-    @('chocolatey', 'chocolateygui') |
-    Foreach-Object {
-        choco download $_ --no-progress --force --source $Ccr --output-directory $PkgsDir
-    }
+    # Download Chocolatey package from Ccr, no internalization necessary
+    choco download 'chocolatey' --no-progress --force --source $Ccr --output-directory $PkgsDir
 
-    # Internalize dotnet4.5.2 for ChocolateyGUI (just in case endpoints need it)
-    choco download dotnet4.5.2 --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source $Ccr  --output-directory $PkgsDir
+    # Internalize chocolateygui & all its dependencies
+    choco download chocolateygui --no-progress --force --internalize --internalize-all-urls --append-use-original-location --source $Ccr  --output-directory $PkgsDir
 
     # Download Licensed Packages
     ## DO NOT RUN WITH `--internalize` and `--internalize-all-urls` - see https://github.com/chocolatey/chocolatey-licensed-issues/issues/155
