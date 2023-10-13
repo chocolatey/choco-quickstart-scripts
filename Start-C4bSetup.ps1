@@ -35,19 +35,17 @@ param(
 )
 
 begin {
-    if ($host.name -ne 'ConsoleHost') {
+    if($host.name -ne 'ConsoleHost') {
         Write-Warning "This script cannot be ran from within PowerShell ISE"
         Write-Warning "Please launch powershell.exe as an administrator, and run this script again"
         break
     }
 
-    if ($env:CHOCO_QSG_DEVELOP) {
+    if($env:CHOCO_QSG_DEVELOP){
         $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/refs/heads/develop.zip"
-        $branchName = 'develop'
     }
     else {
         $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/main.zip"
-        $branchName = 'main'
     }
 }
 
@@ -140,18 +138,17 @@ process {
     $PkgsDir = "$ChocoPath\packages"
     $TempDir = "$ChocoPath\temp"
     $TestDir = "$ChocoPath\tests"
-    @($ChocoPath, $FilesDir, $PkgsDir, $TempDir, $TestDir) |
+    @($ChocoPath, $FilesDir, $PkgsDir, $TempDir,$TestDir) |
     Foreach-Object {
         $null = New-Item -Path $_ -ItemType Directory -Force
     }
 
     # Download and extract C4B setup files from repo
-
-    Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\$branchName.zip"
-    Expand-Archive "$TempDir\$branchName.zip" $TempDir
-    Copy-Item "$TempDir\choco-quickstart-scripts-$branchName\*" $FilesDir -Recurse
+    Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\main.zip"
+    Expand-Archive "$TempDir\main.zip" $TempDir
+    Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
     Remove-Item "$TempDir" -Recurse -Force
-    
+
     # Convert license to a "choco-license" package, and install it locally to test
     Write-Host "Creating a "chocolatey-license" package, and testing install." -ForegroundColor Green
     Set-Location $FilesDir
