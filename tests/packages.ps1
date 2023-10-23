@@ -32,5 +32,6 @@ $RepositoryOnlyPackages = @(
     @{Name = 'chocolatey-dotnetfx.extension' }
     @{Name = 'chocolateygui' }
     @{Name = 'chocolateygui.extension' }
+    @{Name = 'dotnet4.5.2' }
     @{Name = 'dotnetfx' }
 )
