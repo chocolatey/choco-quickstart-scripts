@@ -62,13 +62,8 @@ $hostAddress = $RepositoryUrl.Split('/')[2]
 $hostName = ($hostAddress -split ':')[0]
 
 $params = @{
-    RepositoryUrl     = $RepositoryUrl
     ChocolateyVersion = $ChocolateyVersion
     IgnoreProxy       = $IgnoreProxy
-}
-
-if ($Credential) {
-    $params.Add('Credential', $Credential)
 }
 
 if (-not $IgnoreProxy) {
@@ -86,8 +81,30 @@ if ($Credential) {
     $webClient.Credentials = $Credential.GetNetworkCredential()
 }
 
+# Find the latest version of Chocolatey, if a version was not specified
+$NupkgUrl = if (-not $ChocolateyVersion) {
+    $QueryString = "((Id eq 'chocolatey') and (not IsPrerelease)) and IsLatestVersion"
+    $Query = 'Packages()?$filter={0}' -f [uri]::EscapeUriString($queryString)
+    $QueryUrl = ($RepositoryUrl.TrimEnd('/'), $Query) -join '/'
+
+    [xml]$result = $webClient.DownloadString($QueryUrl)
+    $result.feed.entry.content.src
+} else {
+    # Otherwise, assume the URL
+    "$($RepositoryUrl.Trim('/'))/chocolatey/$($ChocolateyVersion)"
+}
+
+# Download the NUPKG
+$NupkgPath = Join-Path $env:TEMP "$(New-Guid).zip"
+$webClient.DownloadFile($NupkgUrl, $NupkgPath)
+
+# Add Parameter for ChocolateyDownloadUrl, that is the NUPKG path
+$params.Add('ChocolateyDownloadUrl', $NupkgPath)
+
+# Get the script content
 $script = $webClient.DownloadString("https://${hostAddress}/repository/choco-install/ChocolateyInstall.ps1")
 
+# Run the Chocolatey Install script with the parameters provided
 & ([scriptblock]::Create($script)) @params
 
 choco config set cacheLocation $env:ChocolateyInstall\choco-cache
@@ -109,14 +126,14 @@ choco upgrade chocolateygui.extension -y --source="'ChocolateyInternal'" --no-pr
 
 choco upgrade chocolatey-agent -y --source="'ChocolateyInternal'"
 
-#Self-Service configuration
+# Self-Service configuration
 choco feature disable --name="'showNonElevatedWarnings'"
 choco feature enable --name="'useBackgroundService'"
 choco feature enable --name="'useBackgroundServiceWithNonAdministratorsOnly'"
 choco feature enable --name="'allowBackgroundServiceUninstallsFromUserInstallsOnly'"
 choco config set --name="'backgroundServiceAllowedCommands'" --value="'install,upgrade,uninstall'"
 
-#CCM Check-in Configuration
+# CCM Check-in Configuration
 choco config set CentralManagementServiceUrl "https://${hostName}:24020/ChocolateyManagementService"
 if ($ClientSalt) {
     choco config set centralManagementClientCommunicationSaltAdditivePassword $ClientSalt
