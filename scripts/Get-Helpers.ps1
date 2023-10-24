@@ -1638,6 +1638,55 @@ function New-ServicePassword {
         $NewPassword
     }
 }
+
+function New-JenkinsCredential {
+    [CmdletBinding()]
+    [OutputType([System.Management.Automation.PSCredential])]
+    Param(
+        [Parameter()]
+        [String]
+        $Username = 'admin',
+
+        [Parameter()]
+        [SecureString]
+        $Password = ((New-ServicePassword -Length 32))
+    )
+
+    process {
+        return [pscredential]::new($Username,$Password)
+    }
+}
+function Set-JenkinsAdminPassword {
+    [CmdletBinding()]
+    Param(
+        [Parameter()]
+        [String]
+        $AdminUserPath = (Resolve-Path "$JenkinsHome\users\admin_*\config.xml"),
+
+        [Parameter()]
+        [String]
+        $BCryptDllPath = "$PSScriptRoot\bcrypt.net.0.1.0\lib\net35\BCrypt.Net.dll",
+
+        [Parameter()]
+        [System.Management.Automation.PSCredential]
+        $Credential
+    )
+    if (-not (Test-Path "$PSScriptRoot\bcrypt.net.0.1.0\lib\net35\BCrypt.Net.dll")) {
+        $BCryptNugetUri = 'https://www.nuget.org/api/v2/package/BCrypt.Net/0.1.0'
+        $ZipPath = "$PSScriptRoot\bcrypt.net.0.1.0.zip"
+
+        Invoke-WebRequest -Uri $BCryptNugetUri -OutFile $ZipPath -UseBasicParsing
+        Expand-Archive -Path $ZipPath
+    }
+
+    Add-Type -Path "$BCryptDllPath"
+    $Salt = [bcrypt.net.bcrypt]::generatesalt(15)
+
+    # Can't load as XML document as file is XML v1.1
+    (Get-Content $AdminUserPath) -replace '<passwordHash>#jbcrypt:.+</passwordHash>',
+    "<passwordHash>#jbcrypt:$([bcrypt.net.bcrypt]::hashpassword($Credential.Password, $Salt))</passwordHash>" |
+    Set-Content $AdminUserPath -Force
+}
 #endregion
 
 #region README functions
