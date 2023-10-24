@@ -1639,23 +1639,38 @@ function New-ServicePassword {
     }
 }
 
-function New-JenkinsCredential {
+function Get-BcryptDll {
+    <#
+        .Synopsis
+            Finds the Bcrypt DLL if present, or downloads it if missing. Returns the full path to the DLL.
+        .Example
+            $BCryptDllPath = Get-BcryptDll
+        .Example
+            $BCryptDllPath = Get-BcryptDll -DestinationPath ~\Downloads
+    #>
     [CmdletBinding()]
-    [OutputType([System.Management.Automation.PSCredential])]
-    Param(
-        [Parameter()]
-        [String]
-        $Username = 'admin',
-
-        [Parameter()]
-        [SecureString]
-        $Password = ((New-ServicePassword -Length 32))
+    [OutputType([string])]
+    param(
+        # The path to find the DLL within, or extract the DLL to if unfound.
+        [Parameter(Position = 0)]
+        [string]$DestinationPath = (Join-Path $env:TEMP "bcrypt.net.0.1.0")
     )
-
-    process {
-        return [pscredential]::new($Username,$Password)
+    end {
+        if (-not (Test-Path $DestinationPath)) {
+            $null = New-Item -Path $DestinationPath -ItemType Directory -Force
+        }
+        $ZipPath = Join-Path $env:TEMP 'bcrypt.net.0.1.0.zip'
+        if (-not ($Files = Get-ChildItem $DestinationPath -Filter "BCrypt.Net.dll" -Recurse)) {
+            if (-not (Test-Path $ZipPath)) {
+                Invoke-WebRequest -Uri 'https://www.nuget.org/api/v2/package/BCrypt.Net/0.1.0' -OutFile $ZipPath -UseBasicParsing
+            }
+            Expand-Archive -Path $ZipPath -DestinationPath $DestinationPath
+            $Files = Get-ChildItem $DestinationPath -Recurse
+        }
+        $Files.Where{$_.Name -eq 'BCrypt.Net.dll'}.FullName
     }
 }
+
 function Set-JenkinsAdminPassword {
     [CmdletBinding()]
     Param(
@@ -1671,15 +1686,14 @@ function Set-JenkinsAdminPassword {
         [System.Management.Automation.PSCredential]
         $Credential
     )
-    if (-not (Test-Path "$PSScriptRoot\bcrypt.net.0.1.0\lib\net35\BCrypt.Net.dll")) {
-        $BCryptNugetUri = 'https://www.nuget.org/api/v2/package/BCrypt.Net/0.1.0'
-        $ZipPath = "$PSScriptRoot\bcrypt.net.0.1.0.zip"
-
-        Invoke-WebRequest -Uri $BCryptNugetUri -OutFile $ZipPath -UseBasicParsing
-        Expand-Archive -Path $ZipPath
+  
+    try {
+        $BCryptDllPath = Get-BcryptDll -ErrorAction Stop
+        Add-Type -Path $BCryptDllPath -ErrorAction Stop
+    } catch {
+        Write-Error "Could not get Bcrypt DLL:`n$_"
     }
 
-    Add-Type -Path "$BCryptDllPath"
     $Salt = [bcrypt.net.bcrypt]::generatesalt(15)
 
     # Can't load as XML document as file is XML v1.1
