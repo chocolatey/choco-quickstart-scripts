@@ -7,9 +7,9 @@ C4B Quick-Start Guide Nexus setup script
     - Install of Sonatype Nexus Repository Manager OSS instance
     - Edit configuration to allow running of scripts
     - Cleanup of all demo source repositories
-    - `ChocolateyInternal` NuGet v2 repository
-    - `ChocolateyTest` NuGet V2 repository
-    - `choco-install` raw repository, with a script for offline Chocolatey install
+    - Creates `ChocolateyInternal` NuGet repository
+    - Creates `ChocolateyTest` NuGet repository
+    - Creates `choco-install` raw repository, with a script for offline Chocolatey install
     - Setup of `ChocolateyInternal` on C4B Server as source, with API key
     - Setup of firewall rule for repository access
 #>
@@ -39,7 +39,7 @@ process {
     . .\scripts\Get-Helpers.ps1
 
     # Install base nexus-repository package
-    $chocoArgs = @('install','nexus-repository','-y',"--source='https://community.chocolatey.org/api/v2'",'--no-progress',"--package-parameters='/Fqdn:localhost'")
+    $chocoArgs = @('install','nexus-repository','-y',"--source='https://community.chocolatey.org/api/v2/'",'--no-progress',"--package-parameters='/Fqdn:localhost'")
     & choco @chocoArgs
 
     #Build Credential Object, Connect to Nexus
@@ -65,11 +65,11 @@ process {
     # Push all packages from previous steps to NuGet repo
     Get-ChildItem -Path "$env:SystemDrive\choco-setup\packages" -Filter *.nupkg |
         ForEach-Object {
-            choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyInternal').url)" --apikey $NugetApiKey --force
+            choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --apikey $NugetApiKey --force
         }
 
-    # Add ChooclateyInternal as a source repository
-    choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/" --priority 1
+    # Add ChocolateyInternal as a source repository
+    choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --priority 1
 
     # Install a non-IE browser for browsing the Nexus web portal.
     # Edge sometimes fails install due to latest Windows Updates not being installed.
@@ -108,7 +108,7 @@ process {
         NexusUri = "http://localhost:8081"
         NexusUser = "admin"
         NexusPw = "$($Credential.GetNetworkCredential().Password)"
-        NexusRepo = "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/"
+        NexusRepo = "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json"
         NuGetApiKey = $NugetApiKey
     }
     $NexusJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\nexus.json"

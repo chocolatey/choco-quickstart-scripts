@@ -9,13 +9,13 @@
         <hudson.model.StringParameterDefinition>
           <name>P_LOCAL_REPO_URL</name>
           <description>Internal test repository.</description>
-          <defaultValue>https://{{hostname}}:8443/repository/ChocolateyTest/</defaultValue>
+          <defaultValue>https://{{hostname}}:8443/repository/ChocolateyTest/index.json</defaultValue>
           <trim>true</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>P_REMOTE_REPO_URL</name>
           <description>Remote repository containing updated package versions.</description>
-          <defaultValue>https://community.chocolatey.org/api/v2</defaultValue>
+          <defaultValue>https://community.chocolatey.org/api/v2/</defaultValue>
           <trim>true</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.PasswordParameterDefinition>
