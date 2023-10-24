@@ -65,28 +65,8 @@ process {
 </jenkins.model.JenkinsLocationConfiguration>
 "@ | Out-File -FilePath $JenkinsHome\jenkins.model.JenkinsLocationConfiguration.xml -Encoding utf8
 
-    #region BCrypt Password
-    if (-not (Test-Path "$PSScriptRoot\bcrypt.net.0.1.0\lib\net35\BCrypt.Net.dll")) {
-        $BCryptNugetUri = 'https://www.nuget.org/api/v2/package/BCrypt.Net/0.1.0'
-        $ZipPath = "$PSScriptRoot\bcrypt.net.0.1.0.zip"
-
-        Invoke-WebRequest -Uri $BCryptNugetUri -OutFile $ZipPath -UseBasicParsing
-        Expand-Archive -Path $ZipPath
-    }
-
-    Add-Type -Path "$PSScriptRoot\bcrypt.net.0.1.0\lib\net35\BCrypt.Net.dll"
-    $Salt = [bcrypt.net.bcrypt]::generatesalt(15)
-
-    $JenkinsCred = [System.Net.NetworkCredential]::new(
-        "admin",
-        (New-ServicePassword -Length 32)
-    )
-
-    $AdminUserPath = Resolve-Path "$JenkinsHome\users\admin_*\config.xml"
-    # Can't load as XML document as file is XML v1.1
-    (Get-Content $AdminUserPath) -replace '<passwordHash>#jbcrypt:.+</passwordHash>',
-    "<passwordHash>#jbcrypt:$([bcrypt.net.bcrypt]::hashpassword($JenkinsCred.Password, $Salt))</passwordHash>" |
-    Set-Content $AdminUserPath -Force
+    #region Set Jenkins Password
+    $JenkinsCred = Set-JenkinsPassword -UserName 'admin' -NewPassword $(New-ServicePassword) -PassThru
     #endregion
 
     # Long winded way to get the scripts for Jenkins jobs into the right place, but easier to maintain going forward
@@ -184,14 +164,14 @@ process {
     $JenkinsJson = @{
         JenkinsUri  = "http://$($HostName):8080"
         JenkinsUser = "admin"
-        JenkinsPw   = $JenkinsCred.Password
+        JenkinsPw   = $JenkinsCred.GetNetworkCredential().Password
     }
     $JenkinsJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\jenkins.json"
 
     Write-Host 'Jenkins setup complete' -ForegroundColor Green
     Write-Host 'Login to Jenkins at: http://$($HostName):8080' -ForegroundColor Green
     Write-Host 'Initial default Jenkins admin user password:' -ForegroundColor Green
-    Write-Host "Admin Password is '$($JenkinsCred.Password)'" -ForegroundColor Green
+    Write-Host "Admin Password is '$($JenkinsJson.JenkinsPw)'" -ForegroundColor Green
 
     Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
     New-QuickstartReadme
