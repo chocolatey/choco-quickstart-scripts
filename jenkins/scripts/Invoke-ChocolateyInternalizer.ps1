@@ -9,7 +9,7 @@
     package.
 
     .EXAMPLE
-    ./Internalizer.ps1 -Package googlechrome -RepositoryUrl https://chocoserver:8443/repository/ChocolateyInternal/ -LocalRepoApiKey 61332b06-d849-476c-b2ab-a290372c17d7
+    ./Internalizer.ps1 -Package googlechrome -RepositoryUrl https://chocoserver:8443/repository/ChocolateyInternal/index.json -LocalRepoApiKey 61332b06-d849-476c-b2ab-a290372c17d7
 #>
 [CmdletBinding()]
 param(
@@ -31,7 +31,7 @@ param(
     # The remote repo to check against. Defaults to https://community.chocolatey.org/api/v2
     [Parameter(Position = 2)]
     [string]
-    $RemoteRepo = 'https://community.chocolatey.org/api/v2'
+    $RemoteRepo = 'https://community.chocolatey.org/api/v2/'
 )
 begin {
     if (!(Test-Path "$env:ChocolateyInstall\license")) {

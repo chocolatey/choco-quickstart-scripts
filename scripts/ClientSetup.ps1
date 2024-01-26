@@ -9,7 +9,7 @@ param(
     [Parameter()]
     [Alias('Url')]
     [string]
-    $RepositoryUrl = 'https://{{hostname}}:8443/repository/ChocolateyInternal/',
+    $RepositoryUrl = 'https://{{hostname}}:8443/repository/ChocolateyInternal/index.json',
 
     # The credential necessary to access the internal Nexus repository. This can
     # be ignored if Anonymous authentication is enabled.
@@ -85,13 +85,13 @@ if ($Credential) {
 $NupkgUrl = if (-not $ChocolateyVersion) {
     $QueryString = "((Id eq 'chocolatey') and (not IsPrerelease)) and IsLatestVersion"
     $Query = 'Packages()?$filter={0}' -f [uri]::EscapeUriString($queryString)
-    $QueryUrl = ($RepositoryUrl.TrimEnd('/'), $Query) -join '/'
+    $QueryUrl = ($RepositoryUrl.TrimEnd('/index.json'), $Query) -join '/'
 
     [xml]$result = $webClient.DownloadString($QueryUrl)
     $result.feed.entry.content.src
 } else {
     # Otherwise, assume the URL
-    "$($RepositoryUrl.Trim('/'))/chocolatey/$($ChocolateyVersion)"
+    "$($RepositoryUrl.TrimEnd('/index.json'))/chocolatey/$($ChocolateyVersion)"
 }
 
 # Download the NUPKG

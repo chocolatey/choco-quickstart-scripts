@@ -122,7 +122,7 @@ process {
     Write-Host "Nexus is ready!"
 
     choco source remove --name="'ChocolateyInternal'"
-    $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/"
+    $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/index.json"
 
     #Build Credential Object, Connect to Nexus
     $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
@@ -231,7 +231,7 @@ process {
 # Touch NOTHING below this line
 `$User = 'chocouser'
 `$SecurePassword = `$NexusUserPW | ConvertTo-SecureString -AsPlainText -Force
-`$RepositoryUrl = "https://`$(`$fqdn):8443/repository/ChocolateyInternal/"
+`$RepositoryUrl = "https://`$(`$fqdn):8443/repository/ChocolateyInternal/index.json"
 
 `$credential = [pscredential]::new(`$user, `$securePassword)
 

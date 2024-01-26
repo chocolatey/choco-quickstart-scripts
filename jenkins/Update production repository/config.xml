@@ -9,7 +9,7 @@
         <hudson.model.StringParameterDefinition>
           <name>P_PROD_REPO_URL</name>
           <description>URL to the production repository</description>
-          <defaultValue>https://{{hostname}}:8443/repository/ChocolateyInternal/</defaultValue>
+          <defaultValue>https://{{hostname}}:8443/repository/ChocolateyInternal/index.json</defaultValue>
           <trim>true</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.PasswordParameterDefinition>
@@ -20,7 +20,7 @@
         <hudson.model.StringParameterDefinition>
           <name>P_TEST_REPO_URL</name>
           <description>URL for the test repository.</description>
-          <defaultValue>https://{{hostname}}:8443/repository/ChocolateyTest/</defaultValue>
+          <defaultValue>https://{{hostname}}:8443/repository/ChocolateyTest/index.json</defaultValue>
           <trim>true</trim>
         </hudson.model.StringParameterDefinition>
       </parameterDefinitions>
