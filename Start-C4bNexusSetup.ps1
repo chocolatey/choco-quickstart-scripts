@@ -71,6 +71,22 @@ process {
     # Temporary workaround to reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
     Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
 
+    # Push latest ChocolateyInstall.ps1 to raw repo
+    $ScriptDir = "$env:SystemDrive\choco-setup\files\scripts"
+    $ChocoInstallScript = "$ScriptDir\ChocolateyInstall.ps1"
+
+    if (-not (Test-Path $ChocoInstallScript)) {
+        Invoke-WebRequest -Uri 'https://chocolatey.org/install.ps1' -OutFile $ChocoInstallScript
+    }
+
+    $Signature = Get-AuthenticodeSignature -FilePath $ChocoInstallScript
+
+    if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -eq 'CN="Chocolatey Software, Inc.", O="Chocolatey Software, Inc.", L=Topeka, S=Kansas, C=US') {
+        New-NexusRawComponent -RepositoryName 'choco-install' -File $ChocoInstallScript
+    } else {
+        Write-Error "ChocolateyInstall.ps1 script signature is not valid. Please investigate."
+    }
+
     # Add ChocolateyInternal as a source repository
     choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --priority 1
 

@@ -77,8 +77,9 @@ process {
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslCertificate-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
     
     # Dot-source helper functions
-    . .\scripts\Get-Helpers.ps1
-    #Collect current certificate configuration
+    $ScriptDir = Join-Path $PSScriptRoot "scripts"
+    . $ScriptDir\Get-Helpers.ps1
+    # Collect current certificate configuration
     $Certificate = if ($Subject) {
         Get-Certificate -Subject $Subject
     }
@@ -137,14 +138,6 @@ process {
 
     # Connect to Nexus
     Connect-NexusServer -Hostname $SubjectWithoutCn -Credential $Credential -UseSSL
-
-    # Add updated scripts to raw repo in Nexus
-
-    # Push ChocolateyInstall.ps1 to raw repo
-    $ScriptDir = "$env:SystemDrive\choco-setup\files\scripts"
-    $ChocoInstallScript = "$ScriptDir\ChocolateyInstall.ps1"
-    (Get-Content -Path $ChocoInstallScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ChocoInstallScript
-    New-NexusRawComponent -RepositoryName 'choco-install' -File "$ChocoInstallScript"
 
     # Push ClientSetup.ps1 to raw repo
     $ClientScript = "$ScriptDir\ClientSetup.ps1"
@@ -288,7 +281,7 @@ process {
 
         $ScriptBlock | Set-Content -Path $EndpointScript
 
-        #Agent Setup
+        # Agent Setup
         $agentArgs = @{
             CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
             ServiceSalt = $ServiceSaltValue
@@ -300,14 +293,14 @@ process {
 
     else {
 
-         #Agent Setup
+         # Agent Setup
          $agentArgs = @{
             CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
         }
 
         Install-ChocolateyAgent @agentArgs
 
-        #Register endpoint script
+        # Register endpoint script
         (Get-Content -Path $EndpointScript) -replace "{{hostname}}", "'$SubjectWithoutCn'" | Set-Content -Path $EndpointScript
         if ($IsSelfSigned) {
             $ScriptBlock = @"
