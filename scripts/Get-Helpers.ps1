@@ -1638,6 +1638,104 @@ function New-ServicePassword {
         $NewPassword
     }
 }
+
+function Get-BcryptDll {
+    <#
+        .Synopsis
+            Finds the Bcrypt DLL if present, or downloads it if missing. Returns the full path to the DLL.
+        .Example
+            $BCryptDllPath = Get-BcryptDll
+        .Example
+            $BCryptDllPath = Get-BcryptDll -DestinationPath ~\Downloads
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        # The path to find the DLL within, or extract the DLL to if unfound.
+        [Parameter(Position = 0)]
+        [string]$DestinationPath = (Join-Path $env:TEMP "bcrypt.net.0.1.0")
+    )
+    end {
+        if (-not (Test-Path $DestinationPath)) {
+            $null = New-Item -Path $DestinationPath -ItemType Directory -Force
+        }
+        $ZipPath = Join-Path $env:TEMP 'bcrypt.net.0.1.0.zip'
+        if (-not ($Files = Get-ChildItem $DestinationPath -Filter "BCrypt.Net.dll" -Recurse)) {
+            if (-not (Test-Path $ZipPath)) {
+                Invoke-WebRequest -Uri 'https://www.nuget.org/api/v2/package/BCrypt.Net/0.1.0' -OutFile $ZipPath -UseBasicParsing
+            }
+            Expand-Archive -Path $ZipPath -DestinationPath $DestinationPath
+            $Files = Get-ChildItem $DestinationPath -Recurse
+        }
+        $Files.Where{$_.Name -eq 'BCrypt.Net.dll'}.FullName
+    }
+}
+
+function Set-JenkinsPassword {
+    <#
+        .Synopsis
+            Sets the password for a Jenkins user.
+        .Example
+            Set-JenkinsPassword -UserName 'admin' -NewPassword $JenkinsCred.Password
+            # Sets the password to a known value
+        .Example
+            Set-JenkinsPassword -Credential $JenkinsCred
+            # Sets the password to a known value
+        .Example
+            $JenkinsCred = Set-JenkinsPassword -UserName 'admin' -NewPassword $(New-ServicePassword) -PassThru
+            # Sets the password and stores a credential object in $JenkinsCred.
+        .Notes
+            This probably will not work for federated and other non-standard accounts.
+    #>
+    [CmdletBinding(DefaultParameterSetName = 'Split')]
+    param(
+        # The credential of the user to try and set.
+        [Parameter(ParameterSetName = 'Cred', Mandatory, Position=0)]
+        [PSCredential]$Credential = [PSCredential]::new($UserName, $NewPassword),
+
+        # The name of the user to forcibly set the password for.
+        [Parameter(ParameterSetName = 'Split', Mandatory, Position=0)]
+        [string]$UserName = $Credential.UserName,
+
+        # The password to set for the user.
+        [Parameter(ParameterSetName = 'Split', Mandatory, Position=1)]
+        [SecureString]$NewPassword = $Credential.Password,
+
+        # If set, passes the credential object for the user back.
+        [Parameter()]
+        [switch]$PassThru,
+
+        # The path to the Jenkins data directory.
+        [Parameter()]
+        $JenkinsHome = (Join-Path $env:ProgramData "Jenkins\.jenkins")
+    )
+    try {
+        $BCryptDllPath = Get-BcryptDll -ErrorAction Stop
+        Add-Type -Path $BCryptDllPath -ErrorAction Stop
+    } catch {
+        Write-Error "Could not get Bcrypt DLL:`n$_"
+    }
+
+    $UserConfigPath = Resolve-Path "$JenkinsHome\users\$($UserName)_*\config.xml"
+    if ($UserConfigPath.Count -ne 1) {
+        Write-Error "$($UserConfigPath.Count) user config file(s) were found for user '$($UserName)'"
+    }
+    Write-Verbose "Updating '$($UserConfigPath)'"
+
+    # Can't load as XML document as file is XML v1.1
+    (Get-Content $UserConfigPath) -replace '<passwordHash>#jbcrypt:.*</passwordHash>',
+    "<passwordHash>#jbcrypt:$(
+        [bcrypt.net.bcrypt]::hashpassword(
+            ([System.Net.NetworkCredential]$Credential).Password,
+            ([bcrypt.net.bcrypt]::generatesalt(15))
+        )
+    )</passwordHash>" |
+    Set-Content $UserConfigPath -Force
+
+    if ($PassThru) {
+        $Credential
+    }
+}
 #endregion
 
 #region README functions
