@@ -1862,7 +1862,7 @@ function Set-JenkinsCertificate {
     )
 
     $KeyStore = "C:\ProgramData\Jenkins\.jenkins\keystore.jks"
-    $KeyTool = Convert-Path "C:\Program Files\Eclipse Adoptium\jre-11.*\bin\keytool.exe"  # Using Temurin11jre package keytool
+    $KeyTool = Convert-Path "C:\Program Files\Eclipse Adoptium\jre-*.*\bin\keytool.exe"  # Using Temurin11jre package keytool
     $Passkey = [System.Net.NetworkCredential]::new(
         "JksPassword",
         (New-ServicePassword -AvailableCharacters @(48..57 + 65..90 + 97..122))
