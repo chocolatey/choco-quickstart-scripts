@@ -82,38 +82,38 @@ process {
 
     Stop-Service -Name Jenkins
 
-    #region Jenkins Plugin Install & Update 
+    #region Jenkins Plugin Install & Update
     # Defining required plugins
-    # Plugin Versions Last Updated for Jenkins V 2.414.1 on 08-25-2023
+    # Plugin Versions Last Updated for Jenkins V 2.426.3 on 2024-02-05
     $JenkinsPlugins = @{
         'apache-httpcomponents-client-4-api' = '4.5.14-208.v438351942757'
-        'bouncycastle-api' = '2.29'
-        'branch-api' = '2.1122.v09cb_8ea_8a_724'
+        'bouncycastle-api' = '2.30.1.77-225.v26ea_c9455fd9'
+        'branch-api' = '2.1144.v1425d1c3d5a_7'
         'caffeine-api' = '3.1.8-133.v17b_1ff2e0599'
-        'cloudbees-folder' = '6.848.ve3b_fd7839a_81'
-        'display-url-api' = '2.3.9'
-        'durable-task' = '523.va_a_22cf15d5e0'
-        'instance-identity' = '173.va_37c494ec4e5'
+        'cloudbees-folder' = '6.858.v898218f3609d'
+        'display-url-api' = '2.200.vb_9327d658781'
+        'durable-task' = '547.vd1ea_007d100c'
+        'instance-identity' = '185.v303dc7c645f9'
         'ionicons-api' = '56.v1b_1c8c49374e'
         'jakarta-activation-api' = '2.0.1-3'
         'jakarta-mail-api' = '2.0.1-3'
         'javax-activation-api' = '1.2.0-6'
         'javax-mail-api' = '1.6.2-9'
         'mailer' = '463.vedf8358e006b_'
-        'pipeline-groovy-lib' = '671.v07c339c842e8'
-        'scm-api' = '676.v886669a_199a_a_'
-        'script-security' = '1273.v66c1964f0dfd'
-        'structs' = '325.vcb_307d2a_2782'
-        'variant' = '59.vf075fe829ccb'
-        'workflow-api' = '1261.va_2ff5204f17e'
+        'pipeline-groovy-lib' = '704.vc58b_8890a_384'
+        'scm-api' = '683.vb_16722fb_b_80b_'
+        'script-security' = '1321.va_73c0795b_923'
+        'structs' = '337.v1b_04ea_4df7c8'
+        'variant' = '60.v7290fc0eb_b_cd'
+        'workflow-api' = '1291.v51fd2a_625da_7'
         'workflow-basic-steps' = '1042.ve7b_140c4a_e0c'
-        'workflow-cps' = '3773.v505e0052522c'
-        'workflow-durable-task-step' = '1289.v4d3e7b_01546b_'
-        'workflow-job' = '1341.vd9fa_65f771dd'
-        'workflow-multibranch' = '756.v891d88f2cd46'
+        'workflow-cps' = '3853.vb_a_490d892963'
+        'workflow-durable-task-step' = '1327.ve57634fb_09ce'
+        'workflow-job' = '1385.vb_58b_86ea_fff1'
+        'workflow-multibranch' = '773.vc4fe1378f1d5'
         'workflow-scm-step' = '415.v434365564324'
-        'workflow-step-api' = '639.v6eca_cd8c04a_a_'
-        'workflow-support' = '848.v5a_383b_d14921'
+        'workflow-step-api' = '657.v03b_e8115821b_'
+        'workflow-support' = '865.v43e78cc44e0d'
     }
 
     # Performance is killed by Invoke-WebRequest's progress bars, turning them off to speed this up
