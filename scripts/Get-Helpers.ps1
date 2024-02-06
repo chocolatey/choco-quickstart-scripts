@@ -1840,7 +1840,11 @@ The host name of the C4B instance.
 
 
     process {
-        $nexusPassword = Get-Content -Path 'C:\ProgramData\sonatype-work\nexus3\admin.password'
+        $nexusPassword = if (Test-Path "$env:SystemDrive\choco-setup\logs\nexus.json") {
+            (Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NexusPw
+        } elseif (Test-Path 'C:\ProgramData\sonatype-work\nexus3\admin.password') {
+            Get-Content 'C:\ProgramData\sonatype-work\nexus3\admin.password'
+        }
         $jenkinsPassword = (Get-Content "$env:SystemDrive\choco-setup\logs\jenkins.json" | ConvertFrom-Json).JenkinsPw
         $nexusApiKey = (Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
 
