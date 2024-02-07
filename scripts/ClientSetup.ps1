@@ -126,6 +126,9 @@ choco upgrade chocolateygui.extension -y --source="'ChocolateyInternal'" --no-pr
 
 choco upgrade chocolatey-agent -y --source="'ChocolateyInternal'"
 
+# Chocolatey Package Upgrade Resilience
+choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"
+
 # Self-Service configuration
 choco feature disable --name="'showNonElevatedWarnings'"
 choco feature enable --name="'useBackgroundService'"
