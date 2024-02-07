@@ -1,0 +1,232 @@
+<html>
+<head>
+</head>
+<title>Chocolatey For Business Quickstart Environment</title>
+<style>
+.strip-decoration {
+  text-decoration: none;
+  color: darkgrey;
+}
+.pw {
+  font-family: monospace;
+}
+.textshadow .blurry-text {
+  color: transparent;
+  text-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+code {
+  font-family: MyFancyCustomFont, monospace;
+  font-size: inherit;
+}
+p > code,
+li > code,
+dd > code,
+td > code {
+  background: #ffeff0;
+  word-wrap: break-word;
+  box-decoration-break: clone;
+  padding: .1rem .3rem .2rem;
+  border-radius: .2rem;
+}
+pre code {
+  display: block;
+  margin-right: 25%;
+  background: none;
+  white-space: pre;
+  -webkit-overflow-scrolling: touch;
+  overflow-x: scroll;
+  max-width: 100%;
+  min-width: 100px;
+  padding: 0;
+}
+.logo {
+    border-radius: 30%;
+    width: 20px;
+}
+table {
+    border-collapse: collapse;
+}
+td,
+th {
+    border: 0.1em solid rgba(0, 0, 0, 0.5);
+    padding: 0.25em 0.5em;
+    text-align: left;
+}
+blockquote {
+    width: 985px;
+    margin-left: 0em;
+    margin-right: 25%;
+    padding-left: 0.5em;
+    border-left: 0.1em solid rgba(0, 0, 0, 0.5);
+    border-radius: 3px;
+    background-color: lightgrey;
+    padding-top: 0.1em;
+    padding-bottom: 0.5em;
+}
+a {
+  color: #5c9fd8;
+  text-decoration: none;
+}
+ul {
+  list-style-type: none;
+}
+ul > li:before {
+  content: "-";
+  position: absolute;
+  margin-left: -1.1em;
+}
+li {
+  padding-bottom: 1em;
+}
+.row {
+  display: flex;
+  margin: 8px;
+  padding-top: 8px;
+}
+.column {
+  float: left;
+}
+.left {
+  width: 200px;
+}
+.right {
+  width: auto;
+}
+.header {
+  background-color: rgba(9,16,22,.95);
+  color: #fff;
+}
+.main {
+  margin-left: 20px;
+  margin-right: 20px;
+}
+body {
+  margin: 0;
+  font-family: "PT Sans", sans-serif;
+}
+h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+  margin-inline-start: 0px;
+  margin-inline-end: 0px;
+}
+h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  display: block;
+  margin-block-start: 0.83em;
+  margin-block-end: 0.83em;
+  margin-inline-start: 0px;
+  margin-inline-end: 0px;
+  padding-bottom: 0.5rem;
+  border-bottom: 3px solid rgba(92,159,216,.25);
+}</style>
+<script>
+function CopyToClipboard(id)
+{
+  var r = document.createRange();
+  r.selectNode(document.getElementById(id));
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(r);
+  document.execCommand('copy');
+  window.getSelection().removeAllRanges();
+}
+</script>
+<body>
+<div class="header">
+  <div class="row">
+    <div class="column left">
+      <img src="https://{{ ccm_fqdn }}/Common/Images/app-logo-on-light.svg" alt="Chocolatey Logo" width="169" style="display: block; margin: auto;">
+    </div>
+    <div class="column right">
+      <h1>Chocolatey for Business Quickstart Environment</h1>
+      <p style="margin-left: 0.5em"><i>Your C4B environment setup has completed!</i></p>
+    </div>
+  </div>
+</div>
+<div class="main">
+<h2 id="start">Getting Started</h2>
+<ul>
+  <li>Open the <a href="https://{{ ccm_fqdn }}:{{ ccm_port }}">Chocolatey Central Management dashboard</a></li>
+  <li>Login with the credentials named <b>Chocolatey Central Management</b> from the <a href="#accounts">table below</a><br><i>(if javascript is enabled, you can click the password to copy it to your clipboard)</i></li>
+  <li><a href="#connect">Install Chocolatey Agent on another computer</a></li>
+  <li><a href="https://docs.chocolatey.org/en-us/central-management/usage/website/deployments#creating-a-deployment">Create a new deployment</a>, or import <a href="https://ch0.co/deployment-templates">example deployments</a>.</li>
+  <li><a href="https://{{ jenkins_fqdn }}:{{ jenkins_port }}/job/Internalize%20packages%20from%20the%20Chocolatey%20Community%20and%20Licensed%20Repositories/build?delay=0sec">Internalize some new packages</a> with Jenkins</li>
+</ul>
+<h2 id="accounts">Accounts and Secrets</h2>
+<table>
+    <colgroup><col/><col/><col/><col/><col/><col/></colgroup>
+    <tr><th/><th>Name</th><th>Url</th><th>Username</th><th>Password</th><th>ApiKey</th></tr>
+    <tr>
+        <td><img src="https://{{ ccm_fqdn }}:{{ ccm_port }}/favicon.ico" class="logo"></td>
+        <td>Chocolatey Central Management</td>
+        <td><a href="https://{{ ccm_fqdn }}:{{ ccm_port }}">{{ ccm_fqdn }}:{{ ccm_port }}</a></td>
+        <td>ccmadmin</td>
+        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('ccmpw');return false;"><div id="ccmpw" class="pw blurry-text">{{ ccm_password | e }}</div></a></td>
+        <td>N/A</td>
+    </tr>
+    <tr>
+        <td><img src="https://{{ nexus_fqdn }}:{{ nexus_port }}/favicon.ico" class="logo"></td><td>Nexus</td>
+        <td><a href="https://{{ nexus_fqdn }}:{{ nexus_port }}">{{ nexus_fqdn }}:{{ nexus_port }}</a></td>
+        <td>admin</td>
+        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('nexuspw');return false;"><div id="nexuspw" class="pw blurry-text">{{ nexus_password | e }}</div></a></td>
+        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('nexusapi');return false;"><div id="nexusapi" class="blurry-text">{{ lookup('file', 'credentials/nexus_apikey') | default('Unavailable') }}</div></a></td>
+    </tr>
+    <tr>
+        <td><img src="https://{{ jenkins_fqdn }}:{{ jenkins_port }}/favicon.ico" class="logo"></td>
+        <td>Jenkins</td>
+        <td><a href="https://{{ jenkins_fqdn }}:{{ jenkins_port }}">{{ jenkins_fqdn }}:{{ jenkins_port }}</a></td>
+        <td>admin</td>
+        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('jenkinspw');return false;"><div id="jenkinspw" class="pw blurry-text">{{ jenkins_password | e }}</div></a></td>
+        <td>N/A</td>
+    </tr>
+</table>
+<br><br>
+<table>
+    <colgroup><col/><col/></colgroup>
+    <tr><th>Name</th><th>Value</th></tr>
+    <tr>
+        <td>Chocolatey Central Management Encryption Passphrase</td>
+        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('ccmkey');return false;"><div id="ccmkey" class="pw blurry-text">{{ ccm_encryption_password | e }}</div></a></td>
+    </tr>
+    <tr>
+        <td>Chocolatey Central Management Client Salt</td>
+        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('ccmclient');return false;"><div id="ccmclient" class="pw blurry-text">{{ ccm_client_salt | e }}</div></a></td>
+    </tr>
+    <tr>
+        <td>Chocolatey Central Management Service Salt</td>
+        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('ccmservice');return false;"><div id="ccmservice" class="pw blurry-text">{{ ccm_service_salt | e }}</div></a></td>
+    </tr>
+</table>
+<blockquote>
+<h3>📝 <strong>Note</strong></h3>
+<div style="margin-left: 2rem;">
+<p>The tables above provides credentials to login to each of the services made available as part of the deployment.</p>
+<p>Ensure you change them, store your new credentials and secrets in a secure manner, and delete the stored files.</p>
+</p></div></blockquote>
+
+<h2 id="connect">Adding Computers to Chocolatey Central Management</h2>
+<p>To connect a computer to the Chocolatey Central Management instance, you can use Ansible:</p>
+<pre><code>
+- name: Connect to Chocolatey Central Management
+  win_chocolateyagent:
+    ccm_hostname: {{ ccm_fqdn }}
+    client_salt: {{ ccm_client_salt | default('') | e }}
+    service_salt: {{ ccm_service_salt | default('') | e }}
+    repository:
+      - name: ChocolateyInternal
+        url: https://{{ nexus_fqdn }}:{{ nexus_port }}/repository/ChocolateyInternal/index.json
+        username: chocouser
+        password: {{ chocouser_password | e }}
+</code></pre>
+<p>You can use PowerShell:</p>
+<pre><code>
+  $Credential = [PSCredential]::new("chocouser", (ConvertTo-SecureString '{{ chocouser_password | e }}' -AsPlainText -Force))
+  Invoke-WebRequest https://{{ nexus_fqdn }}:{{ nexus_port }}/repository/choco-install/ClientSetup.ps1 -OutFile $env:Temp\ClientSetup.ps1 -Credential $Credential
+  $env:Temp\ClientSetup.ps1 -Credential $Credential -ClientSalt '{{ ccm_client_salt | default('') | e }}' -ServerSalt '{{ ccm_service_salt | default('') | e }}'
+</code></pre>
+</div>
+</body>
+</html>

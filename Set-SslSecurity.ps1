@@ -124,18 +124,14 @@ process {
         $response = try {
             Invoke-WebRequest "https://${SubjectWithoutCn}:8443" -UseBasicParsing -ErrorAction Stop
             Start-Sleep -Seconds 3
-        }
-        catch {
-            
-        }
-            
+        } catch {}
     } until($response.StatusCode -eq '200')
     Write-Host "Nexus is ready!"
 
     choco source remove --name="'ChocolateyInternal'"
     $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/index.json"
 
-    #Build Credential Object, Connect to Nexus
+    # Build Credential Object, Connect to Nexus
     $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
     $Credential = [System.Management.Automation.PSCredential]::new('admin', $securePw)
     
@@ -144,13 +140,13 @@ process {
 
     # Add updated scripts to raw repo in Nexus
 
-    #Push ChocolateyInstall.ps1 to raw repo
+    # Push ChocolateyInstall.ps1 to raw repo
     $ScriptDir = "$env:SystemDrive\choco-setup\files\scripts"
     $ChocoInstallScript = "$ScriptDir\ChocolateyInstall.ps1"
     (Get-Content -Path $ChocoInstallScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ChocoInstallScript
     New-NexusRawComponent -RepositoryName 'choco-install' -File "$ChocoInstallScript"
 
-    #Push ClientSetup.ps1 to raw repo
+    # Push ClientSetup.ps1 to raw repo
     $ClientScript = "$ScriptDir\ClientSetup.ps1"
     (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
     New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
@@ -213,6 +209,12 @@ process {
     $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
     & choco @chocoArgs
 
+    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\nexus.json" -Properties @{
+        NexusUri = "https://$($SubjectWithoutCn):8443"
+        NexusRepo = $RepositoryUrl
+        ChocoUserPassword = $NexusPw
+    }
+
     <# Jenkins #>
     $JenkinsHome = "C:\ProgramData\Jenkins\.jenkins"
 
@@ -226,6 +228,10 @@ process {
 
     # Add firewall rule for Jenkins
     netsh advfirewall firewall add rule name="Jenkins-7443" dir=in action=allow protocol=tcp localport=7443
+
+    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\jenkins.json" -Properties @{
+        JenkinsUri = "https://$($SubjectWithoutCn):7443"
+    }
 
     <# CCM #>
     # Remove old CCM web binding, and add new CCM web binding
@@ -307,6 +313,13 @@ Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-
 "@
         (Get-Content -Path $EndpointScript) -replace "# placeholder if using a self-signed cert", $ScriptBlock | Set-Content -Path $EndpointScript
         }
+    }
+
+    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\ccm.json" -Properties @{
+        CCMWebPortal = "https://$($SubjectWithoutCn)/Account/Login"
+        CCMServiceURL = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
+        ServiceSalt = $ServiceSaltValue
+        ClientSalt = $ClientSaltValue
     }
 
     # Save useful params to JSON
