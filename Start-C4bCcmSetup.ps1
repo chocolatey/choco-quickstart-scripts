@@ -152,7 +152,8 @@ process {
     }
 
     #Install CCM Web package
-    choco install chocolatey-management-web -y --package-parameters-sensitive="'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'" --no-progress
+    $chocoArgs = @('install', 'chocolatey-management-web', '-y', "--source='$PkgSrc'", "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
+    & choco @chocoArgs
 
     $CcmSvcUrl = choco config get centralManagementServiceUrl -r
     $CcmJson = @{

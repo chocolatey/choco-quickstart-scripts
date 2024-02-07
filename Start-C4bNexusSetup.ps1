@@ -68,6 +68,9 @@ process {
             choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --apikey $NugetApiKey --force
         }
 
+    # Temporary workaround to reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
+    Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
+
     # Add ChocolateyInternal as a source repository
     choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --priority 1
 
