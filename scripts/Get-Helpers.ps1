@@ -1791,6 +1791,54 @@ function Set-JenkinsPassword {
     }
 }
 
+function Set-JenkinsLocationConfiguration {
+    <#
+        .Synopsis
+            Sets the jenkinsUrl in the location configuration file.
+
+        .Example
+            Set-JenkinsURL -Url 'http://jenkins.fabrikam.com:8080'
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        # The full URI to access Jenkins on, including port and scheme.
+        [string]$Url,
+
+        # The address to use as the admin e-mail address.
+        [string]$AdminAddress = 'address not configured yet &lt;nobody@nowhere&gt;',
+
+        [string]$Path = "C:\ProgramData\Jenkins\.jenkins\jenkins.model.JenkinsLocationConfiguration.xml"
+    )
+    @"
+<?xml version='1.1' encoding='UTF-8'?>
+<jenkins.model.JenkinsLocationConfiguration>
+<adminAddress>$AdminAddress</adminAddress>
+<jenkinsUrl>$Url</jenkinsUrl>
+</jenkins.model.JenkinsLocationConfiguration>
+"@ | Out-File -FilePath $Path -Encoding utf8
+}
+
+function Invoke-TextReplacementInFile {
+    [CmdletBinding()]
+    param(
+        # The path to the file(s) to replace text in.
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Alias('FullName')]
+        [string]$Path,
+
+        # The replacements to make, in a key-value format.
+        [hashtable]$Replacement
+    )
+    process {
+        $Content = Get-Content -Path $Path -Raw
+        $Replacement.GetEnumerator().ForEach{
+            $Content = $Content -replace $_.Key, $_.Value
+        }
+        $Content | Set-Content -Path $Path -NoNewline
+    }
+}
+
 function Set-JenkinsCertificate {
     <#
         .Synopsis
@@ -1939,7 +1987,7 @@ The host name of the C4B instance.
             },
             [PSCustomObject]@{
                 Name     = 'Jenkins'
-                Url      = "http://${HostName}:8080"
+                Url      = "https://${HostName}:7443"
                 Username = "admin"
                 Password = $jenkinsPassword
             }

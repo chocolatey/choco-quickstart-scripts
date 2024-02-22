@@ -156,9 +156,6 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <li>Updates Jenkins plugins</li>
     > <li>Configures pre-downloaded Jenkins scripts for Package Internalizer automation</li>
     > <li>Sets up pre-defined Jenkins jobs for the scripts above</li>
-    > <li>Writes a Readme.html file to the Public Desktop with account information for C4B services</li>
-    > <li>Auto-opens README, CCM, Nexus, and Jenkins in your web browser</li>
-    > <li>Removes temporary JSON files used during provisioning</li>
     > </ul>
     > </details>
 
@@ -203,6 +200,9 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <li>Adds SSL certificate configuration for Nexus and CCM web portals</li>
     > <li>Generates a `Register-C4bEndpoint.ps1` script for you to easily set up endpoint clients</li>
     > <li>Outputs data to a JSON file to pass between scripts</li>
+    > <li>Writes a Readme.html file to the Public Desktop with account information for C4B services</li>
+    > <li>Auto-opens README, CCM, Nexus, and Jenkins in your web browser</li>
+    > <li>Removes temporary JSON files used during provisioning</li>
     > </ul>
     > </details>
 
