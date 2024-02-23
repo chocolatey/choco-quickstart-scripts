@@ -35,8 +35,8 @@ process {
     # Dot-source helper functions
     . .\scripts\Get-Helpers.ps1
 
-    # Install temurin11jre to meet JRE11 depdency of Jenkins
-    $chocoArgs = @('install', 'temurin11jre', '-y', "--source='$Source'", '--no-progress')
+    # Install temurin21jre to meet JRE>11 dependency of Jenkins
+    $chocoArgs = @('install', 'temurin21jre', '-y', "--source='$Source'", '--no-progress', "--params='/ADDLOCAL=FeatureJavaHome'")
     & choco @chocoArgs
 
     # Enviornment variable used to disbale jenkins instal login prompts
