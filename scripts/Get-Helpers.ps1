@@ -1790,6 +1790,82 @@ function Set-JenkinsPassword {
         $Credential
     }
 }
+
+function Set-JenkinsCertificate {
+    <#
+        .Synopsis
+            Updates a keystore and ensure Jenkins is configured to use an appropriate port and certificate for HTTPS access
+
+        .Example
+            Set-JenkinsCert -Thumbprint $Thumbprint
+
+        .Notes
+            Requires a Jenkins service restart after the changes have been made.
+    #>
+    [CmdletBinding()]
+    param(
+        # The thumbprint of the certificate to use
+        [Parameter(Mandatory)]
+        [String]$Thumbprint,
+
+        # The port to have HTTPS available on
+        [Parameter()]
+        [uint16]$Port = 7443
+    )
+
+    $KeyStore = "C:\ProgramData\Jenkins\.jenkins\keystore.jks"
+    $KeyTool = Convert-Path "C:\Program Files\Eclipse Adoptium\jre-11.*\bin\keytool.exe"  # Using Temurin11jre package keytool
+    $Passkey = [System.Net.NetworkCredential]::new(
+        "JksPassword",
+        (New-ServicePassword -AvailableCharacters @(48..57 + 65..90 + 97..122))
+    ).Password
+
+    if (Test-Path $KeyStore) {
+        Remove-Item $KeyStore -Force
+    }
+
+    # Generate the Keystore file
+    try {
+        $CertificatePath = Join-Path $env:Temp "$($Thumbprint).pfx"
+        $CertificatePassword = [System.Net.NetworkCredential]::new(
+            "TemporaryCertificatePassword",
+            (New-ServicePassword)
+        )
+
+        # Temporarily export the certificate as a PFX
+        $null = Get-ChildItem Cert:\LocalMachine\TrustedPeople\ | Where-Object {$_.Thumbprint -eq $Thumbprint} | Export-PfxCertificate -FilePath $CertificatePath -Password $CertificatePassword.SecurePassword
+
+        Write-Host "Do NOT " -NoNewline  # There is no way to hide the input, but the pipelining works after a second
+        $CurrentAlias = ($($CertificatePassword.Password | & $KeyTool -list -v -storetype PKCS12 -keystore $CertificatePath) -match "^Alias.*").Split(':')[1].Trim()
+        Write-Host ""  # Adds a newline, after this command has finished.
+
+        $null = & $KeyTool -importkeystore -srckeystore $CertificatePath -srcstoretype PKCS12 -srcstorepass $CertificatePassword.Password -destkeystore $KeyStore -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $Passkey *>&1
+        $null = & $KeyTool -keypasswd -keystore $KeyStore -alias jetty -storepass $Passkey -keypass $CertificatePassword.Password -new $Passkey *>&1
+    } finally {
+        # Clean up the exported certificate
+        Remove-Item $CertificatePath
+    }
+
+    # Update the Jenkins Configuration
+    $XmlPath = "C:\Program Files\Jenkins\jenkins.xml"
+    [xml]$Xml = Get-Content $XmlPath
+    @{
+        httpPort              = -1
+        httpsPort             = $Port
+        httpsKeyStore         = $KeyStore
+        httpsKeyStorePassword = $Passkey
+    }.GetEnumerator().ForEach{
+        if ($Xml.SelectSingleNode("/service/arguments")."#text" -notmatch [Regex]::Escape("--$($_.Key)=$($_.Value)")) {
+            $Xml.SelectSingleNode("/service/arguments")."#text" = $Xml.SelectSingleNode("/service/arguments")."#text" -replace "\s*--$($_.Key)=.+?\b", ""
+            $Xml.SelectSingleNode("/service/arguments")."#text" += " --$($_.Key)=$($_.Value)"
+        }
+    }
+    $Xml.Save($XmlPath)
+
+    if ((Get-Service Jenkins).Status -eq 'Running') {
+        Restart-Service Jenkins
+    }
+}
 #endregion
 
 #region README functions

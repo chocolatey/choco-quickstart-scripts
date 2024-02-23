@@ -180,13 +180,13 @@ process {
         Set-Location "$env:SystemDrive\choco-setup\files"
         .\Start-C4BNexusSetup.ps1
         .\Start-C4bCcmSetup.ps1 -DatabaseCredential $DatabaseCredential
+        .\Start-C4bJenkinsSetup.ps1
         if ($Thumbprint) {
             .\Set-SslSecurity.ps1 -Thumbprint $Thumbprint
         }
         else {
             .\Set-SslSecurity.ps1
         }
-        .\Start-C4bJenkinsSetup.ps1
     }
 
     $ErrorActionPreference = $DefaultEap

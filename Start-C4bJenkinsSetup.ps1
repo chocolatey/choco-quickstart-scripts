@@ -206,7 +206,7 @@ process {
         $Readme = 'file:///C:/Users/Public/Desktop/README.html'
         $Ccm = "https://${hostname}/Account/Login"
         $Nexus = "https://${hostname}:8443"
-        $Jenkins = 'http://localhost:8080'
+        $Jenkins = "https://${hostname}:7443"
         try {
             Start-Process msedge.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
         }

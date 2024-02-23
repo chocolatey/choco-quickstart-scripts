@@ -1,3 +1,10 @@
+[CmdletBinding()]
+Param(
+    [Parameter(Mandatory)]
+    [String]
+    $Fqdn
+)
+
 Describe "Jenkins Configuration" {
     Context "Installation Integrity" {
         BeforeAll {
@@ -61,7 +68,7 @@ Describe "Jenkins Configuration" {
 
     Context "Web Interface" {
         It "Jenkins Web UI should be available" {
-            ([System.Net.WebRequest]::Create('http://localhost:8080/login?from=%2F') -as [System.net.HttpWebRequest]).GetResponse().StatusCode -eq 'OK' | Should -Be $true
+            ([System.Net.WebRequest]::Create("https://$($Fqdn):7443/login?from=%2F") -as [System.net.HttpWebRequest]).GetResponse().StatusCode -eq 'OK' | Should -Be $true
         }
     }
 
@@ -70,144 +77,37 @@ Describe "Jenkins Configuration" {
             $plugins = (Get-ChildItem 'C:\ProgramData\Jenkins\.jenkins\plugins\' -Directory).Name
         }
 
-        It "apache-httpcomponents-client-4-api plugin is installed" {
-        
-            'apache-httpcomponents-client-4-api' -in $plugins | Should -be $true
-        }
-
-        It "bouncycastle-api plugin is installed" {
-        
-            'bouncycastle-api' -in $plugins | Should -be $true
-        }
-
-        It "branch-api plugin is installed" {
-        
-            'branch-api' -in $plugins | Should -be $true
-        }
-
-        It "caffeine-api plugin is installed" {
-        
-            'caffeine-api' -in $plugins | Should -be $true
-        }
-
-        It "cloudbees-folder plugin is installed" {
-        
-            'cloudbees-folder' -in $plugins | Should -be $true
-        }
-
-        It "display-url-api plugin is installed" {
-        
-            'display-url-api' -in $plugins | Should -be $true
-        }
-
-        It "durable-task plugin is installed" {
-        
-            'durable-task' -in $plugins | Should -be $true
-        }
-
-        It "instance-identity plugin is installed" {
-        
-            'instance-identity' -in $plugins | Should -be $true
-        }
-
-        It "ionicons-api plugin is installed" {
-        
-            'ionicons-api' -in $plugins | Should -be $true
-        }
-
-        It "jakarta-activation-api plugin is installed" {
-        
-            'jakarta-activation-api' -in $plugins | Should -be $true
-        }
-
-        It "jakarta-mail-api plugin is installed" {
-        
-            'jakarta-mail-api' -in $plugins | Should -be $true
-        }
-
-        It "javax-activation-api plugin is installed" {
-        
-            'javax-activation-api' -in $plugins | Should -be $true
-        }
-
-        It "javax-mail-api plugin is installed" {
-        
-            'javax-mail-api' -in $plugins | Should -be $true
-        }
-
-        It "mailer plugin is installed" {
-        
-            'mailer' -in $plugins | Should -be $true
-        }
-
-        It "pipeline-groovy-lib plugin is installed" {
-        
-            'pipeline-groovy-lib' -in $plugins | Should -be $true
-        }
-
-        It "scm-api plugin is installed" {
-        
-            'scm-api' -in $plugins | Should -be $true
-        }
-
-        It "script-security plugin is installed" {
-        
-            'script-security' -in $plugins | Should -be $true
-        }
-
-        It "structs plugin is installed" {
-        
-            'structs' -in $plugins | Should -be $true
-        }
-
-        It "variant plugin is installed" {
-        
-            'variant' -in $plugins | Should -be $true
-        }
-
-        It "workflow-api plugin is installed" {
-        
-            'workflow-api' -in $plugins | Should -be $true
-        }
-
-        It "workflow-basic-steps plugin is installed" {
-        
-            'workflow-basic-steps' -in $plugins | Should -be $true
-        }
-
-        It "workflow-cps plugin is installed" {
-        
-            'workflow-cps' -in $plugins | Should -be $true
-        }
-
-        It "workflow-durable-task-step plugin is installed" {
-        
-            'workflow-durable-task-step' -in $plugins | Should -be $true
-        }
-
-        It "workflow-job plugin is installed" {
-        
-            'workflow-job' -in $plugins | Should -be $true
-        }
-
-        It "workflow-multibranch plugin is installed" {
-        
-            'workflow-multibranch' -in $plugins | Should -be $true
-        }
-
-        It "workflow-scm-step plugin is installed" {
-        
-            'workflow-scm-step' -in $plugins | Should -be $true
-        }
-
-        It "workflow-step-api plugin is installed" {
-        
-            'workflow-step-api' -in $plugins | Should -be $true
-        }
-
-        It "workflow-support plugin is installed" {
-        
-            'workflow-support' -in $plugins | Should -be $true
+        It "<_> plugin is installed" -ForEach @(
+            'apache-httpcomponents-client-4-api'
+            'bouncycastle-api'
+            'branch-api'
+            'caffeine-api'
+            'cloudbees-folder'
+            'display-url-api'
+            'durable-task'
+            'instance-identity'
+            'ionicons-api'
+            'jakarta-activation-api'
+            'jakarta-mail-api'
+            'javax-activation-api'
+            'javax-mail-api'
+            'mailer'
+            'pipeline-groovy-lib'
+            'scm-api'
+            'script-security'
+            'structs'
+            'variant'
+            'workflow-api'
+            'workflow-basic-steps'
+            'workflow-cps'
+            'workflow-durable-task-step'
+            'workflow-job'
+            'workflow-multibranch'
+            'workflow-scm-step'
+            'workflow-step-api'
+            'workflow-support'
+        ) {
+            $_ -in $plugins | Should -be $true
         }
     }
 }

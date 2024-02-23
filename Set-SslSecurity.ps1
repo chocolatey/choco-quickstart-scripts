@@ -91,8 +91,8 @@ process {
         }
     }
 
-    #Nexus
-    #Stop Services/Processes/Websites required
+    <# Nexus #>
+    # Stop Services/Processes/Websites required
     Stop-Service nexus
 
     # Put certificate in TrustedPeople
@@ -202,6 +202,14 @@ process {
     $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
     & choco @chocoArgs
 
+    <# Jenkins #>
+    # Generate Jenkins keystore
+    Set-JenkinsCertificate -Thumbprint $Certificate.Thumbprint
+
+    # Add firewall rule for Jenkins
+    netsh advfirewall firewall add rule name="Jenkins-7443" dir=in action=allow protocol=tcp localport=7443
+
+    <# CCM #>
     # Remove old CCM web binding, and add new CCM web binding
     Stop-CcmService
     Remove-CcmBinding
@@ -282,7 +290,6 @@ Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-
         (Get-Content -Path $EndpointScript) -replace "# placeholder if using a self-signed cert", $ScriptBlock | Set-Content -Path $EndpointScript
         }
     }
-    
 
     # Save useful params to JSON
     $SslJson = @{
