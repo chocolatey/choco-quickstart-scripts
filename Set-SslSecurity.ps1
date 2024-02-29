@@ -134,7 +134,7 @@ process {
     # Build Credential Object, Connect to Nexus
     $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
     $Credential = [System.Management.Automation.PSCredential]::new('admin', $securePw)
-    
+
     # Connect to Nexus
     Connect-NexusServer -Hostname $SubjectWithoutCn -Credential $Credential -UseSSL
 
@@ -234,6 +234,9 @@ process {
     }
 
     <# CCM #>
+    # Update the service certificate
+    Set-CcmCertificate -CertificateThumbprint $Certificate.Thumbprint
+    
     # Remove old CCM web binding, and add new CCM web binding
     Stop-CcmService
     Remove-CcmBinding
