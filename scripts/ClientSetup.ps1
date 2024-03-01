@@ -118,6 +118,7 @@ else {
 }
 
 choco source disable --name="'Chocolatey'"
+choco source disable --name="'chocolatey.licensed'"
 
 choco upgrade chocolatey-license -y --source="'ChocolateyInternal'"
 choco upgrade chocolatey.extension -y --params="'/NoContextMenu'" --source="'ChocolateyInternal'" --no-progress
