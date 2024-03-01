@@ -131,6 +131,9 @@ process {
         Install-ChocoLicensed -LicenseFile $LicenseFile
     }
 
+    # Set Choco Server Chocolatey Configuration
+    choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"
+
     # Setup initial choco-setup directories
     Write-Host "Setting up initial directories in"$env:SystemDrive\choco-setup"" -ForegroundColor Green
     $ChocoPath = "$env:SystemDrive\choco-setup"
