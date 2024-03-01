@@ -13,24 +13,35 @@ certificate is placed in the required local machine store, and then the script
 generates SSL bindings for both Nexus and the Central Management website using the
 certificate.
 #>
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName='SelfSigned')]
 [OutputType([string])]
 param(
     # The certificate thumbprint that identifies the target SSL certificate in
     # the local machine certificate stores.
     # Ignored if supplied alongside -Subject.
-    [Parameter(ValueFromPipeline)]
+    [Parameter(ValueFromPipeline, ParameterSetName='Thumbprint')]
+    [ArgumentCompleter({
+        Get-ChildItem Cert:\LocalMachine\My | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new(
+                $_.Thumbprint,
+                $_.Thumbprint,
+                'ParameterValue',
+                $_.FriendlyName
+            )
+        }
+    })]
     [string]
     $Thumbprint = (Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Select-Object -ExpandProperty Thumbprint),
 
     # The certificate subject that identifies the target SSL certificate in
     # the local machine certificate stores.
-    [Parameter()]
+    [Parameter(ParameterSetName='Subject')]
     [string]
     $Subject,
 
     #If using a wildcard certificate, provide a DNS name you want to use to access services secured by the certificate.
-    [Parameter()]
+    [Parameter(ParameterSetName='Subject')]
+    [Parameter(ParameterSetName='Thumbprint')]
     [string]
     $CertificateDnsName,
 
@@ -44,7 +55,7 @@ param(
 
     # The C4B server hostname for which to generate a new self-signed certificate.
     # Ignored/unused if a certificate thumbprint or subject is supplied.
-    [Parameter()]
+    [Parameter(ParameterSetName='SelfSigned')]
     [string]
     $Hostname = [System.Net.Dns]::GetHostName(),
 
@@ -91,8 +102,8 @@ process {
         }
     }
 
-    #Nexus
-    #Stop Services/Processes/Websites required
+    <# Nexus #>
+    # Stop Services/Processes/Websites required
     Stop-Service nexus
 
     # Put certificate in TrustedPeople
@@ -113,33 +124,29 @@ process {
         $response = try {
             Invoke-WebRequest "https://${SubjectWithoutCn}:8443" -UseBasicParsing -ErrorAction Stop
             Start-Sleep -Seconds 3
-        }
-        catch {
-            
-        }
-            
+        } catch {}
     } until($response.StatusCode -eq '200')
     Write-Host "Nexus is ready!"
 
     choco source remove --name="'ChocolateyInternal'"
     $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/index.json"
 
-    #Build Credential Object, Connect to Nexus
+    # Build Credential Object, Connect to Nexus
     $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
     $Credential = [System.Management.Automation.PSCredential]::new('admin', $securePw)
-    
+
     # Connect to Nexus
     Connect-NexusServer -Hostname $SubjectWithoutCn -Credential $Credential -UseSSL
 
     # Add updated scripts to raw repo in Nexus
 
-    #Push ChocolateyInstall.ps1 to raw repo
+    # Push ChocolateyInstall.ps1 to raw repo
     $ScriptDir = "$env:SystemDrive\choco-setup\files\scripts"
     $ChocoInstallScript = "$ScriptDir\ChocolateyInstall.ps1"
     (Get-Content -Path $ChocoInstallScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ChocoInstallScript
     New-NexusRawComponent -RepositoryName 'choco-install' -File "$ChocoInstallScript"
 
-    #Push ClientSetup.ps1 to raw repo
+    # Push ClientSetup.ps1 to raw repo
     $ClientScript = "$ScriptDir\ClientSetup.ps1"
     (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
     New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
@@ -147,7 +154,7 @@ process {
     if ($Hardened) {        
         # Disable anonymous authentication
         Set-NexusAnonymousAuth -Disabled
-        
+
         if (-not (Get-NexusRole -Role 'chocorole' -ErrorAction SilentlyContinue)) {
             # Create Nexus role
             $RoleParams = @{
@@ -202,6 +209,34 @@ process {
     $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
     & choco @chocoArgs
 
+    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\nexus.json" -Properties @{
+        NexusUri = "https://$($SubjectWithoutCn):8443"
+        NexusRepo = $RepositoryUrl
+        ChocoUserPassword = $NexusPw
+    }
+
+    <# Jenkins #>
+    $JenkinsHome = "C:\ProgramData\Jenkins\.jenkins"
+
+    # Update Jenkins Jobs with Nexus URL
+    Get-ChildItem -Path "$JenkinsHome\jobs" -Recurse -File -Filter 'config.xml' | Invoke-TextReplacementInFile -Replacement @{
+        '(?<=https:\/\/)(?<HostName>.+)(?=:8443\/repository\/)' = $SubjectWithoutCn
+    }
+
+    # Generate Jenkins keystore
+    Set-JenkinsCertificate -Thumbprint $Certificate.Thumbprint
+
+    # Add firewall rule for Jenkins
+    netsh advfirewall firewall add rule name="Jenkins-7443" dir=in action=allow protocol=tcp localport=7443
+
+    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\jenkins.json" -Properties @{
+        JenkinsUri = "https://$($SubjectWithoutCn):7443"
+    }
+
+    <# CCM #>
+    # Update the service certificate
+    Set-CcmCertificate -CertificateThumbprint $Certificate.Thumbprint
+    
     # Remove old CCM web binding, and add new CCM web binding
     Stop-CcmService
     Remove-CcmBinding
@@ -282,7 +317,13 @@ Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-
         (Get-Content -Path $EndpointScript) -replace "# placeholder if using a self-signed cert", $ScriptBlock | Set-Content -Path $EndpointScript
         }
     }
-    
+
+    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\ccm.json" -Properties @{
+        CCMWebPortal = "https://$($SubjectWithoutCn)/Account/Login"
+        CCMServiceURL = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
+        ServiceSalt = $ServiceSaltValue
+        ClientSalt = $ClientSaltValue
+    }
 
     # Save useful params to JSON
     $SslJson = @{
@@ -298,6 +339,47 @@ end {
 
     # Hand back the created/found certificate to the caller.
     $Certificate
+
+    Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
+    New-QuickstartReadme
+
+    Write-Host 'Cleaning up temporary data'
+    Remove-JsonFiles
+
+    $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
+    $Timeout = New-TimeSpan -Seconds 10
+    $Stopwatch = [System.Diagnostics.Stopwatch]::new()
+    $Stopwatch.Start()
+    Write-Host $Message -NoNewline -ForegroundColor Green
+    do {
+        # wait for a key to be available:
+        if ([Console]::KeyAvailable) {
+            # read the key, and consume it so it won't
+            # be echoed to the console:
+            $keyInfo = [Console]::ReadKey($true)
+            Write-Host "`nSkipping the Opening of sites in your browser." -ForegroundColor Green
+            # exit loop
+            break
+        }
+        # write a dot and wait a second
+        Write-Host '.' -NoNewline -ForegroundColor Green
+        Start-Sleep -Seconds 1
+    }
+    while ($Stopwatch.Elapsed -lt $Timeout)
+    $Stopwatch.Stop()
+
+    if (-not ($keyInfo)) {
+        Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
+        $Readme = 'file:///C:/Users/Public/Desktop/README.html'
+        $Ccm = "https://$($SubjectWithoutCn)/Account/Login"
+        $Nexus = "https://$($SubjectWithoutCn):8443"
+        $Jenkins = "https://$($SubjectWithoutCn):7443"
+        try {
+            Start-Process msedge.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
+        } catch {
+            Start-Process chrome.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
+        }
+    }
 
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript

@@ -11,7 +11,7 @@ C4B Quick-Start Guide Jenkins setup script
 [CmdletBinding()]
 param(
     # Hostname of your C4B Server
-    [string]$HostName = $(Get-Content "$env:SystemDrive\choco-setup\logs\ssl.json" | ConvertFrom-Json).CertSubject,
+    [string]$HostName = $env:ComputerName,
     # Repo where you're installing Jenkins from, usually CCR
     [string]$Source = 'https://community.chocolatey.org/api/v2/',
     # API key of your Nexus repo, for Chocolatey Jenkins jobs to use
@@ -56,14 +56,8 @@ process {
     $JenkinsVersion | Out-File -FilePath $JenkinsHome\jenkins.install.UpgradeWizard.state -Encoding utf8
     $JenkinsVersion | Out-File -FilePath $JenkinsHome\jenkins.install.InstallUtil.lastExecVersion -Encoding utf8
 
-    # Set the external hostname, such that it's ready for use. This may change, but we've pinned Jenkin's version.
-    @"
-<?xml version='1.1' encoding='UTF-8'?>
-<jenkins.model.JenkinsLocationConfiguration>
-<adminAddress>address not configured yet &lt;nobody@nowhere&gt;</adminAddress>
-<jenkinsUrl>http://$($HostName):8080</jenkinsUrl>
-</jenkins.model.JenkinsLocationConfiguration>
-"@ | Out-File -FilePath $JenkinsHome\jenkins.model.JenkinsLocationConfiguration.xml -Encoding utf8
+    # Set the hostname, such that it's ready for use.
+    Set-JenkinsLocationConfiguration -Url "http://$($HostName):8080" -Path $JenkinsHome\jenkins.model.JenkinsLocationConfiguration.xml
 
     #region Set Jenkins Password
     $JenkinsCred = Set-JenkinsPassword -UserName 'admin' -NewPassword $(New-ServicePassword) -PassThru
@@ -146,14 +140,11 @@ process {
 
     #region Job Config
     Write-Host "Creating Chocolatey Jobs" -ForegroundColor Green
-    Get-ChildItem "$env:SystemDrive\choco-setup\files\jenkins" | Copy-Item -Destination "$JenkinsHome\jobs\" -Recurse
+    Get-ChildItem "$env:SystemDrive\choco-setup\files\jenkins" | Copy-Item -Destination "$JenkinsHome\jobs\" -Recurse -Force
 
-
-    Get-ChildItem -Path "$JenkinsHome\jobs" -Recurse -File -Filter 'config.xml' | ForEach-Object {
-        (Get-Content -Path $_.FullName -Raw) -replace
-        '{{NugetApiKey}}', $NuGetApiKey -replace
-        '{{hostname}}', $HostName |
-        Set-Content -Path $_.FullName
+    Get-ChildItem -Path "$JenkinsHome\jobs" -Recurse -File -Filter 'config.xml' | Invoke-TextReplacementInFile -Replacement @{
+        '{{NugetApiKey}}' = $NuGetApiKey
+        '(?<=https:\/\/)(?<HostName>.+)(?=:8443\/repository\/)' = $HostName
     }
     #endregion
 
@@ -169,51 +160,9 @@ process {
     $JenkinsJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\jenkins.json"
 
     Write-Host 'Jenkins setup complete' -ForegroundColor Green
-    Write-Host 'Login to Jenkins at: http://$($HostName):8080' -ForegroundColor Green
+    Write-Host "Login to Jenkins at: $($JenkinsJson.JenkinsUri)" -ForegroundColor Green
     Write-Host 'Initial default Jenkins admin user password:' -ForegroundColor Green
     Write-Host "Admin Password is '$($JenkinsJson.JenkinsPw)'" -ForegroundColor Green
-
-    Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
-    New-QuickstartReadme
-
-    Write-Host 'Cleaning up temporary data'
-    Remove-JsonFiles
-
-    $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
-    $Timeout = New-TimeSpan -Seconds 10
-    $Stopwatch = [System.Diagnostics.Stopwatch]::new()
-    $Stopwatch.Start()
-    Write-Host $Message -NoNewline -ForegroundColor Green
-    do {
-        # wait for a key to be available:
-        if ([Console]::KeyAvailable) {
-            # read the key, and consume it so it won't
-            # be echoed to the console:
-            $keyInfo = [Console]::ReadKey($true)
-            Write-Host "`nSkipping the Opening of sites in your browser." -ForegroundColor Green
-            # exit loop
-            break
-        }
-        # write a dot and wait a second
-        Write-Host '.' -NoNewline -ForegroundColor Green
-        Start-Sleep -Seconds 1
-    }
-    while ($Stopwatch.Elapsed -lt $Timeout)
-    $Stopwatch.Stop()
-
-    if (-not ($keyInfo)) {
-        Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
-        $Readme = 'file:///C:/Users/Public/Desktop/README.html'
-        $Ccm = "https://${hostname}/Account/Login"
-        $Nexus = "https://${hostname}:8443"
-        $Jenkins = 'http://localhost:8080'
-        try {
-            Start-Process msedge.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
-        }
-        catch {
-            Start-Process chrome.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
-        }
-    }
 
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript

@@ -1790,6 +1790,146 @@ function Set-JenkinsPassword {
         $Credential
     }
 }
+
+function Set-JenkinsLocationConfiguration {
+    <#
+        .Synopsis
+            Sets the jenkinsUrl in the location configuration file.
+
+        .Example
+            Set-JenkinsURL -Url 'http://jenkins.fabrikam.com:8080'
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        # The full URI to access Jenkins on, including port and scheme.
+        [string]$Url,
+
+        # The address to use as the admin e-mail address.
+        [string]$AdminAddress = 'address not configured yet &lt;nobody@nowhere&gt;',
+
+        [string]$Path = "C:\ProgramData\Jenkins\.jenkins\jenkins.model.JenkinsLocationConfiguration.xml"
+    )
+    @"
+<?xml version='1.1' encoding='UTF-8'?>
+<jenkins.model.JenkinsLocationConfiguration>
+<adminAddress>$AdminAddress</adminAddress>
+<jenkinsUrl>$Url</jenkinsUrl>
+</jenkins.model.JenkinsLocationConfiguration>
+"@ | Out-File -FilePath $Path -Encoding utf8
+}
+
+function Invoke-TextReplacementInFile {
+    [CmdletBinding()]
+    param(
+        # The path to the file(s) to replace text in.
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Alias('FullName')]
+        [string]$Path,
+
+        # The replacements to make, in a key-value format.
+        [hashtable]$Replacement
+    )
+    process {
+        $Content = Get-Content -Path $Path -Raw
+        $Replacement.GetEnumerator().ForEach{
+            $Content = $Content -replace $_.Key, $_.Value
+        }
+        $Content | Set-Content -Path $Path -NoNewline
+    }
+}
+
+function Update-JsonFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path,
+
+        [Parameter(Mandatory)]
+        [hashtable]$Properties
+    )
+    $Json = Get-Content -Path $Path | ConvertFrom-Json
+    $Properties.GetEnumerator().ForEach{
+        Add-Member -InputObject $Json -MemberType NoteProperty -Name $_.Key -Value $_.Value -Force
+    }
+    $Json | ConvertTo-Json | Set-Content -Path $Path
+}
+
+function Set-JenkinsCertificate {
+    <#
+        .Synopsis
+            Updates a keystore and ensure Jenkins is configured to use an appropriate port and certificate for HTTPS access
+
+        .Example
+            Set-JenkinsCert -Thumbprint $Thumbprint
+
+        .Notes
+            Requires a Jenkins service restart after the changes have been made.
+    #>
+    [CmdletBinding()]
+    param(
+        # The thumbprint of the certificate to use
+        [Parameter(Mandatory)]
+        [String]$Thumbprint,
+
+        # The port to have HTTPS available on
+        [Parameter()]
+        [uint16]$Port = 7443
+    )
+
+    $KeyStore = "C:\ProgramData\Jenkins\.jenkins\keystore.jks"
+    $KeyTool = Convert-Path "C:\Program Files\Eclipse Adoptium\jre-*.*\bin\keytool.exe"  # Using Temurin11jre package keytool
+    $Passkey = [System.Net.NetworkCredential]::new(
+        "JksPassword",
+        (New-ServicePassword -AvailableCharacters @(48..57 + 65..90 + 97..122))
+    ).Password
+
+    if (Test-Path $KeyStore) {
+        Remove-Item $KeyStore -Force
+    }
+
+    # Generate the Keystore file
+    try {
+        $CertificatePath = Join-Path $env:Temp "$($Thumbprint).pfx"
+        $CertificatePassword = [System.Net.NetworkCredential]::new(
+            "TemporaryCertificatePassword",
+            (New-ServicePassword)
+        )
+
+        # Temporarily export the certificate as a PFX
+        $null = Get-ChildItem Cert:\LocalMachine\TrustedPeople\ | Where-Object {$_.Thumbprint -eq $Thumbprint} | Export-PfxCertificate -FilePath $CertificatePath -Password $CertificatePassword.SecurePassword
+
+        Write-Host "Do NOT " -NoNewline  # There is no way to hide the input, but the pipelining works after a second
+        $CurrentAlias = ($($CertificatePassword.Password | & $KeyTool -list -v -storetype PKCS12 -keystore $CertificatePath) -match "^Alias.*").Split(':')[1].Trim()
+        Write-Host ""  # Adds a newline, after this command has finished.
+
+        $null = & $KeyTool -importkeystore -srckeystore $CertificatePath -srcstoretype PKCS12 -srcstorepass $CertificatePassword.Password -destkeystore $KeyStore -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $Passkey
+        $null = & $KeyTool -keypasswd -keystore $KeyStore -alias jetty -storepass $Passkey -keypass $CertificatePassword.Password -new $Passkey
+    } finally {
+        # Clean up the exported certificate
+        Remove-Item $CertificatePath
+    }
+
+    # Update the Jenkins Configuration
+    $XmlPath = "C:\Program Files\Jenkins\jenkins.xml"
+    [xml]$Xml = Get-Content $XmlPath
+    @{
+        httpPort              = -1
+        httpsPort             = $Port
+        httpsKeyStore         = $KeyStore
+        httpsKeyStorePassword = $Passkey
+    }.GetEnumerator().ForEach{
+        if ($Xml.SelectSingleNode("/service/arguments")."#text" -notmatch [Regex]::Escape("--$($_.Key)=$($_.Value)")) {
+            $Xml.SelectSingleNode("/service/arguments")."#text" = $Xml.SelectSingleNode("/service/arguments")."#text" -replace "\s*--$($_.Key)=.+?\b", ""
+            $Xml.SelectSingleNode("/service/arguments")."#text" += " --$($_.Key)=$($_.Value)"
+        }
+    }
+    $Xml.Save($XmlPath)
+
+    if ((Get-Service Jenkins).Status -eq 'Running') {
+        Restart-Service Jenkins
+    }
+}
 #endregion
 
 #region README functions
@@ -1831,83 +1971,42 @@ The host name of the C4B instance.
 ./New-QuickstartReadme.ps1 -HostName c4b.example.com
 #>
     [CmdletBinding()]
-    Param(
-        [Parameter()]
-        [string]
-        $HostName = $(Get-Content "$env:SystemDrive\choco-setup\logs\ssl.json" | ConvertFrom-Json).CertSubject
-
-    )
-
-
+    param()
     process {
-        $nexusPassword = if (Test-Path "$env:SystemDrive\choco-setup\logs\nexus.json") {
-            (Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NexusPw
-        } elseif (Test-Path 'C:\ProgramData\sonatype-work\nexus3\admin.password') {
-            Get-Content 'C:\ProgramData\sonatype-work\nexus3\admin.password'
+        try {
+            $CCMData = Get-Content "$env:SystemDrive\choco-setup\logs\ccm.json" | ConvertFrom-Json
+            $NexusData = Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json
+            $JenkinsData = Get-Content "$env:SystemDrive\choco-setup\logs\jenkins.json" | ConvertFrom-Json
+        } catch {
+            Write-Error "Unable to read JSON files. Ensure the Quickstart Guide has been completed."
         }
-        $jenkinsPassword = (Get-Content "$env:SystemDrive\choco-setup\logs\jenkins.json" | ConvertFrom-Json).JenkinsPw
-        $nexusApiKey = (Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
 
-        $tableData = @([pscustomobject]@{
-                Name     = 'Nexus'
-                Url      = "https://${HostName}:8443"
-                Username = "admin"
-                Password = $nexusPassword
-                ApiKey   = $nexusApiKey
-            },
-            [pscustomobject]@{
-                Name     = 'Central Management'
-                Url      = "https://${HostName}"
-                Username = "ccmadmin"
-                Password = '123qwe'
-            },
-            [PSCustomObject]@{
-                Name     = 'Jenkins'
-                Url      = "http://${HostName}:8080"
-                Username = "admin"
-                Password = $jenkinsPassword
-            }
-        )
+        Copy-Item $PSScriptRoot\ReadmeTemplate.html.j2 -Destination $env:Public\Desktop\Readme.html -Force
+        
+        # Working around the existing j2 template, so we can keep them roughly in sync
+        Invoke-TextReplacementInFile -Path $env:Public\Desktop\Readme.html -Replacement @{
+            # CCM Values
+            "{{ ccm_fqdn .*?}}" = ([uri]$CCMData.CCMWebPortal).DnsSafeHost
+            "{{ ccm_port .*?}}"     = ([uri]$CCMData.CCMWebPortal).Port
+            "{{ ccm_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($CCMData.DefaultPwToBeChanged)
 
+            # Chocolatey Configuration Values
+            "{{ ccm_encryption_password .*?}}" = "Requested on first run."
+            "{{ ccm_client_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode($CCMData.ClientSalt)
+            "{{ ccm_service_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode($CCMData.ServiceSalt)
+            "{{ chocouser_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($NexusData.ChocoUserPassword)
 
-        $html = @"
-    <html>
-    <head>
-    </head>
-    <title>Chocolatey For Business Service Defaults</title>
-    <style>
-    table {
-        border-collapse: collapse;
-    }
-    td,
-    th {
-        border: 0.1em solid rgba(0, 0, 0, 0.5);
-        padding: 0.25em 0.5em;
-        text-align: center;
-    }
-    blockquote {
-        margin-left: 0.5em;
-        padding-left: 0.5em;
-        border-left: 0.1em solid rgba(0, 0, 0, 0.5);
-    }</style>
-    <body>
-    <blockquote>
-<p><strong>Note</strong></p>
-<p>The following table provides the default credentials to login to each of the services made available as part of the Quickstart Guide setup process.</p> 
-You'll be asked to change the credentials upon logging into each service for the first time.
-Document your new credentials in a password manager, or whatever system you use.
-</p>
-</blockquote>
-    $(($TableData | ConvertTo-Html -Fragment))
-    </body>
-    </html>
-"@
+            # Nexus Values
+            "{{ nexus_fqdn .*?}}" = ([uri]$NexusData.NexusUri).DnsSafeHost
+            "{{ nexus_port .*?}}" = ([uri]$NexusData.NexusUri).Port
+            "{{ nexus_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($NexusData.NexusPw)
+            "{{ lookup\('file', 'credentials\/nexus_apikey'\) .*?}}" = $NexusJson.NuGetApiKey
 
-        $folder = Join-Path $env:Public 'Desktop'
-        $file = Join-Path $folder 'README.html'
-
-        $html | Set-Content $file
-
+            # Jenkins Values
+            "{{ jenkins_fqdn .*?}}" = ([uri]$JenkinsData.JenkinsUri).DnsSafeHost
+            "{{ jenkins_port .*?}}" = ([uri]$JenkinsData.JenkinsUri).Port
+            "{{ jenkins_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($JenkinsData.JenkinsPw)
+        }
     }
 }
 #endregion
