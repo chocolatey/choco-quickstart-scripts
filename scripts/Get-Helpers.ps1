@@ -1469,47 +1469,58 @@ function Set-NexusCert {
         $Port = 8443
     )
 
-    if ((Test-Path C:\ProgramData\nexus\etc\ssl\keystore.jks)) {
-        Remove-Item C:\ProgramData\nexus\etc\ssl\keystore.jks -Force
-    }
-
     $KeyTool = "C:\ProgramData\nexus\jre\bin\keytool.exe"
-    $password = "chocolatey" | ConvertTo-SecureString -AsPlainText -Force
-    $certificate = Get-ChildItem  Cert:\LocalMachine\TrustedPeople\ | Where-Object { $_.Thumbprint -eq $Thumbprint } | Sort-Object | Select-Object -First 1
+    $KeyStorePath = 'C:\ProgramData\nexus\etc\ssl\keystore.jks'
+    $KeystoreCredential = [NetworkCredential]::new(
+        "Keystore",
+        (New-ServicePassword)
+    )
+    $TempCertPath = Join-Path $env:TEMP "$(New-Guid).pfx"
 
-    Write-Host "Exporting .pfx file to C:\, will remove when finished" -ForegroundColor Green
-    $certificate | Export-PfxCertificate -FilePath C:\cert.pfx -Password $password
-    Get-ChildItem -Path c:\cert.pfx | Import-PfxCertificate -CertStoreLocation Cert:\LocalMachine\My -Exportable -Password $password
-    Write-Warning -Message "You'll now see prompts and other outputs, things are working as expected, don't do anything"
-    $string = ("chocolatey" | & $KeyTool -list -v -keystore C:\cert.pfx) -match '^Alias.*'
-    $currentAlias = ($string -split ':')[1].Trim()
+    try {
+        Write-Verbose "Exporting .pfx file to C:\, will remove when finished"
+        Get-ChildItem Cert:\LocalMachine\TrustedPeople\ | Where-Object { $_.Thumbprint -eq $Thumbprint } | Sort-Object | Select-Object -First 1 | Export-PfxCertificate -FilePath $TempCertPath -Password $KeystoreCredential.SecurePassword
+        # TODO: Is this the right place for this? # Get-ChildItem -Path $TempCertPath | Import-PfxCertificate -CertStoreLocation Cert:\LocalMachine\My -Exportable -Password $KeystoreCredential.SecurePassword
+        Write-Warning -Message "You'll now see prompts and other outputs, things are working as expected, don't do anything"
+        $string = ($KeystoreCredential.Password | & $KeyTool -list -v -keystore $TempCertPath) -match '^Alias.*'
+        $currentAlias = ($string -split ':')[1].Trim()
 
-    $passkey = '9hPRGDmfYE3bGyBZCer6AUsh4RTZXbkw'
-    & $KeyTool -importkeystore -srckeystore C:\cert.pfx -srcstoretype PKCS12 -srcstorepass chocolatey -destkeystore C:\ProgramData\nexus\etc\ssl\keystore.jks -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $passkey
-    & $KeyTool -keypasswd -keystore C:\ProgramData\nexus\etc\ssl\keystore.jks -alias jetty -storepass $passkey -keypass chocolatey -new $passkey
+        if ((Test-Path $KeyStorePath)) {
+            Remove-Item $KeyStorePath -Force
+        }
 
-    $xmlPath = 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
-    [xml]$xml = Get-Content -Path 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
-    foreach ($entry in $xml.Configure.New.Where{ $_.id -match 'ssl' }.Set.Where{ $_.name -match 'password' }) {
-        $entry.InnerText = $passkey
+        & $KeyTool -importkeystore -srckeystore $TempCertPath -srcstoretype PKCS12 -srcstorepass $KeystoreCredential.Password -destkeystore $KeyStorePath -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $KeystoreCredential.Password
+        & $KeyTool -keypasswd -keystore $KeyStorePath -alias jetty -storepass $KeystoreCredential.Password -keypass chocolatey -new $KeystoreCredential.Password
+
+        $xmlPath = 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
+        [xml]$xml = Get-Content -Path 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
+        foreach ($entry in $xml.Configure.New.Where{ $_.id -match 'ssl' }.Set.Where{ $_.name -match 'password' }) {
+            $entry.InnerText = $KeystoreCredential.Password
+        }
+
+        $xml.Save($xmlPath)
+    } finally {
+        if (Test-Path $TempCertPath) {
+            Remove-Item $TempCertPath -Force
+        }
     }
 
-    $xml.OuterXml | Set-Content -Path $xmlPath
+    $configPath = "C:\ProgramData\sonatype-work\nexus3\etc\nexus.properties"
 
-    Remove-Item C:\cert.pfx
-
-    $nexusPath = 'C:\ProgramData\sonatype-work\nexus3'
-    $configPath = "$nexusPath\etc\nexus.properties"
-
+    # Remove existing ssl config from the configuration
     (Get-Content $configPath) | Where-Object {$_ -notmatch "application-port-ssl="} | Set-Content $configPath
 
-    $configStrings = @('jetty.https.stsMaxAge=-1', "application-port-ssl=$Port", 'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml')
-    $configStrings | ForEach-Object {
+    # Ensure each line is added to the configuration
+    @(
+        'jetty.https.stsMaxAge=-1'
+        "application-port-ssl=$Port"
+        'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml'
+    ) | ForEach-Object {
         if ((Get-Content -Raw $configPath) -notmatch [regex]::Escape($_)) {
             $_ | Add-Content -Path $configPath
         }
     }
-    
+
     if ((Get-Service Nexus).Status -eq 'Running') {
         Restart-Service Nexus
     }
@@ -1521,18 +1532,9 @@ function Test-SelfSignedCertificate {
         [Parameter(ValueFromPipeline = $true)]
         $Certificate = (Get-ChildItem -Path Cert:LocalMachine\My | Where-Object { $_.FriendlyName -eq $SubjectWithoutCn })
     )
-
     process {
-
-        if ($Certificate.Subject -eq $Certificate.Issuer) {
-            return $true
-        }
-        else {
-            return $false
-        }
-
+        $Certificate.Subject -eq $Certificate.Issuer
     }
-
 }
 
 #endregion
