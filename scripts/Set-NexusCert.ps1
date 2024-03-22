@@ -12,14 +12,22 @@ Thumbprint value of certificate you want to run Nexus on. Make sure certificate 
 Port you have Nexus configured to run on.
 
 .EXAMPLE
-PS> .\Set-NexusCert.ps1 -Thumbprint 'Your_Certificate_Thumbprint_Value' -NexusPort 'Port_Number'
+PS> .\Set-NexusCert.ps1 -Thumbprint 'Your_Certificate_Thumbprint_Value' -Port 'Port_Number'
 #>
 
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [string]
-    $Thumbprint,
+    [ArgumentCompleter({
+        Get-ChildItem Cert:\LocalMachine\My | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new(
+                $_.Thumbprint,
+                $_.Thumbprint,
+                'ParameterValue',
+                $_.FriendlyName
+            )
+        }
+    })]
     [string]$Thumbprint,
 
     [Parameter()]
