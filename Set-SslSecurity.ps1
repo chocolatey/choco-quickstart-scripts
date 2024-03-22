@@ -112,12 +112,12 @@ process {
         }
     }
 
+    # Put certificate in TrustedPeople
+    Copy-CertToStore -Certificate $Certificate
+
     <# Nexus #>
     # Stop Services/Processes/Websites required
     Stop-Service nexus
-
-    # Put certificate in TrustedPeople
-    Copy-CertToStore -Certificate $Certificate
 
     # Generate Nexus keystore
     $null = New-NexusCert -Thumbprint $Certificate.Thumbprint
@@ -153,7 +153,7 @@ process {
     (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
     New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
 
-    if ($Hardened) {        
+    if ($Hardened) {
         # Disable anonymous authentication
         Set-NexusAnonymousAuth -Disabled
 
