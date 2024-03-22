@@ -10,14 +10,23 @@ Thumbprint value of the certificate you would like the Chocolatey Central Manage
 Please make sure the certificate is located in both the Cert:\LocalMachine\TrustedPeople\ and Cert:\LocalMachine\My certificate stores.
 
 .EXAMPLE
-PS> .\Set-CCMCert.ps1 -CertificateThumbprint 'Your_Certificate_Thumbprint_Value'
+PS> .\Set-CCMCert.ps1 -Thumbprint 'Your_Certificate_Thumbprint_Value'
 #>
 
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [String]
-    $CertificateThumbprint
+    [ArgumentCompleter({
+        Get-ChildItem Cert:\LocalMachine\My | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new(
+                $_.Thumbprint,
+                $_.Thumbprint,
+                'ParameterValue',
+                $_.FriendlyName
+            )
+        }
+    })]
+    [string]$Thumbprint
 )
 
 begin {
