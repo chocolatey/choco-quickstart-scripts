@@ -1458,11 +1458,15 @@ function Get-RemoteCertificate {
     }
 }
 
-function New-NexusCert {
+function Set-NexusCert {
     [CmdletBinding()]
     param(
-        [Parameter()]
-        $Thumbprint
+        # The thumbprint of the certificate to configure Nexus to use, from the LocalMachine\TrustedPeople store.
+        [Parameter(Mandatory)]
+        $Thumbprint,
+
+        # The port to set Nexus to use for https.
+        $Port = 8443
     )
 
     if ((Test-Path C:\ProgramData\nexus\etc\ssl\keystore.jks)) {
@@ -1497,13 +1501,18 @@ function New-NexusCert {
     $nexusPath = 'C:\ProgramData\sonatype-work\nexus3'
     $configPath = "$nexusPath\etc\nexus.properties"
 
-    $configStrings = @('jetty.https.stsMaxAge=-1', 'application-port-ssl=8443', 'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml')
+    (Get-Content $configPath) | Where-Object {$_ -notmatch "application-port-ssl="} | Set-Content $configPath
+
+    $configStrings = @('jetty.https.stsMaxAge=-1', "application-port-ssl=$Port", 'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml')
     $configStrings | ForEach-Object {
         if ((Get-Content -Raw $configPath) -notmatch [regex]::Escape($_)) {
             $_ | Add-Content -Path $configPath
         }
     }
     
+    if ((Get-Service Nexus).Status -eq 'Running') {
+        Restart-Service Nexus
+    }
 }
 
 function Test-SelfSignedCertificate {
