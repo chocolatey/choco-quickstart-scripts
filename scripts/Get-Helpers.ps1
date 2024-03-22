@@ -1793,7 +1793,6 @@ function Stop-CCMService {
 function Remove-CcmBinding {
     [CmdletBinding()]
     param()
-
     process {
         Write-Verbose "Removing existing bindings"
         netsh http delete sslcert ipport=0.0.0.0:443
@@ -1802,7 +1801,9 @@ function Remove-CcmBinding {
 
 function New-CcmBinding {
     [CmdletBinding()]
-    param()
+    param(
+        $Thumbprint
+    )
     Write-Verbose "Adding new binding https://${SubjectWithoutCn} to Chocolatey Central Management"
 
     $guid = [Guid]::NewGuid().ToString("B")
@@ -1834,13 +1835,14 @@ function Set-CcmCertificate {
         [String]
         $CertificateThumbprint
     )
-
     process {
-        Stop-Service chocolatey-central-management
         $jsonData = Get-Content $env:ChocolateyInstall\lib\chocolatey-management-service\tools\service\appsettings.json | ConvertFrom-Json
         $jsonData.CertificateThumbprint = $CertificateThumbprint
         $jsonData | ConvertTo-Json | Set-Content $env:chocolateyInstall\lib\chocolatey-management-service\tools\service\appsettings.json
-        Start-Service chocolatey-central-management
+
+        if ((Get-Service).Status -eq 'Running') {
+            Restart-Service chocolatey-central-management
+        }
     }
 }
 
