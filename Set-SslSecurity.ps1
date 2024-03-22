@@ -227,13 +227,12 @@ process {
     }
 
     <# CCM #>
+    Stop-CcmService    
     # Update the service certificate
     Set-CcmCertificate -CertificateThumbprint $Certificate.Thumbprint
-    
     # Remove old CCM web binding, and add new CCM web binding
-    Stop-CcmService
     Remove-CcmBinding
-    New-CcmBinding
+    New-CcmBinding -Thumbprint $Certificate.Thumbprint
     Start-CcmService
 
     # Create the site hosting the certificate import script on port 80
