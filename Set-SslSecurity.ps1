@@ -259,7 +259,6 @@ process {
     $EndpointScript = "$ScriptDir\Register-C4bEndpoint.ps1"
 
     if ($Hardened) {
-
         $ClientSaltValue = New-CCMSalt
         $ServiceSaltValue = New-CCMSalt
         $ScriptBlock = @"
@@ -301,10 +300,7 @@ process {
         }
 
         Install-ChocolateyAgent @agentArgs
-    }
-
-    else {
-
+    } else {
          # Agent Setup
          $agentArgs = @{
             CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
@@ -339,7 +335,6 @@ Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-
     }
     $SslJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ssl.json"
 }
-
 end {
     Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
     New-QuickstartReadme
