@@ -31,7 +31,12 @@ param(
     # the local machine certificate stores.
     # Only used in Unattend mode for the SSL setup script.
     [string]
-    $Thumbprint
+    $Thumbprint,
+    # The branch or Pull Request to download the C4B setup scripts from.
+    # Defaults to main.
+    [string]
+    [Alias('PR')]
+    $Branch = $env:CHOCO_QSG_BRANCH
 )
 
 begin {
@@ -41,11 +46,16 @@ begin {
         break
     }
 
-    if($env:CHOCO_QSG_DEVELOP){
-        $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/refs/heads/develop.zip"
-    }
-    else {
-        $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/main.zip"
+    $QsRepo = if ($Branch) {
+        if ((Invoke-RestMethod -Uri "https://api.github.com/repos/chocolatey/choco-quickstart-scripts/branches").name -contains $Branch) {
+            "https://api.github.com/repos/chocolatey/choco-quickstart-scripts/zipball/$Branch"
+        } elseif ($PullRequest = Invoke-RestMethod -Uri "https://api.github.com/repos/chocolatey/choco-quickstart-scripts/pulls/$Branch" -ErrorAction SilentlyContinue) {
+            $PullRequest.head.repo.archive_url -replace '{archive_format}', 'zipball' -replace '{/ref}', "/$($PullRequest.head.ref)"
+        } else {
+            Write-Error "'$($Branch)' is not a valid branch or pull request number. Please provide a valid branch or pull request number."
+        }
+    } else {
+        "https://api.github.com/repos/chocolatey/choco-quickstart-scripts/zipball/main"
     }
 }
 
@@ -141,16 +151,21 @@ process {
     $PkgsDir = "$ChocoPath\packages"
     $TempDir = "$ChocoPath\temp"
     $TestDir = "$ChocoPath\tests"
-    @($ChocoPath, $FilesDir, $PkgsDir, $TempDir,$TestDir) |
-    Foreach-Object {
+    @($ChocoPath, $FilesDir, $PkgsDir, $TempDir, $TestDir) |
+    ForEach-Object {
         $null = New-Item -Path $_ -ItemType Directory -Force
     }
 
     # Download and extract C4B setup files from repo
-    Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\main.zip"
-    Expand-Archive "$TempDir\main.zip" $TempDir
-    Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
-    Remove-Item "$TempDir" -Recurse -Force
+    if (-not $PSScriptRoot -or $PSScriptRoot -ne $FilesDir) {
+        try {
+            Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\choco-quickstart-scripts.zip"
+            Expand-Archive "$TempDir\choco-quickstart-scripts.zip" $TempDir
+            Copy-Item "$TempDir\*\*" $FilesDir -Recurse
+        } finally {
+            Remove-Item "$TempDir" -Recurse -Force
+        }
+    }
 
     # Convert license to a "choco-license" package, and install it locally to test
     Write-Host "Creating a "chocolatey-license" package, and testing install." -ForegroundColor Green
@@ -174,7 +189,7 @@ process {
     # Download Licensed Packages
     ## DO NOT RUN WITH `--internalize` and `--internalize-all-urls` - see https://github.com/chocolatey/chocolatey-licensed-issues/issues/155
     @('chocolatey-agent', 'chocolatey.extension', 'chocolateygui.extension', 'chocolatey-management-database', 'chocolatey-management-service', 'chocolatey-management-web') |
-    Foreach-Object {
+    ForEach-Object {
         choco download $_ --force --no-progress --source="'https://licensedpackages.chocolatey.org/api/v2/'" --ignore-dependencies --output-directory $PkgsDir
     }
 
