@@ -43,7 +43,7 @@ process {
     $PkgSrc = "$env:SystemDrive\choco-setup\packages"
     $Ccr = 'https://community.chocolatey.org/api/v2/'
 
-    $chocoArgs = @('upgrade', 'sql-server-express', 'sql-server-management-studio', '-y', "--source='$Ccr'", '--no-progress')
+    $chocoArgs = @('upgrade', 'sql-server-express', '-y', "--source='$Ccr'", '--no-progress')
     & choco @chocoArgs
 
     # https://docs.microsoft.com/en-us/sql/tools/configuration-manager/tcp-ip-properties-ip-addresses-tab
