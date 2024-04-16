@@ -73,40 +73,15 @@ Describe "Jenkins Configuration" {
     }
 
     Context "Required Plugins" {
+        BeforeDiscovery {
+            $ExpectedPlugins = (Get-Content $PSScriptRoot\..\files\jenkins.json | ConvertFrom-Json).plugins.name
+        }
+
         BeforeAll {
             $plugins = (Get-ChildItem 'C:\ProgramData\Jenkins\.jenkins\plugins\' -Directory).Name
         }
 
-        It "<_> plugin is installed" -ForEach @(
-            'apache-httpcomponents-client-4-api'
-            'bouncycastle-api'
-            'branch-api'
-            'caffeine-api'
-            'cloudbees-folder'
-            'display-url-api'
-            'durable-task'
-            'instance-identity'
-            'ionicons-api'
-            'jakarta-activation-api'
-            'jakarta-mail-api'
-            'javax-activation-api'
-            'javax-mail-api'
-            'mailer'
-            'pipeline-groovy-lib'
-            'scm-api'
-            'script-security'
-            'structs'
-            'variant'
-            'workflow-api'
-            'workflow-basic-steps'
-            'workflow-cps'
-            'workflow-durable-task-step'
-            'workflow-job'
-            'workflow-multibranch'
-            'workflow-scm-step'
-            'workflow-step-api'
-            'workflow-support'
-        ) {
+        It "<_> plugin is installed" -ForEach $ExpectedPlugins {
             $_ -in $plugins | Should -be $true
         }
     }

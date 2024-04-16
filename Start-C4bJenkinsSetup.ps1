@@ -77,37 +77,10 @@ process {
     Stop-Service -Name Jenkins
 
     #region Jenkins Plugin Install & Update
-    # Defining required plugins
-    # Plugin Versions Last Updated for Jenkins V 2.426.3 on 2024-02-05
-    $JenkinsPlugins = @{
-        'apache-httpcomponents-client-4-api' = '4.5.14-208.v438351942757'
-        'bouncycastle-api' = '2.30.1.77-225.v26ea_c9455fd9'
-        'branch-api' = '2.1144.v1425d1c3d5a_7'
-        'caffeine-api' = '3.1.8-133.v17b_1ff2e0599'
-        'cloudbees-folder' = '6.858.v898218f3609d'
-        'display-url-api' = '2.200.vb_9327d658781'
-        'durable-task' = '547.vd1ea_007d100c'
-        'instance-identity' = '185.v303dc7c645f9'
-        'ionicons-api' = '56.v1b_1c8c49374e'
-        'jakarta-activation-api' = '2.0.1-3'
-        'jakarta-mail-api' = '2.0.1-3'
-        'javax-activation-api' = '1.2.0-6'
-        'javax-mail-api' = '1.6.2-9'
-        'mailer' = '463.vedf8358e006b_'
-        'pipeline-groovy-lib' = '704.vc58b_8890a_384'
-        'scm-api' = '683.vb_16722fb_b_80b_'
-        'script-security' = '1321.va_73c0795b_923'
-        'structs' = '337.v1b_04ea_4df7c8'
-        'variant' = '60.v7290fc0eb_b_cd'
-        'workflow-api' = '1291.v51fd2a_625da_7'
-        'workflow-basic-steps' = '1042.ve7b_140c4a_e0c'
-        'workflow-cps' = '3853.vb_a_490d892963'
-        'workflow-durable-task-step' = '1327.ve57634fb_09ce'
-        'workflow-job' = '1385.vb_58b_86ea_fff1'
-        'workflow-multibranch' = '773.vc4fe1378f1d5'
-        'workflow-scm-step' = '415.v434365564324'
-        'workflow-step-api' = '657.v03b_e8115821b_'
-        'workflow-support' = '865.v43e78cc44e0d'
+    $JenkinsPlugins = (Get-Content $PSScriptRoot\files\jenkins.json | ConvertFrom-Json).plugins
+
+    if (Test-Path $PSScriptRoot\files\JenkinsPlugins.zip) {
+        Expand-Archive -Path $PSScriptRoot\files\JenkinsPlugins.zip -DestinationPath $jenkinsHome\plugins\ -Force
     }
 
     # Performance is killed by Invoke-WebRequest's progress bars, turning them off to speed this up
@@ -115,14 +88,14 @@ process {
 
     # Downloading Jenkins Plugins
     Write-Host "Downloading Jenkins Plugins"
-    foreach ($PluginName in $JenkinsPlugins.Keys) {
-        $PluginUri = if ($JenkinsPlugins[$PluginName] -ne "latest") {
-            'https://updates.jenkins-ci.org/download/plugins/{0}/{1}/{0}.hpi' -f $PluginName, $JenkinsPlugins[$PluginName]
+    foreach ($Plugin in $JenkinsPlugins) {
+        $PluginUri = if ($Plugin.Version -ne "latest") {
+            'https://updates.jenkins-ci.org/download/plugins/{0}/{1}/{0}.hpi' -f $Plugin.Name, $Plugin.Version
         }
         else {
-            "https://updates.jenkins-ci.org/latest/$($PluginName).hpi"
+            "https://updates.jenkins-ci.org/latest/$($Plugin.Name).hpi"
         }
-        $PluginPath = '{0}/plugins/{1}.hpi' -f $jenkinsHome, $PluginName
+        $PluginPath = '{0}/plugins/{1}.hpi' -f $jenkinsHome, $Plugin.Name
         if (-not (Test-Path $PluginPath)) {
             try {
                 Invoke-WebRequest -Uri $PluginUri -OutFile $PluginPath -UseBasicParsing -ErrorAction Stop
