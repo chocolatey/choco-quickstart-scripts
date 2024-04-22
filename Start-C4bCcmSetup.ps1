@@ -43,7 +43,7 @@ process {
 
     # DB Setup
     Write-Host "Installing SQL Server Express"
-    $chocoArgs = @('upgrade', 'sql-server-express', 'sql-server-management-studio', '-y', '--no-progress')
+    $chocoArgs = @('upgrade', 'sql-server-express', '-y', '--no-progress')
     & choco @chocoArgs
 
     # https://docs.microsoft.com/en-us/sql/tools/configuration-manager/tcp-ip-properties-ip-addresses-tab
