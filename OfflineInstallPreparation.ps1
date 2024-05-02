@@ -51,7 +51,7 @@ if (-not (Test-Path $ChocoInstallScript)) {
 $Signature = Get-AuthenticodeSignature -FilePath $ChocoInstallScript
 
 if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -eq 'CN="Chocolatey Software, Inc.", O="Chocolatey Software, Inc.", L=Topeka, S=Kansas, C=US') {
-    if (-not (Get-Command choco.exe)) {
+    if (-not (Get-Command choco.exe -ErrorAction SilentlyContinue)) {
         if (Test-Path $PSScriptRoot\files\chocolatey.*.nupkg) {
             $env:ChocolateyDownloadUrl = (Convert-Path $PSScriptRoot\files\chocolatey.*.nupkg)[0]
         }
@@ -88,6 +88,7 @@ foreach ($Package in (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertF
     $ChocoArgs = @(
         "download", "$($Package.Name)"
         "--output-directory", $PackageWorkingDirectory
+        "--ignore-dependencies"
     )
     $ChocoArgs += switch ($Package.psobject.properties.name) {
         "Version" { "--version=$($Package.Version)" }
@@ -98,10 +99,10 @@ foreach ($Package in (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertF
     }
 
     try {
-        if (-not (Test-Path "$($PackageWorkingDirectory)\$($Package.Name)*.nupkg") -and -not (Test-Path "$PSScriptRoot\files\$($Package.Name)*.nupkg")) {
+        if (-not (Get-ChocolateyPackageMetadata -Path $PackageWorkingDirectory -Id $Package.Name) -and -not (Get-ChocolateyPackageMetadata -Path "$PSScriptRoot\files\" -Id $Package.Name)) {
             Write-Host "Downloading '$($Package.Name)'"
 
-            while ((Get-ChildItem $PackageWorkingDirectory -Filter *.nupkg).Where{$_.CreationTime -gt (Get-Date).AddMinutes(-2)}.Count -gt 5) {
+            while ((Get-ChildItem $PackageWorkingDirectory -Filter *.nupkg).Where{$_.CreationTime -gt (Get-Date).AddMinutes(-1)}.Count -gt 5) {
                 Write-Verbose "Slowing down for a minute, in order to not trigger rate-limiting..."
                 Start-Sleep -Seconds 5
             }

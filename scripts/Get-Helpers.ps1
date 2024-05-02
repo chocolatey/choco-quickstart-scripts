@@ -29,6 +29,153 @@ function Invoke-Choco {
     }
 }
 
+#region Package functions (OfflineInstallPreparation.ps1)
+if (-not ("System.IO.Compression.ZipArchive" -as [type])) {
+    Add-Type -Assembly 'System.IO.Compression'
+}
+
+function Find-FileInArchive {
+    <#
+        .Synopsis
+            Finds files with a name matching a pattern in an archive.
+        .Example
+            Find-FileInArchive -Path "C:\Archive.zip" -like "tools/files/*-x86.exe"
+        .Example
+            Find-FileInArchive -Path $Nupkg -match "tools/files/dotnetcore-sdk-(?<Version>\d+\.\d+\.\d+)-win-x86\.exe(\.ignore)?"
+        .Notes
+            Please be aware that this matches against the full name of the file, not just the file name.
+            Though given that, you can easily write something to match the file name.
+    #>
+    [CmdletBinding(DefaultParameterSetName = "match")]
+    param(
+        # Path to the archive
+        [Parameter(Mandatory)]
+        [string]$Path,
+
+        # Pattern to match with regex
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = "match")]
+        [string]$match,
+        
+        # Pattern to match with basic globbing
+        [Parameter(Mandatory, ParameterSetName = "like")]
+        [string]$like
+    )
+    begin {
+        while (-not $Zip -and $AccessRetries++ -lt 3) {
+            try {
+                $Stream = [IO.FileStream]::new($Path, [IO.FileMode]::Open)
+                $Zip = [IO.Compression.ZipArchive]::new($Stream, [IO.Compression.ZipArchiveMode]::Read)
+            } catch [System.IO.IOException] {
+                if ($AccessRetries -ge 3) {
+                    Write-Error -Message "Accessing '$Path' failed after $AccessRetries attempts." -TargetObject $Path
+                } else {
+                    Write-Information "Could not access '$Path', retrying..."
+                    Start-Sleep -Milliseconds 500
+                }
+            }
+        }
+    }
+    process {
+        if ($Zip) {
+            # Improve "security"?
+            $WhereBlock = [ScriptBlock]::Create("`$_.FullName -$($PSCmdlet.ParameterSetName) '$(Get-Variable -Name $PSCmdlet.ParameterSetName -ValueOnly)'")
+            $Zip.Entries | Where-Object -FilterScript $WhereBlock
+        }
+    }
+    end {
+        if ($Zip) {
+            $Zip.Dispose()
+        }
+        if ($Stream) {
+            $Stream.Close()
+            $Stream.Dispose()
+        }
+    }
+}
+
+function Get-FileContentInArchive {
+    <#
+        .Synopsis
+            Returns the content of a file from within an archive
+        .Example
+            Get-FileContentInArchive -Path $ZipPath -Name "chocolateyInstall.ps1"
+        .Example
+            Get-FileContentInArchive -Zip $Zip -FullName "tools\chocolateyInstall.ps1"
+        .Example
+            Find-FileInArchive -Path $ZipPath -Like *.nuspec | Get-FileContentInArchive
+    #>
+    [CmdletBinding(DefaultParameterSetName = "PathFullName")]
+    [OutputType([string])]
+    param(
+        # Path to the archive
+        [Parameter(Mandatory, ParameterSetName = "PathFullName")]
+        [Parameter(Mandatory, ParameterSetName = "PathName")]
+        [string]$Path,
+
+        # Zip object for the archive
+        [Parameter(Mandatory, ParameterSetName = "ZipFullName", ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, ParameterSetName = "ZipName", ValueFromPipelineByPropertyName)]
+        [Alias("Archive")]
+        [IO.Compression.ZipArchive]$Zip,
+
+        # Name of the file(s) to remove from the archive
+        [Parameter(Mandatory, ParameterSetName = "PathFullName", ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, ParameterSetName = "ZipFullName", ValueFromPipelineByPropertyName)]
+        [string]$FullName,
+
+        # Name of the file(s) to remove from the archive
+        [Parameter(Mandatory, ParameterSetName = "PathName")]
+        [Parameter(Mandatory, ParameterSetName = "ZipName")]
+        [string]$Name
+    )
+    begin {
+        if (-not $PSCmdlet.ParameterSetName.StartsWith("Zip")) {
+            $Stream = [IO.FileStream]::new($Path, [IO.FileMode]::Open)
+            $Zip = [IO.Compression.ZipArchive]::new($Stream, [IO.Compression.ZipArchiveMode]::Read)
+        }
+    }
+    process {
+        if (-not $FullName) {
+            $MatchingEntries = $Zip.Entries | Where-Object {$_.Name -eq $Name}
+            if ($MatchingEntries.Count -ne 1) {
+                Write-Error "File '$Name' not found in archive" -ErrorAction Stop
+            }
+            $FullName = $MatchingEntries[0].FullName
+        }
+        [System.IO.StreamReader]::new(
+            $Zip.GetEntry($FullName).Open()
+        ).ReadToEnd()
+    }
+    end {
+        if (-not $PSCmdlet.ParameterSetName.StartsWith("Zip")) {
+            $Zip.Dispose()
+            $Stream.Close()
+            $Stream.Dispose()
+        }
+    }
+}
+
+function Get-ChocolateyPackageMetadata {
+    [CmdletBinding(DefaultParameterSetName='All')]
+    param(
+        # The folder or nupkg to check
+        [Parameter(Mandatory, Position=0, ValueFromPipelineByPropertyName)]
+        [string]$Path,
+
+        # If provided, filters found packages by ID
+        [Parameter(Mandatory, Position=1, ParameterSetName='Id')]
+        [SupportsWildcards()]
+        [Alias('Name')]
+        [string]$Id = '*'
+    )
+    process {
+        Get-ChildItem $Path -Filter $Id*.nupkg | ForEach-Object {
+            ([xml](Find-FileInArchive -Path $_.FullName -Like *.nuspec | Get-FileContentInArchive)).package.metadata | Where-Object Id -like $Id
+        }
+    }
+}
+#endregion
+
 #region Nexus functions (Start-C4BNexusSetup.ps1)
 function Wait-Nexus {
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::tls12

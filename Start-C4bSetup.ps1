@@ -67,7 +67,13 @@ param(
     $Thumbprint,
 
     # If provided, shows all Chocolatey output. Otherwise, blissful quiet.
-    [switch]$ShowChocoOutput
+    [switch]$ShowChocoOutput,
+
+    # The branch or Pull Request to download the C4B setup scripts from.
+    # Defaults to main.
+    [string]
+    [Alias('PR')]
+    $Branch = $env:CHOCO_QSG_BRANCH
 )
 
 if ($host.name -ne 'ConsoleHost') {
@@ -80,11 +86,16 @@ if ($ShowChocoOutput) {
     $global:PSDefaultParameterValues["Invoke-Choco:InformationAction"] = "Continue"
 }
 
-if ($env:CHOCO_QSG_DEVELOP){
-    $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/refs/heads/develop.zip"
-}
-else {
-    $QsRepo = "https://github.com/chocolatey/choco-quickstart-scripts/archive/main.zip"
+$QsRepo = if ($Branch) {
+    if ((Invoke-RestMethod -Uri "https://api.github.com/repos/chocolatey/choco-quickstart-scripts/branches").name -contains $Branch) {
+        "https://api.github.com/repos/chocolatey/choco-quickstart-scripts/zipball/$Branch"
+    } elseif ($PullRequest = Invoke-RestMethod -Uri "https://api.github.com/repos/chocolatey/choco-quickstart-scripts/pulls/$Branch" -ErrorAction SilentlyContinue) {
+        $PullRequest.head.repo.archive_url -replace '{archive_format}', 'zipball' -replace '{/ref}', "/$($PullRequest.head.ref)"
+    } else {
+        Write-Error "'$($Branch)' is not a valid branch or pull request number. Please provide a valid branch or pull request number."
+    }
+} else {
+    "https://api.github.com/repos/chocolatey/choco-quickstart-scripts/zipball/main"
 }
 
 $DefaultEap, $ErrorActionPreference = $ErrorActionPreference, 'Stop'
@@ -104,10 +115,13 @@ try {
 
     if (-not $PSScriptRoot -or $PSScriptRoot -ne $FilesDir) {
         # Download and extract C4B setup files from repo
-        Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\main.zip"
-        Expand-Archive "$TempDir\main.zip" $TempDir
-        Copy-Item "$TempDir\choco-quickstart-scripts-main\*" $FilesDir -Recurse
-        Remove-Item "$TempDir" -Recurse -Force
+        try {
+            Invoke-WebRequest -Uri $QsRepo -UseBasicParsing -OutFile "$TempDir\choco-quickstart-scripts.zip"
+            Expand-Archive "$TempDir\choco-quickstart-scripts.zip" $TempDir
+            Copy-Item "$TempDir\*\*" $FilesDir -Recurse -Force
+        } finally {
+            Remove-Item "$TempDir" -Recurse -Force
+        }
     }
 
     # Import Helper Functions
@@ -117,10 +131,10 @@ try {
     Write-Host "Downloading missing nupkg files to $($PkgsDir)." -ForegroundColor Green
     Write-Host "This will take some time. Feel free to get a tea or coffee." -ForegroundColor Green
 
-    & $PSScriptRoot\OfflineInstallPreparation.ps1 -LicensePath $LicenseFile
+    & $FilesDir\OfflineInstallPreparation.ps1 -LicensePath $LicenseFile
 
-    if (Test-Path $PSScriptRoot\files\*.nupkg) {
-        choco source add --name ChocolateySetup --source $PSScriptRoot\files\ --Priority 1
+    if (Test-Path $FilesDir\files\*.nupkg) {
+        choco source add --name LocalChocolateySetup --source $FilesDir\files\ --Priority 1
     }
 
     # Set Choco Server Chocolatey Configuration

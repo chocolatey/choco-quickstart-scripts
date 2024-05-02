@@ -211,6 +211,9 @@ process {
     $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
     & choco @chocoArgs
 
+    # Reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
+    Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
+
     Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\nexus.json" -Properties @{
         NexusUri = "https://$($SubjectWithoutCn):8443"
         NexusRepo = $RepositoryUrl
