@@ -12,8 +12,7 @@ C4B Quick-Start Guide Jenkins setup script
 param(
     # Hostname of your C4B Server
     [string]$HostName = $env:ComputerName,
-    # Repo where you're installing Jenkins from, usually CCR
-    [string]$Source = 'https://community.chocolatey.org/api/v2/',
+
     # API key of your Nexus repo, for Chocolatey Jenkins jobs to use
     [string]$NuGetApiKey = $(Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
 )
@@ -36,14 +35,15 @@ process {
     . .\scripts\Get-Helpers.ps1
 
     # Install temurin21jre to meet JRE>11 dependency of Jenkins
-    $chocoArgs = @('install', 'temurin21jre', '-y', "--source='$Source'", '--no-progress', "--params='/ADDLOCAL=FeatureJavaHome'")
+    $chocoArgs = @('install', 'temurin21jre', '-y', '--no-progress', "--params='/ADDLOCAL=FeatureJavaHome'")
     & choco @chocoArgs
 
-    # Enviornment variable used to disbale jenkins instal login prompts
+    # Environment variable used to disable jenkins install login prompts
     [Environment]::SetEnvironmentVariable('JAVA_OPTS', '-Djenkins.install.runSetupWizard=false', 'Machine')
 
     # Install Jenkins
-    $chocoArgs = @('install', 'jenkins', '-y', "--source='$Source'", '--no-progress')
+    Write-Host "Installing Jenkins"
+    $chocoArgs = @('install', 'jenkins', '-y', '--no-progress')
     & choco @chocoArgs
 
     Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
@@ -133,9 +133,6 @@ process {
     $JenkinsJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\jenkins.json"
 
     Write-Host 'Jenkins setup complete' -ForegroundColor Green
-    Write-Host "Login to Jenkins at: $($JenkinsJson.JenkinsUri)" -ForegroundColor Green
-    Write-Host 'Initial default Jenkins admin user password:' -ForegroundColor Green
-    Write-Host "Admin Password is '$($JenkinsJson.JenkinsPw)'" -ForegroundColor Green
 
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript

@@ -47,7 +47,7 @@ process {
     & choco @chocoArgs
 
     # https://docs.microsoft.com/en-us/sql/tools/configuration-manager/tcp-ip-properties-ip-addresses-tab
-    Write-Output 'SQL Server: Configuring Remote Acess on SQL Server Express.'
+    Write-Verbose 'SQL Server: Configuring Remote Access on SQL Server Express.'
     $assemblyList = 'Microsoft.SqlServer.Management.Common', 'Microsoft.SqlServer.Smo', 'Microsoft.SqlServer.SqlWmiManagement', 'Microsoft.SqlServer.SmoExtended'
 
     foreach ($assembly in $assemblyList) {
@@ -79,25 +79,26 @@ process {
     $SqlString = (Get-ChildItem -Path 'HKLM:\Software\Microsoft\Microsoft SQL Server').Name |
         Where-Object { $_ -like "HKEY_LOCAL_MACHINE\Software\Microsoft\Microsoft SQL Server\MSSQL*.SQLEXPRESS" } 
     $SqlVersion = $SqlString.Split("\") | Where-Object { $_ -like "MSSQL*.SQLEXPRESS" }
-    Write-Output 'SQL Server: Setting Mixed Mode Authentication.'
-    New-ItemProperty "HKLM:\Software\Microsoft\Microsoft SQL Server\$SqlVersion\MSSQLServer\" -Name 'LoginMode' -Value 2 -Force
+    Write-Verbose 'SQL Server: Setting Mixed Mode Authentication.'
+    $null = New-ItemProperty "HKLM:\Software\Microsoft\Microsoft SQL Server\$SqlVersion\MSSQLServer\" -Name 'LoginMode' -Value 2 -Force
 
-    Write-Output "SQL Server: Forcing Restart of Instance."
+    Write-Verbose "SQL Server: Forcing Restart of Instance."
     Restart-Service -Force 'MSSQL$SQLEXPRESS'
 
-    Write-Output "SQL Server: Setting up SQL Server Browser and starting the service."
+    Write-Verbose "SQL Server: Setting up SQL Server Browser and starting the service."
     Set-Service 'SQLBrowser' -StartupType Automatic
     Start-Service 'SQLBrowser'
 
-    Write-Output "Firewall: Enabling SQLServer TCP port 1433."
-    netsh advfirewall firewall add rule name="SQL Server 1433" dir=in action=allow protocol=TCP localport=1433 profile=any enable=yes service=any
+    Write-Verbose "Firewall: Enabling SQLServer TCP port 1433."
+    $null = netsh advfirewall firewall add rule name="SQL Server 1433" dir=in action=allow protocol=TCP localport=1433 profile=any enable=yes service=any
     #New-NetFirewallRule -DisplayName "Allow inbound TCP Port 1433" –Direction inbound –LocalPort 1433 -Protocol TCP -Action Allow
 
-    Write-Output "Firewall: Enabling SQL Server browser UDP port 1434."
-    netsh advfirewall firewall add rule name="SQL Server Browser 1434" dir=in action=allow protocol=UDP localport=1434 profile=any enable=yes service=any
+    Write-Verbose "Firewall: Enabling SQL Server browser UDP port 1434."
+    $null = netsh advfirewall firewall add rule name="SQL Server Browser 1434" dir=in action=allow protocol=UDP localport=1434 profile=any enable=yes service=any
     #New-NetFirewallRule -DisplayName "Allow inbound UDP Port 1434" –Direction inbound –LocalPort 1434 -Protocol UDP -Action Allow
 
     # Install prerequisites for CCM
+    Write-Host "Installing Chocolatey Central Management Prerequisites"
     $chocoArgs = @('install', 'IIS-WebServer', "--source='windowsfeatures'", '--no-progress', '-y')
     & choco @chocoArgs
 
@@ -113,8 +114,8 @@ process {
     $chocoArgs = @('install', 'dotnet-6.0-aspnetruntime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-6.0-aspnetruntime'}.Version)", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-database V 0.12.0"', '-y')
     & choco @chocoArgs
 
-    # Install CCM DB package using Local SQL Express
-    choco install chocolatey-management-database -y -s $PkgSrc --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'" --no-progress
+    Write-Host "Creating Chocolatey Central Management Database"
+    choco install chocolatey-management-database -y --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'" --no-progress
 
     # Add Local Windows User:
     $DatabaseUser = $DatabaseCredential.UserName
@@ -129,7 +130,7 @@ process {
         $hostName += "." + $domainName
     }
 
-    #Install CCM Service
+    Write-Host "Installing Chocolatey Central Management Service"
     if($CertificateThumbprint){
         Write-Verbose "Validating certificate is in LocalMachine\TrustedPeople Store"
         if($CertificateThumbprint -notin (Get-ChildItem Cert:\LocalMachine\TrustedPeople | Select-Object -Expand Thumbprint)){
@@ -139,7 +140,7 @@ process {
         } 
         else {
             Write-Verbose "Certificate has been successfully found in correct store"
-            $chocoArgs = @('install','chocolatey-management-service','-y',"--source='$PkgSrc'","--package-parameters-sensitive='/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User Id=$DatabaseUser;Password=$DatabaseUserPw'")
+            $chocoArgs = @('install', 'chocolatey-management-service', '-y', "--package-parameters-sensitive='/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User Id=$DatabaseUser;Password=$DatabaseUserPw'")
             & choco @chocoArgs
 
             Set-CcmCertificate -CertificateThumbprint $CertificateThumbprint
@@ -147,12 +148,12 @@ process {
     }
 
     else {
-        $chocoArgs = @('install', 'chocolatey-management-service', '-y', "--source='$PkgSrc'", "--package-parameters-sensitive=`"/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'`"", '--no-progress')
+        $chocoArgs = @('install', 'chocolatey-management-service', '-y', "--package-parameters-sensitive=`"/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'`"", '--no-progress')
         & choco @chocoArgs
     }
 
-    #Install CCM Web package
-    $chocoArgs = @('install', 'chocolatey-management-web', '-y', "--source='$PkgSrc'", "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
+    Write-Host "Installing Chocolatey Central Management Website"
+    $chocoArgs = @('install', 'chocolatey-management-web', '-y', "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
     & choco @chocoArgs
 
     $CcmSvcUrl = choco config get centralManagementServiceUrl -r
@@ -165,7 +166,7 @@ process {
     }
     $CcmJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ccm.json"
 
-    Write-Host "CCM Setup has now completed" -ForegroundColor Green
+    Write-Host "Chocolatey Central Management Setup has now completed" -ForegroundColor Green
 
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript

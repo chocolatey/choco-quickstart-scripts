@@ -39,10 +39,12 @@ process {
     . .\scripts\Get-Helpers.ps1
 
     # Install base nexus-repository package
-    $chocoArgs = @('install','nexus-repository','-y',"--source='https://community.chocolatey.org/api/v2/'",'--no-progress',"--package-parameters='/Fqdn:localhost'")
+    Write-Host "Installing Sonatype Nexus Repository"
+    $chocoArgs = @('install', 'nexus-repository', '-y' ,'--no-progress', "--package-parameters='/Fqdn:localhost'")
     & choco @chocoArgs
 
     #Build Credential Object, Connect to Nexus
+    Write-Host "Configuring Sonatype Nexus Repository"
     $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
     $Credential = [System.Management.Automation.PSCredential]::new('admin',$securePw)
 
@@ -90,25 +92,21 @@ process {
     choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --priority 1
 
     # Install a non-IE browser for browsing the Nexus web portal.
-    # Edge sometimes fails install due to latest Windows Updates not being installed.
-    # In that scenario, Google Chrome is installed instead.
-    $null = choco install microsoft-edge -y --source="'https://community.chocolatey.org/api/v2/'"
-    if ($LASTEXITCODE -eq 0) {
-        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Edge') {
-            $RegArgs = @{
-            Path = 'HKLM:\SOFTWARE\Microsoft\Edge\'
-            Name = 'HideFirstRunExperience'
-            Type = 'Dword'
-            Value = 1
-            Force = $true
+    if (-not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')) {
+        Write-Host "Installing Microsoft Edge, to allow viewing the Nexus site"
+        choco install microsoft-edge -y
+        if ($LASTEXITCODE -eq 0) {
+            if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Edge') {
+                $RegArgs = @{
+                    Path = 'HKLM:\SOFTWARE\Microsoft\Edge\'
+                    Name = 'HideFirstRunExperience'
+                    Type = 'Dword'
+                    Value = 1
+                    Force = $true
+                }
+                $null = Set-ItemProperty @RegArgs
             }
-            Set-ItemProperty @RegArgs
         }
-    }
-    else {
-        Write-Warning "Microsoft Edge install was not succesful."
-        Write-Host "Installing Google Chrome as an alternative."
-        choco install googlechrome -y --source="'https://community.chocolatey.org/api/v2/'"
     }
 
     # Add Nexus port 8081 access via firewall
@@ -130,22 +128,6 @@ process {
         NuGetApiKey = $NugetApiKey
     }
     $NexusJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\nexus.json"
-
-    $finishOutput = @"
-    ##############################################################
-
-    Nexus Repository Setup Completed
-    Please login to the following URL to complete admin account setup:
-
-    Server Url: 'http://localhost:8081' (this will change once you add a certificate)
-    Chocolatey Repo: "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/"
-    NuGet ApiKey: $NugetApiKey
-    Nexus 'admin' user password: $($Credential.GetNetworkCredential().Password)
-
-    ##############################################################
-"@
-
-    Write-Host "$finishOutput" -ForegroundColor Green
 
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript

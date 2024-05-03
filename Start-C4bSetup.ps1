@@ -64,13 +64,20 @@ param(
     # Only used in Unattend mode for the SSL setup script.
     [Parameter(ParameterSetName='Unattended')]
     [string]
-    $Thumbprint
+    $Thumbprint,
+
+    # If provided, shows all Chocolatey output. Otherwise, blissful quiet.
+    [switch]$ShowChocoOutput
 )
 
 if ($host.name -ne 'ConsoleHost') {
     Write-Warning "This script cannot be ran from within PowerShell ISE"
     Write-Warning "Please launch powershell.exe as an administrator, and run this script again"
     break
+}
+
+if ($ShowChocoOutput) {
+    $global:PSDefaultParameterValues["Invoke-Choco:InformationAction"] = "Continue"
 }
 
 if ($env:CHOCO_QSG_DEVELOP){

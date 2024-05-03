@@ -111,7 +111,7 @@ process {
     Copy-CertToStore -Certificate $Certificate
 
     # Generate Nexus keystore
-    New-NexusCert -Thumbprint $Certificate.Thumbprint
+    $null = New-NexusCert -Thumbprint $Certificate.Thumbprint
 
     # Add firewall rule for Nexus
     netsh advfirewall firewall add rule name="Nexus-8443" dir=in action=allow protocol=tcp localport=8443
@@ -119,7 +119,7 @@ process {
     Write-Verbose "Starting up Nexus"
     Start-Service nexus
 
-    Write-Warning "Waiting to give Nexus time to start up"
+    Write-Warning "Waiting to give Nexus time to start up on 'https://${SubjectWithoutCn}:8443'"
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::tls12
     do {
         $response = try {
@@ -329,10 +329,6 @@ Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-
 }
 
 end {
-
-    # Hand back the created/found certificate to the caller.
-    $Certificate
-
     Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
     New-QuickstartReadme
 

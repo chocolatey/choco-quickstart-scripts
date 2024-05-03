@@ -624,7 +624,7 @@ function New-NexusNugetHostedRepository {
         }
 
         Write-Verbose $($Body | ConvertTo-Json)
-        Invoke-Nexus -UriSlug $FullUrlSlug -Body $Body -Method POST
+        $null = Invoke-Nexus -UriSlug $FullUrlSlug -Body $Body -Method POST
 
     }
 }
@@ -745,7 +745,7 @@ function New-NexusRawHostedRepository {
         }
 
         Write-Verbose $($Body | ConvertTo-Json)
-        Invoke-Nexus -UriSlug $urislug -Body $Body -Method POST
+        $null = Invoke-Nexus -UriSlug $urislug -Body $Body -Method POST
 
 
     }
@@ -882,7 +882,7 @@ function Enable-NexusRealm {
         $body = $collection
 
         Write-Verbose $($Body | ConvertTo-Json)
-        Invoke-Nexus -UriSlug $urislug -BodyAsArray $Body -Method PUT
+        $null = Invoke-Nexus -UriSlug $urislug -BodyAsArray $Body -Method PUT
 
     }
 }
@@ -1599,7 +1599,7 @@ ALTER ROLE [$DatabaseRole] ADD MEMBER [$Username]
 "@
     }
 
-    Write-Output "Adding $UserName to $DatabaseName with the following permissions: $($DatabaseRoles -Join ', ')"
+    Write-Host "Adding $UserName to $DatabaseName with the following permissions: $($DatabaseRoles -Join ', ')"
     Write-Debug "running the following: \n $addUserSQLCommand"
     $Connection = New-Object System.Data.SQLClient.SQLConnection
     $Connection.ConnectionString = "server='$DatabaseServer';database='master';$DatabaseServerPermissionsOptions"
@@ -1607,7 +1607,7 @@ ALTER ROLE [$DatabaseRole] ADD MEMBER [$Username]
     $Command = New-Object System.Data.SQLClient.SQLCommand
     $Command.CommandText = $addUserSQLCommand
     $Command.Connection = $Connection
-    $Command.ExecuteNonQuery()
+    $null = $Command.ExecuteNonQuery()
     $Connection.Close()
 }
 
