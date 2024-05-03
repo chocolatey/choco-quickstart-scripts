@@ -52,7 +52,7 @@ process {
     # Disabling inital setup prompts
     $JenkinsHome = "C:\ProgramData\Jenkins\.jenkins"
 
-    $JenkinsVersion = (choco list jenkins --exact --limit-output).Split('|')[1]
+    $JenkinsVersion = (choco.exe list jenkins --exact --limit-output).Split('|')[1]
     $JenkinsVersion | Out-File -FilePath $JenkinsHome\jenkins.install.UpgradeWizard.state -Encoding utf8
     $JenkinsVersion | Out-File -FilePath $JenkinsHome\jenkins.install.InstallUtil.lastExecVersion -Encoding utf8
 

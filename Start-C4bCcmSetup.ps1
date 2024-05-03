@@ -39,11 +39,11 @@ process {
     # Dot-source helper functions
     . .\scripts\Get-Helpers.ps1
 
-    # DB Setup
-    $PkgSrc = "$env:SystemDrive\choco-setup\packages"
-    $Ccr = 'https://community.chocolatey.org/api/v2/'
+    $Packages = (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertFrom-Json).packages
 
-    $chocoArgs = @('upgrade', 'sql-server-express', 'sql-server-management-studio', '-y', "--source='$Ccr'", '--no-progress')
+    # DB Setup
+    Write-Host "Installing SQL Server Express"
+    $chocoArgs = @('upgrade', 'sql-server-express', 'sql-server-management-studio', '-y', '--no-progress')
     & choco @chocoArgs
 
     # https://docs.microsoft.com/en-us/sql/tools/configuration-manager/tcp-ip-properties-ip-addresses-tab
@@ -104,13 +104,13 @@ process {
     $chocoArgs = @('install', 'IIS-ApplicationInit', "--source='windowsfeatures'" ,'--no-progress', '-y')
     & choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='16.0.24052'", "--source='$Ccr'", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-web V 0.12.0"', '-y')
+    $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='$($Packages.Where{$_.Name -eq 'dotnet-aspnetcoremodule-v2'}.Version)'", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-web V 0.12.0"', '-y')
     & choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-6.0-runtime', '--version=6.0.28', "--source='$Ccr'", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-database V 0.12.0"', '-y')
+    $chocoArgs = @('install', 'dotnet-6.0-runtime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-6.0-runtime'}.Version)", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-database V 0.12.0"', '-y')
     & choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-6.0-aspnetruntime', '--version=6.0.28', "--source='$Ccr'", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-database V 0.12.0"', '-y')
+    $chocoArgs = @('install', 'dotnet-6.0-aspnetruntime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-6.0-aspnetruntime'}.Version)", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-database V 0.12.0"', '-y')
     & choco @chocoArgs
 
     # Install CCM DB package using Local SQL Express

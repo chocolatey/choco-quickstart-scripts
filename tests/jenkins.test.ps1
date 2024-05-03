@@ -8,7 +8,7 @@ Param(
 Describe "Jenkins Configuration" {
     Context "Installation Integrity" {
         BeforeAll {
-            $jenkins = choco list -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version | Where-Object Package -eq 'jenkins'
+            $jenkins = choco.exe list -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version | Where-Object Package -eq 'jenkins'
             $service = Get-Service jenkins
         }
 

@@ -1,0 +1,24 @@
+{
+    "packages": [
+        { "name": "KB2919442", "version": "1.0.20160915", "internalize": false },
+        { "name": "KB2919355", "version": "1.0.20160915", "internalize": false },
+        { "name": "chocolatey" },
+        { "name": "chocolatey-agent" },
+        { "name": "chocolatey.extension" },
+        { "name": "chocolateygui" },
+        { "name": "chocolateygui.extension" },
+        { "name": "dotnet-aspnetcoremodule-v2", "version": "16.0.24081" },
+        { "name": "dotnet-6.0-runtime", "version": "6.0.29" },
+        { "name": "dotnet-6.0-aspnetruntime", "version": "6.0.29" },
+        { "name": "chocolatey-management-database", "internalize": false },
+        { "name": "chocolatey-management-service", "internalize": false },
+        { "name": "chocolatey-management-web", "internalize": false },
+        { "name": "chocolatey-licensed-jenkins-scripts" },
+        { "name": "nexus-repository" },
+        { "name": "jenkins" },
+        { "name": "temurin21jre" },
+        { "name": "nexushell" },
+        { "name": "sql-server-express" },
+        { "name": "microsoft-edge" }
+    ]
+}

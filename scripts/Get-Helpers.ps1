@@ -1,4 +1,33 @@
 # Helper Functions for the various QSG scripts
+function Invoke-Choco {
+    [CmdletBinding()]
+    [Alias('choco')]
+    param(
+        [Parameter(Position=0)]
+        [string]$Command,
+
+        [Parameter(Position=1, ValueFromRemainingArguments)]
+        [string[]]$Arguments,
+
+        [int[]]$ValidExitCodes = @(0)
+    )
+
+    if ($Command -eq 'Install' -and $Arguments -notmatch '\b-(y|-confirm)\b') {
+        $Arguments += '--confirm'
+    }
+
+    if ($Arguments -notmatch '\b-(r|-limitoutput|-limit-output)\b') {
+        $Arguments += '--limit-output'
+    }
+
+    & choco.exe $Command $Arguments | Tee-Object -Variable Result | Where-Object {$_} | ForEach-Object {
+        Write-Information -MessageData $_ -Tags Choco
+    }
+
+    if ($LASTEXITCODE -notin $ValidExitCodes) {
+        Write-Error -Message "$($Result[-5..-1] -join "`n")" -TargetObject "choco $Command $Arguments"
+    }
+}
 
 #region Nexus functions (Start-C4BNexusSetup.ps1)
 function Wait-Nexus {
@@ -1707,7 +1736,7 @@ function Get-BcryptDll {
     param(
         # The path to find the DLL within, or extract the DLL to if unfound.
         [Parameter(Position = 0)]
-        [string]$DestinationPath = (Join-Path $env:TEMP "bcrypt.net.0.1.0")
+        [string]$DestinationPath = (Join-Path $PSScriptRoot "bcrypt.net.0.1.0")
     )
     end {
         if (-not (Test-Path $DestinationPath)) {

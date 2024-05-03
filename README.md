@@ -70,6 +70,8 @@ Below are the minimum requirements for setting up your C4B server via this guide
 
 > :warning:**DISCLAIMER**: This guide utilizes code from a GitHub repository, namely: [choco-quickstart-scripts](https://github.com/chocolatey/choco-quickstart-scripts). Though we explain what each script does in drop-down boxes, please do your due diligence to review this code and ensure it meets your Organizational requirements.
 
+> :memo:**Offline Install**: If your C4B server does not have unrestricted access to the internet, you can download the `choco-quickstart-scripts` repository to a Windows machine that is connected to the internet and run `OfflineInstallPreparation.ps1`. This will use Chocolatey to save all of the required assets into the repository folder, which can then be transferred to the target C4B server.
+
 ### Step 1: Begin C4B Setup
 
 > :exclamation:**[IMPORTANT]** All commands should be run from an **elevated** PowerShell window (and **not ISE**), by opening your PowerShell console with the `Run as Administrator` option.
@@ -79,10 +81,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     ```powershell
     Set-ExecutionPolicy Bypass -Scope Process -Force
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::tls12
-    $QuickStart = 'https://raw.githubusercontent.com/chocolatey/choco-quickstart-scripts/main/Start-C4bSetup.ps1'
-    $Script = [System.Net.Webclient]::new().DownloadString($QuickStart)
-    $sb = [ScriptBlock]::Create($Script)
-    & $sb
+    Invoke-RestMethod https://ch0.co/qsg-go | Invoke-Expression
     ```
 
     > <details>
@@ -96,6 +95,8 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <li>Downloads Chocolatey packages required for setup</li>
     > </ul>
     > </details>
+
+> :memo:**Offline Install**: You can now copy the `C:\choco-setup\` directory to any computer to continue the installation. To zip up that directory, run `Compress-Archive -Path C:\choco-setup\files\* -DestinationPath C:\choco-setup\CCM-Files.zip`. Move the archive to your new machine, and run `Expand-Archive -Path /path/to/CCM-Files.zip -DestinationPath C:\choco-setup\files -Force`. You should then run `Set-Location "$env:SystemDrive\choco-setup\files"; .\Start-C4bSetup.ps1`, and continue with the guide.
 
 ### Step 2: Nexus Setup
 

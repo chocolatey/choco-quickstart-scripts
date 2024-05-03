@@ -47,7 +47,7 @@ $licensePackageNuspec = "$licensePackageFolder\$LicensePackageId.nuspec"
 
 Write-Warning "Prior to running this, please ensure you've updated the license file first at $LicensePath"
 Write-Warning "This script will OVERWRITE any existing license file you might have placed in '$licensePackageFolder'"
-& choco | Out-String -Stream | Write-Host
+& choco.exe | Out-String -Stream | Write-Host
 Write-Warning "If there is is a note about invalid license above, you're going to run into issues."
 
 # Get license expiration date and node count

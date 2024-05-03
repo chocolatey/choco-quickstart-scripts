@@ -10,7 +10,7 @@ Param(
 Describe "Nexus Configuration" {
     Context "Installation Integrity" {
         BeforeAll {
-            $nexus = choco list -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version | Where-Object Package -eq nexus-repository
+            $nexus = choco.exe list -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version | Where-Object Package -eq nexus-repository
             $service = Get-Service nexus
         }
 
@@ -102,11 +102,11 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
 
     Context "Package Availability" {
         BeforeAll {
-            if (([version] (choco --version).Split('-')[0]) -ge [version] '2.1.0') {
+            if (([version] (choco.exe --version).Split('-')[0]) -ge [version] '2.1.0') {
                 choco cache remove
             }
 
-            $packages = choco search -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version
+            $packages = choco.exe search -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version
         }
 
         It "<Name> is in the repository" -ForEach @( $JointPackages + $RepositoryOnlyPackages ) {

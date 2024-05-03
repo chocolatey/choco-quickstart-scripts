@@ -49,7 +49,7 @@ process {
     Connect-NexusServer -Hostname localhost -Credential $Credential
 
     #Drain default repositories
-    Get-NexusRepository | Remove-NexusRepository -Force
+    $null = Get-NexusRepository | Where-Object Name -NotLike "choco*" | Remove-NexusRepository -Force
 
     #Enable NuGet Auth Realm
     Enable-NexusRealm -Realm 'NuGet API-Key Realm'
@@ -63,10 +63,9 @@ process {
     $NuGetApiKey = (Get-NexusNuGetApiKey -Credential $Credential).apikey
 
     # Push all packages from previous steps to NuGet repo
-    Get-ChildItem -Path "$env:SystemDrive\choco-setup\packages" -Filter *.nupkg |
-        ForEach-Object {
-            choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --apikey $NugetApiKey --force
-        }
+    Get-ChildItem -Path "$env:SystemDrive\choco-setup\files\files" -Filter *.nupkg | ForEach-Object {
+        choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --apikey $NugetApiKey --force
+    }
 
     # Temporary workaround to reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
     Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
