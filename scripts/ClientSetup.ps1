@@ -64,6 +64,7 @@ $hostName = ($hostAddress -split ':')[0]
 $params = @{
     ChocolateyVersion = $ChocolateyVersion
     IgnoreProxy       = $IgnoreProxy
+    UseNativeUnzip    = $true
 }
 
 if (-not $IgnoreProxy) {

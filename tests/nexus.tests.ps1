@@ -10,7 +10,7 @@ Param(
 Describe "Nexus Configuration" {
     Context "Installation Integrity" {
         BeforeAll {
-            $nexus = choco list -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version | Where-Object Package -eq nexus-repository
+            $nexus = choco.exe list -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version | Where-Object Package -eq nexus-repository
             $service = Get-Service nexus
         }
 
@@ -28,8 +28,7 @@ Describe "Nexus Configuration" {
     }
     Context "Services" {
         BeforeAll {
-
-            $certStoreCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object {$_.Subject -match "CN=$Fqdn"}
+            $certStoreCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object { "CN=$Fqdn" -like $_.Subject }
             $serviceCertificate = Get-RemoteCertificate -ComputerName $Fqdn -Port 8443
 
             $ConfigurationFile = Get-Content "C:\ProgramData\sonatype-work\nexus3\etc\nexus.properties"
@@ -102,11 +101,11 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
 
     Context "Package Availability" {
         BeforeAll {
-            if (([version] (choco --version).Split('-')[0]) -ge [version] '2.1.0') {
+            if (([version] (choco.exe --version).Split('-')[0]) -ge [version] '2.1.0') {
                 choco cache remove
             }
 
-            $packages = choco search -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version
+            $packages = choco.exe search -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version
         }
 
         It "<Name> is in the repository" -ForEach @( $JointPackages + $RepositoryOnlyPackages ) {

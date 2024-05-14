@@ -88,10 +88,19 @@ process {
     }
 
     if (-not $CertificateDnsName) {
-        $matcher = 'CN\s?=\s?[^,\s]+'
+        $matcher = 'CN\s?=\s?(?<Subject>[^,\s]+)'
         $null = $Certificate.Subject -match $matcher
-        $SubjectWithoutCn = $matches[0] -replace 'CN=', ''
-    } 
+        $SubjectWithoutCn = if ($Matches.Subject.StartsWith('*')) {
+            # This is a wildcard cert, we need to prompt for the intended CertificateDnsName
+            while ($CertificateDnsName -notlike $Matches.Subject) {
+                $CertificateDnsName = Read-Host -Prompt "$(if ($CertificateDnsName) {"'$($CertificateDnsName)' is not a subdomain of '$($Matches.Subject)'. "})Please provide an FQDN to use with the certificate '$($Matches.Subject)'"
+            }
+            $CertificateDnsName
+        }
+        else {
+            $Matches.Subject
+        }
+    }
     else {
         $SubjectWithoutCn = $CertificateDnsName
     }
@@ -111,7 +120,7 @@ process {
     Copy-CertToStore -Certificate $Certificate
 
     # Generate Nexus keystore
-    New-NexusCert -Thumbprint $Certificate.Thumbprint
+    $null = New-NexusCert -Thumbprint $Certificate.Thumbprint
 
     # Add firewall rule for Nexus
     netsh advfirewall firewall add rule name="Nexus-8443" dir=in action=allow protocol=tcp localport=8443
@@ -119,7 +128,7 @@ process {
     Write-Verbose "Starting up Nexus"
     Start-Service nexus
 
-    Write-Warning "Waiting to give Nexus time to start up"
+    Write-Warning "Waiting to give Nexus time to start up on 'https://${SubjectWithoutCn}:8443'"
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::tls12
     do {
         $response = try {
@@ -201,6 +210,9 @@ process {
     # Update Repository API key
     $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
     & choco @chocoArgs
+
+    # Reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
+    Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
 
     Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\nexus.json" -Properties @{
         NexusUri = "https://$($SubjectWithoutCn):8443"
@@ -329,10 +341,6 @@ Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-
 }
 
 end {
-
-    # Hand back the created/found certificate to the caller.
-    $Certificate
-
     Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
     New-QuickstartReadme
 

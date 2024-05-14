@@ -1,0 +1,32 @@
+{
+    "plugins": [
+        { "name": "apache-httpcomponents-client-4-api", "version": "4.5.14-208.v438351942757" },
+        { "name": "bouncycastle-api", "version": "2.30.1.77-225.v26ea_c9455fd9" },
+        { "name": "branch-api", "version": "2.1144.v1425d1c3d5a_7" },
+        { "name": "caffeine-api", "version": "3.1.8-133.v17b_1ff2e0599" },
+        { "name": "cloudbees-folder", "version": "6.858.v898218f3609d" },
+        { "name": "display-url-api", "version": "2.200.vb_9327d658781" },
+        { "name": "durable-task", "version": "547.vd1ea_007d100c" },
+        { "name": "instance-identity", "version": "185.v303dc7c645f9" },
+        { "name": "ionicons-api", "version": "56.v1b_1c8c49374e" },
+        { "name": "jakarta-activation-api", "version": "2.0.1-3" },
+        { "name": "jakarta-mail-api", "version": "2.0.1-3" },
+        { "name": "javax-activation-api", "version": "1.2.0-6" },
+        { "name": "javax-mail-api", "version": "1.6.2-9" },
+        { "name": "mailer", "version": "463.vedf8358e006b_" },
+        { "name": "pipeline-groovy-lib", "version": "704.vc58b_8890a_384" },
+        { "name": "scm-api", "version": "683.vb_16722fb_b_80b_" },
+        { "name": "script-security", "version": "1321.va_73c0795b_923" },
+        { "name": "structs", "version": "337.v1b_04ea_4df7c8" },
+        { "name": "variant", "version": "60.v7290fc0eb_b_cd" },
+        { "name": "workflow-api", "version": "1291.v51fd2a_625da_7" },
+        { "name": "workflow-basic-steps", "version": "1042.ve7b_140c4a_e0c" },
+        { "name": "workflow-cps", "version": "3853.vb_a_490d892963" },
+        { "name": "workflow-durable-task-step", "version": "1327.ve57634fb_09ce" },
+        { "name": "workflow-job", "version": "1385.vb_58b_86ea_fff1" },
+        { "name": "workflow-multibranch", "version": "773.vc4fe1378f1d5" },
+        { "name": "workflow-scm-step", "version": "415.v434365564324" },
+        { "name": "workflow-step-api", "version": "657.v03b_e8115821b_" },
+        { "name": "workflow-support", "version": "865.v43e78cc44e0d" }
+    ]
+}

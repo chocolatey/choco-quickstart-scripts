@@ -24,7 +24,6 @@ $ServerOnlyPackages = @(
     @{Name = 'nexus-repository' }
     @{Name = 'Pester' }
     @{Name = 'sql-server-express' }
-    @{Name = 'sql-server-management-studio' }
     @{Name = 'Temurin21jre' }
     @{Name = 'vcredist140' }
 )

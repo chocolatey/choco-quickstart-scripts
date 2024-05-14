@@ -70,19 +70,18 @@ Below are the minimum requirements for setting up your C4B server via this guide
 
 > :warning:**DISCLAIMER**: This guide utilizes code from a GitHub repository, namely: [choco-quickstart-scripts](https://github.com/chocolatey/choco-quickstart-scripts). Though we explain what each script does in drop-down boxes, please do your due diligence to review this code and ensure it meets your Organizational requirements.
 
+> :memo:**Offline Install**: If your C4B server does not have unrestricted access to the internet, you can download the `choco-quickstart-scripts` repository to a Windows machine that is connected to the internet and run `OfflineInstallPreparation.ps1`. This will use Chocolatey to save all of the required assets into the repository folder, which can then be transferred to the target C4B server.
+
 ### Step 1: Begin C4B Setup
 
-> :exclamation:**[IMPORTANT]** All commands should be run from an **elevated** PowerShell window (and **not ISE**), by opening your PowerShell console with the `Run as Administrator` option.
+> :exclamation:**[IMPORTANT]** All commands must be run from an **elevated** Windows PowerShell window (and **not ISE**), by opening your PowerShell console with the `Run as Administrator` option.
 
-1. Open a PowerShell console with the `Run as Administrator` option, and paste and run the following code:
+1. Open a Windows PowerShell console with the `Run as Administrator` option, and paste and run the following code:
 
     ```powershell
     Set-ExecutionPolicy Bypass -Scope Process -Force
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::tls12
-    $QuickStart = 'https://raw.githubusercontent.com/chocolatey/choco-quickstart-scripts/main/Start-C4bSetup.ps1'
-    $Script = [System.Net.Webclient]::new().DownloadString($QuickStart)
-    $sb = [ScriptBlock]::Create($Script)
-    & $sb
+    Invoke-RestMethod https://ch0.co/qsg-go | Invoke-Expression
     ```
 
     > <details>
@@ -97,9 +96,11 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > </ul>
     > </details>
 
+> :memo:**Offline Install**: You can now copy the `C:\choco-setup\` directory to any computer to continue the installation. To zip up that directory, run `Compress-Archive -Path C:\choco-setup\files\* -DestinationPath C:\choco-setup\C4B-Files.zip`. Move the archive to your new machine, and run `Expand-Archive -Path /path/to/C4B-Files.zip -DestinationPath C:\choco-setup\files -Force`. You should then run `Set-Location "$env:SystemDrive\choco-setup\files"; .\Start-C4bSetup.ps1`, and continue with the guide.
+
 ### Step 2: Nexus Setup
 
-1. In the same **elevated** PowerShell console as above, paste and run the following code:
+1. In the same **elevated** Windows PowerShell console as above, paste and run the following code:
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
@@ -121,7 +122,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > </ul>
     > </details>
 
-### Step 3: CCM Setup
+### Step 3: Chocolatey Central Management Setup
 
 1. In the same PowerShell Administrator console as above, paste and run the following code:
 
@@ -135,7 +136,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <ul class="list-style-type-disc">
     > <li>Installs MS SQL Express and SQL Server Management Studio (SSMS)</li>
     > <li>Creates "ChocolateyManagement" database, and adds appropriate `ChocoUser` permissions</li>
-    > <li>Installs all 3 CCM packages (database, service, web), with correct parameters</li>
+    > <li>Installs all 3 Chocolatey Central Management packages (database, service, web), with correct parameters</li>
     > <li>Outputs data to a JSON file to pass between scripts</li>
     > </ul>
     > </details>
@@ -208,7 +209,31 @@ Below are the minimum requirements for setting up your C4B server via this guide
 
     > :mag: **FYI**: A `Readme.html` file will now be generated on your desktop. This file contains login information for all 3 web portals (CCM, Nexus, and Jenkins). This `Readme.html`, along with all 3 web portals, will automatically be opened in your browser. 
 
-### Step 6: Setting up Endpoints
+### Step 6: Verification
+
+1. In the same **elevated** PowerShell console as above, paste and run the following code:
+
+    ```powershell
+    Set-Location "$env:SystemDrive\choco-setup\files"
+    .\Start-C4bVerification.ps1 -Fqdn '<Your expected fqdn here>'
+    ```
+
+    If you expect services to be available at `chocoserver.yourcompany.com`, then your command would look like: `.\Start-C4bVerification.ps1 -Fqdn 'chocoserver.yourcompany.com'`
+
+    > <details>
+    > <summary><strong>What does this script do? (click to expand)</strong></summary>
+    > <ul class="list-style-type-disc">
+    > <li>Verifies Nexus Repository installation</li>
+    > <li>Verifies Central Management installation</li>
+    > <li>Verifies Jenkins installation</li>
+    > <li>Ensures system firewall is configured</li>
+    > <li>Ensures Windows Features are installed</li>
+    > <li>Ensures services are correctly configured</li>
+    > <li>Ensured README is created</li>
+    > </ul>
+    > </details>
+
+### Step 7: Setting up Endpoints
 
 1. Find the `Register-C4bEndpoint.ps1` script in the `choco-setup\files\scripts\` directory on your C4B Server. Copy this script to your client endpoint.
 
