@@ -28,8 +28,7 @@ Describe "Nexus Configuration" {
     }
     Context "Services" {
         BeforeAll {
-
-            $certStoreCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object {$_.Subject -match "CN=$Fqdn"}
+            $certStoreCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object { "CN=$Fqdn" -like $_.Subject }
             $serviceCertificate = Get-RemoteCertificate -ComputerName $Fqdn -Port 8443
 
             $ConfigurationFile = Get-Content "C:\ProgramData\sonatype-work\nexus3\etc\nexus.properties"

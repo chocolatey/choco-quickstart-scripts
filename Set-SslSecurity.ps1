@@ -88,10 +88,19 @@ process {
     }
 
     if (-not $CertificateDnsName) {
-        $matcher = 'CN\s?=\s?[^,\s]+'
+        $matcher = 'CN\s?=\s?(?<Subject>[^,\s]+)'
         $null = $Certificate.Subject -match $matcher
-        $SubjectWithoutCn = $matches[0] -replace 'CN=', ''
-    } 
+        $SubjectWithoutCn = if ($Matches.Subject.StartsWith('*')) {
+            # This is a wildcard cert, we need to prompt for the intended CertificateDnsName
+            while ($CertificateDnsName -notlike $Matches.Subject) {
+                $CertificateDnsName = Read-Host -Prompt "$(if ($CertificateDnsName) {"'$($CertificateDnsName)' is not a subdomain of '$($Matches.Subject)'. "})Please provide an FQDN to use with the certificate '$($Matches.Subject)'"
+            }
+            $CertificateDnsName
+        }
+        else {
+            $Matches.Subject
+        }
+    }
     else {
         $SubjectWithoutCn = $CertificateDnsName
     }
