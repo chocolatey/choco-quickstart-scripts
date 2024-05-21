@@ -82,7 +82,7 @@ process {
 
     $Signature = Get-AuthenticodeSignature -FilePath $ChocoInstallScript
 
-    if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -eq 'CN="Chocolatey Software, Inc.", O="Chocolatey Software, Inc.", L=Topeka, S=Kansas, C=US') {
+    if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -eq 'CN="Chocolatey Software, Inc", O="Chocolatey Software, Inc", L=Topeka, S=Kansas, C=US') {
         New-NexusRawComponent -RepositoryName 'choco-install' -File $ChocoInstallScript
     } else {
         Write-Error "ChocolateyInstall.ps1 script signature is not valid. Please investigate."

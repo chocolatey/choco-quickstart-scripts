@@ -50,7 +50,7 @@ if (-not (Test-Path $ChocoInstallScript)) {
 
 $Signature = Get-AuthenticodeSignature -FilePath $ChocoInstallScript
 
-if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -eq 'CN="Chocolatey Software, Inc.", O="Chocolatey Software, Inc.", L=Topeka, S=Kansas, C=US') {
+if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -eq 'CN="Chocolatey Software, Inc", O="Chocolatey Software, Inc", L=Topeka, S=Kansas, C=US') {
     if (-not (Get-Command choco.exe -ErrorAction SilentlyContinue)) {
         if (Test-Path $PSScriptRoot\files\chocolatey.*.nupkg) {
             $env:ChocolateyDownloadUrl = (Convert-Path $PSScriptRoot\files\chocolatey.*.nupkg)[0]
