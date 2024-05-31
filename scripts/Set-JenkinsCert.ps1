@@ -12,7 +12,7 @@ param(
     # Thumbprint of the certificate stored in the Trusted People cert-store.
     [Parameter(Mandatory)]
     [ArgumentCompleter({
-        Get-ChildItem Cert:\LocalMachine\My | ForEach-Object {
+        Get-ChildItem Cert:\LocalMachine\TrustedPeople | ForEach-Object {
             [System.Management.Automation.CompletionResult]::new(
                 $_.Thumbprint,
                 $_.Thumbprint,

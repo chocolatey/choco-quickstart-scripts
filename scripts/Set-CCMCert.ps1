@@ -17,7 +17,7 @@ PS> .\Set-CCMCert.ps1 -Thumbprint 'Your_Certificate_Thumbprint_Value'
 param(
     [Parameter(Mandatory)]
     [ArgumentCompleter({
-        Get-ChildItem Cert:\LocalMachine\My | ForEach-Object {
+        Get-ChildItem Cert:\LocalMachine\TrustedPeople | ForEach-Object {
             [System.Management.Automation.CompletionResult]::new(
                 $_.Thumbprint,
                 $_.Thumbprint,

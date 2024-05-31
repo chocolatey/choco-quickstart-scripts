@@ -19,7 +19,7 @@ PS> .\Set-NexusCert.ps1 -Thumbprint 'Your_Certificate_Thumbprint_Value' -Port 'P
 param(
     [Parameter(Mandatory)]
     [ArgumentCompleter({
-        Get-ChildItem Cert:\LocalMachine\My | ForEach-Object {
+        Get-ChildItem Cert:\LocalMachine\TrustedPeople | ForEach-Object {
             [System.Management.Automation.CompletionResult]::new(
                 $_.Thumbprint,
                 $_.Thumbprint,
