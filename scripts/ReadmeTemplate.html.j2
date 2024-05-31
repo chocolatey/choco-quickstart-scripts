@@ -225,7 +225,7 @@ function CopyToClipboard(id)
 <pre><code>
   $Credential = [PSCredential]::new("chocouser", (ConvertTo-SecureString '{{ chocouser_password | e }}' -AsPlainText -Force))
   Invoke-WebRequest https://{{ nexus_fqdn }}:{{ nexus_port }}/repository/choco-install/ClientSetup.ps1 -OutFile $env:Temp\ClientSetup.ps1 -Credential $Credential
-  $env:Temp\ClientSetup.ps1 -Credential $Credential -ClientSalt '{{ ccm_client_salt | default('') | e }}' -ServerSalt '{{ ccm_service_salt | default('') | e }}'
+  & $env:Temp/ClientSetup.ps1 -Credential $Credential -ClientSalt '{{ ccm_client_salt | default('') | e }}' -ServiceSalt '{{ ccm_service_salt | default('') | e }}' -InternetEnabled
 </code></pre>
 </div>
 </body>
