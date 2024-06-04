@@ -111,10 +111,9 @@ $script = $webClient.DownloadString("https://${hostAddress}/repository/choco-ins
 choco config set cacheLocation $env:ChocolateyInstall\choco-cache
 choco config set commandExecutionTimeoutSeconds 14400
 
-if ($InternetEnabled) {
+if ($Credential) {
     choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --allow-self-service --user="'$($Credential.UserName)'" --password="'$($Credential.GetNetworkCredential().Password)'" --priority=1
-}
-else {
+} else {
     choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --allow-self-service --priority=1
 }
 
