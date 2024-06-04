@@ -18,6 +18,16 @@ param(
 
     #Certificate to use for CCM service
     [Parameter()]
+    [ArgumentCompleter({
+        Get-ChildItem Cert:\LocalMachine\TrustedPeople | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new(
+                $_.Thumbprint,
+                $_.Thumbprint,
+                'ParameterValue',
+                $_.FriendlyName
+            )
+        }
+    })]
     [String]
     $CertificateThumbprint
 )

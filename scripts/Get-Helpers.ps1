@@ -1647,7 +1647,7 @@ function Set-NexusCert {
 
     $KeyTool = "C:\ProgramData\nexus\jre\bin\keytool.exe"
     $KeyStorePath = 'C:\ProgramData\nexus\etc\ssl\keystore.jks'
-    $KeystoreCredential = [NetworkCredential]::new(
+    $KeystoreCredential = [System.Net.NetworkCredential]::new(
         "Keystore",
         (New-ServicePassword)
     )
