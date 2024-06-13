@@ -100,10 +100,10 @@ process {
     # Install prerequisites for CCM
     Write-Host "Installing Chocolatey Central Management Prerequisites"
     $chocoArgs = @('install', 'IIS-WebServer', "--source='windowsfeatures'", '--no-progress', '-y')
-    & choco @chocoArgs
+    & choco @chocoArgs -ValidExitCodes 0, 3010
 
     $chocoArgs = @('install', 'IIS-ApplicationInit', "--source='windowsfeatures'" ,'--no-progress', '-y')
-    & choco @chocoArgs
+    & choco @chocoArgs -ValidExitCodes 0, 3010
 
     $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='$($Packages.Where{$_.Name -eq 'dotnet-aspnetcoremodule-v2'}.Version)'", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-web V 0.12.0"', '-y')
     & choco @chocoArgs
