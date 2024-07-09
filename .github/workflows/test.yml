@@ -1,0 +1,89 @@
+name: Test Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      fqdn:
+        description: The FQDN for any attempted calls. Will be added to the hosts file on the runner.
+        required: false
+
+      ignore_cache:
+        description: Does not restore a package cache if selected.
+        required: false
+
+defaults:
+  run:
+    shell: powershell
+
+jobs:
+  runner_test_deploy:
+    name: Test Quickstart Deployment
+    runs-on: windows-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Setup Package Cache
+        uses: actions/cache@v4
+        if: inputs.ignore_cache != true
+        with:
+          path: |
+            C:/choco-setup/files/files/*.nupkg
+            C:/choco-setup/files/files/*.zip
+            !**/chocolatey-license.*.nupkg
+          key: "${{ hashFiles('files/*.json') }}"
+
+      - name: Create License File
+        run: |
+          Set-Content -Path .\files\chocolatey.license.xml -Value $(
+            [System.Text.Encoding]::UTF8.GetString(
+              [System.Convert]::FromBase64String('${{ secrets.LICENSE }}')
+            )
+          )
+
+      - name: Begin Setup
+        run: |
+          if (-not (Test-Path C:\choco-setup\files)) {
+            New-Item -Path C:\choco-setup\files -ItemType Junction -Value $PWD.Path
+          }
+          if ('${{ inputs.FQDN }}') {
+            Add-Content -Path C:\Windows\system32\drivers\etc\hosts -Value "127.0.0.1  ${{ inputs.FQDN }}"
+          }
+          C:\choco-setup\files\Start-C4bSetup.ps1
+
+      - name: Setup Nexus
+        run: C:\choco-setup\files\Start-C4BNexusSetup.ps1
+      
+      - name: Setup CCM
+        run: |
+          $DatabaseCredential = [PSCredential]::new(
+            "ccmuser",
+            (ConvertTo-SecureString "$(New-Guid)" -AsPlainText -Force)
+          )
+          C:\choco-setup\files\Start-C4bCcmSetup.ps1 -DatabaseCredential $DatabaseCredential
+      
+      - name: Setup Jenkins
+        run: C:\choco-setup\files\Start-C4bJenkinsSetup.ps1
+      
+      # - name: Setup SSL Security
+      #   run: C:\choco-setup\files\Set-SslSecurity.ps1
+
+      - name: Test the QuickStart Environment
+        run: C:\choco-setup\files\Start-C4bVerification.ps1 -Fqdn $env:ComputerName
+
+      - name: Publish Test Results
+        uses: dorny/test-reporter@v1.9.1
+        if: success() || failure()
+        with:
+          name: C4bVerification
+          path: C:\choco-setup\test-results\verification.results.xml
+          reporter: dotnet-nunit
+          # fail-on-error: true
+          # fail-on-empty: true
+
+      - name: Publish Log Files
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: choco-setup-logs
+          path: C:\choco-setup\logs\
