@@ -187,9 +187,8 @@ process {
             "--password='$NexusPw'"
         )
         & choco @ChocoArgs
-    
     }
-    
+
     else {
         $ChocoArgs = @(
             'source',
