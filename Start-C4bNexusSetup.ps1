@@ -94,7 +94,7 @@ process {
     # Install a non-IE browser for browsing the Nexus web portal.
     if (-not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')) {
         Write-Host "Installing Microsoft Edge, to allow viewing the Nexus site"
-        choco install microsoft-edge -y
+        choco install microsoft-edge -y --source ChocolateyInternal
         if ($LASTEXITCODE -eq 0) {
             if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Edge') {
                 $RegArgs = @{
