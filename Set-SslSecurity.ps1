@@ -123,7 +123,7 @@ process {
     Copy-CertToStore -Certificate $Certificate
 
     # Generate Nexus keystore
-    $null = New-NexusCert -Thumbprint $Certificate.Thumbprint
+    $null = Set-NexusCert -Thumbprint $Certificate.Thumbprint
 
     # Add firewall rule for Nexus
     netsh advfirewall firewall add rule name="Nexus-8443" dir=in action=allow protocol=tcp localport=8443

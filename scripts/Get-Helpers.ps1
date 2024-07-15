@@ -1634,52 +1634,80 @@ function Get-RemoteCertificate {
     }
 }
 
-function New-NexusCert {
+function Set-NexusCert {
     [CmdletBinding()]
     param(
-        [Parameter()]
-        $Thumbprint
+        # The thumbprint of the certificate to configure Nexus to use, from the LocalMachine\TrustedPeople store.
+        [Parameter(Mandatory)]
+        $Thumbprint,
+
+        # The port to set Nexus to use for https.
+        $Port = 8443
     )
 
-    if ((Test-Path C:\ProgramData\nexus\etc\ssl\keystore.jks)) {
-        Remove-Item C:\ProgramData\nexus\etc\ssl\keystore.jks -Force
+    $KeyTool = "C:\ProgramData\nexus\jre\bin\keytool.exe"
+    $KeyStorePath = 'C:\ProgramData\nexus\etc\ssl\keystore.jks'
+    $KeystoreCredential = [System.Net.NetworkCredential]::new(
+        "Keystore",
+        (New-ServicePassword)
+    )
+    $TempCertPath = Join-Path $env:TEMP "$(New-Guid).pfx"
+
+    try {
+        # Temporarily export the certificate as a PFX
+        Get-ChildItem Cert:\LocalMachine\TrustedPeople\ | Where-Object { $_.Thumbprint -eq $Thumbprint } | Sort-Object | Select-Object -First 1 | Export-PfxCertificate -FilePath $TempCertPath -Password $KeystoreCredential.SecurePassword
+        # TODO: Is this the right place for this? # Get-ChildItem -Path $TempCertPath | Import-PfxCertificate -CertStoreLocation Cert:\LocalMachine\My -Exportable -Password $KeystoreCredential.SecurePassword
+        
+        if (Test-Path $KeyStorePath) {
+            Remove-Item $KeyStorePath -Force
+        }
+
+        # Using a job to hide improper non-output streams
+        $Job = Start-Job {
+            $string = ($using:KeystoreCredential.Password | & $using:KeyTool -list -v -keystore $using:TempCertPath) -match '^Alias.*'
+            $currentAlias = ($string -split ':')[1].Trim()
+            & $using:KeyTool -importkeystore -srckeystore $using:TempCertPath -srcstoretype PKCS12 -srcstorepass $using:KeystoreCredential.Password -destkeystore $using:KeyStorePath -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $using:KeystoreCredential.Password
+            & $using:KeyTool -keypasswd -keystore $using:KeyStorePath -alias jetty -storepass $using:KeystoreCredential.Password -keypass $using:KeystoreCredential.Password -new $using:KeystoreCredential.Password
+        } | Wait-Job
+        if ($Job.State -eq 'Failed') {
+            $Job | Receive-Job
+        } else {
+            $Job | Remove-Job
+        }
+    } finally {
+        if (Test-Path $TempCertPath) {
+            Remove-Item $TempCertPath -Force
+        }
     }
 
-    $KeyTool = "C:\ProgramData\nexus\jre\bin\keytool.exe"
-    $password = "chocolatey" | ConvertTo-SecureString -AsPlainText -Force
-    $certificate = Get-ChildItem  Cert:\LocalMachine\TrustedPeople\ | Where-Object { $_.Thumbprint -eq $Thumbprint } | Sort-Object | Select-Object -First 1
-
-    Write-Host "Exporting .pfx file to C:\, will remove when finished" -ForegroundColor Green
-    $certificate | Export-PfxCertificate -FilePath C:\cert.pfx -Password $password
-    Get-ChildItem -Path c:\cert.pfx | Import-PfxCertificate -CertStoreLocation Cert:\LocalMachine\My -Exportable -Password $password
-    Write-Warning -Message "You'll now see prompts and other outputs, things are working as expected, don't do anything"
-    $string = ("chocolatey" | & $KeyTool -list -v -keystore C:\cert.pfx) -match '^Alias.*'
-    $currentAlias = ($string -split ':')[1].Trim()
-
-    $passkey = '9hPRGDmfYE3bGyBZCer6AUsh4RTZXbkw'
-    & $KeyTool -importkeystore -srckeystore C:\cert.pfx -srcstoretype PKCS12 -srcstorepass chocolatey -destkeystore C:\ProgramData\nexus\etc\ssl\keystore.jks -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $passkey
-    & $KeyTool -keypasswd -keystore C:\ProgramData\nexus\etc\ssl\keystore.jks -alias jetty -storepass $passkey -keypass chocolatey -new $passkey
-
+    # Update the Nexus configuration
     $xmlPath = 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
     [xml]$xml = Get-Content -Path 'C:\ProgramData\nexus\etc\jetty\jetty-https.xml'
     foreach ($entry in $xml.Configure.New.Where{ $_.id -match 'ssl' }.Set.Where{ $_.name -match 'password' }) {
-        $entry.InnerText = $passkey
+        $entry.InnerText = $KeystoreCredential.Password
     }
 
-    $xml.OuterXml | Set-Content -Path $xmlPath
+    $xml.Save($xmlPath)
 
-    Remove-Item C:\cert.pfx
+    $configPath = "C:\ProgramData\sonatype-work\nexus3\etc\nexus.properties"
 
-    $nexusPath = 'C:\ProgramData\sonatype-work\nexus3'
-    $configPath = "$nexusPath\etc\nexus.properties"
+    # Remove existing ssl config from the configuration
+    (Get-Content $configPath) | Where-Object {$_ -notmatch "application-port-ssl="} | Set-Content $configPath
 
-    $configStrings = @('jetty.https.stsMaxAge=-1', 'application-port-ssl=8443', 'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml')
-    $configStrings | ForEach-Object {
+    # Ensure each line is added to the configuration
+    @(
+        'jetty.https.stsMaxAge=-1'
+        "application-port-ssl=$Port"
+        'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml'
+    ) | ForEach-Object {
         if ((Get-Content -Raw $configPath) -notmatch [regex]::Escape($_)) {
             $_ | Add-Content -Path $configPath
         }
     }
-    
+
+    if ((Get-Service Nexus).Status -eq 'Running') {
+        Restart-Service Nexus
+    }
 }
 
 function Test-SelfSignedCertificate {
@@ -2075,12 +2103,18 @@ function Set-JenkinsCertificate {
         # Temporarily export the certificate as a PFX
         $null = Get-ChildItem Cert:\LocalMachine\TrustedPeople\ | Where-Object {$_.Thumbprint -eq $Thumbprint} | Export-PfxCertificate -FilePath $CertificatePath -Password $CertificatePassword.SecurePassword
 
-        Write-Host "Do NOT " -NoNewline  # There is no way to hide the input, but the pipelining works after a second
-        $CurrentAlias = ($($CertificatePassword.Password | & $KeyTool -list -v -storetype PKCS12 -keystore $CertificatePath) -match "^Alias.*").Split(':')[1].Trim()
-        Write-Host ""  # Adds a newline, after this command has finished.
+        # Using a job to hide improper non-output streams
+        $Job = Start-Job {
+            $CurrentAlias = ($($using:CertificatePassword.Password | & $using:KeyTool -list -v -storetype PKCS12 -keystore $using:CertificatePath) -match "^Alias.*").Split(':')[1].Trim()
 
-        $null = & $KeyTool -importkeystore -srckeystore $CertificatePath -srcstoretype PKCS12 -srcstorepass $CertificatePassword.Password -destkeystore $KeyStore -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $Passkey
-        $null = & $KeyTool -keypasswd -keystore $KeyStore -alias jetty -storepass $Passkey -keypass $CertificatePassword.Password -new $Passkey
+            $null = & $using:KeyTool -importkeystore -srckeystore $using:CertificatePath -srcstoretype PKCS12 -srcstorepass $using:CertificatePassword.Password -destkeystore $using:KeyStore -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $using:Passkey
+            $null = & $using:KeyTool -keypasswd -keystore $using:KeyStore -alias jetty -storepass $using:Passkey -keypass $using:CertificatePassword.Password -new $using:Passkey
+        } | Wait-Job
+        if ($Job.State -eq 'Failed') {
+            $Job | Receive-Job
+        } else {
+            $Job | Remove-Job
+        }
     } finally {
         # Clean up the exported certificate
         Remove-Item $CertificatePath
