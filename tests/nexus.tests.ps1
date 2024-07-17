@@ -82,8 +82,13 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
 
             $repositories = Get-NexusRepository
         }
+
         It "ChocolateyInternal" {
             'ChocolateyInternal' -in $repositories.Name | Should -Be $true
+        }
+
+        It "ChocolateyCore" {
+            'ChocolateyCore' -in $repositories.Name | Should -Be $true
         }
 
         It "ChocolateyTest" {
@@ -105,7 +110,7 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
                 choco cache remove
             }
 
-            $packages = choco.exe search -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version
+            $packages = choco.exe search -s ChocolateyCore -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version
         }
 
         It "<Name> is in the repository" -ForEach @( $JointPackages + $RepositoryOnlyPackages ) {
