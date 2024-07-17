@@ -64,8 +64,13 @@ Describe "Nexus Configuration" {
 
             $repositories = Get-NexusRepository
         }
+
         It "ChocolateyInternal" {
             'ChocolateyInternal' -in $repositories.Name | Should -Be $true
+        }
+
+        It "ChocolateyCore" {
+            'ChocolateyCore' -in $repositories.Name | Should -Be $true
         }
 
         It "ChocolateyTest" {
@@ -87,7 +92,7 @@ Describe "Nexus Configuration" {
                 C:\ProgramData\chocolatey\choco.exe cache remove
             }
 
-            $packages = C:\ProgramData\chocolatey\choco.exe search -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package, Version
+            $packages = C:\ProgramData\chocolatey\choco.exe search -s ChocolateyCore -r | ConvertFrom-Csv -Delimiter '|' -Header Package, Version
         }
 
         It "<Name> is in the repository" -ForEach @( $JointPackages + $RepositoryOnlyPackages ) {

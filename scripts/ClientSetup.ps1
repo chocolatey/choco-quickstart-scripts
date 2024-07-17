@@ -9,7 +9,7 @@ param(
     [Parameter()]
     [Alias('Url')]
     [string]
-    $RepositoryUrl = 'https://{{hostname}}:8443/repository/ChocolateyInternal/index.json',
+    $RepositoryUrl = 'https://{{hostname}}:8443/repository/ChocolateyCore/index.json',
 
     # The credential necessary to access the internal Nexus repository. This can
     # be ignored if Anonymous authentication is enabled.
@@ -112,21 +112,28 @@ choco config set commandExecutionTimeoutSeconds 14400
 choco feature disable --name="'usePackageRepositoryOptimizations'"
 
 if ($InternetEnabled) {
-    choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --allow-self-service --user="'$($Credential.UserName)'" --password="'$($Credential.GetNetworkCredential().Password)'" --priority=1
+    choco source add --name="'ChocolateyCore'" --source="'$RepositoryUrl'" --allow-self-service --admin-only --user="'$($Credential.UserName)'" --password="'$($Credential.GetNetworkCredential().Password)'" --priority=0
 }
 else {
-    choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --allow-self-service --priority=1
+    choco source add --name="'ChocolateyCore'" --source="'$RepositoryUrl'" --allow-self-service --admin-only --priority=0
+}
+
+if ($InternetEnabled) {
+    choco source add --name="'ChocolateyInternal'" --source="'$($RepositoryUrl -replace '(?<=/)ChocolateyCore(/index.json)?', 'ChocolateyInternal$1')'" --allow-self-service --user="'$($Credential.UserName)'" --password="'$($Credential.GetNetworkCredential().Password)'" --priority=1
+}
+else {
+    choco source add --name="'ChocolateyInternal'" --source="'$($RepositoryUrl -replace '(?<=/)ChocolateyCore(/index.json)?', 'ChocolateyInternal$1')'" --allow-self-service --priority=1
 }
 
 choco source disable --name="'Chocolatey'"
 choco source disable --name="'chocolatey.licensed'"
 
-choco upgrade chocolatey-license -y --source="'ChocolateyInternal'"
-choco upgrade chocolatey.extension -y --params="'/NoContextMenu'" --source="'ChocolateyInternal'" --no-progress
-choco upgrade chocolateygui -y --source="'ChocolateyInternal'" --no-progress
-choco upgrade chocolateygui.extension -y --source="'ChocolateyInternal'" --no-progress
+choco upgrade chocolatey-license -y --source="'ChocolateyCore'"
+choco upgrade chocolatey.extension -y --params="'/NoContextMenu'" --source="'ChocolateyCore'" --no-progress
+choco upgrade chocolateygui -y --source="'ChocolateyCore'" --no-progress
+choco upgrade chocolateygui.extension -y --source="'ChocolateyCore'" --no-progress
 
-choco upgrade chocolatey-agent -y --source="'ChocolateyInternal'"
+choco upgrade chocolatey-agent -y --source="'ChocolateyCore'"
 
 # Chocolatey Package Upgrade Resilience
 choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"

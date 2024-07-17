@@ -47,6 +47,7 @@ process {
     Enable-NexusRealm -Realm 'NuGet API-Key Realm'
 
     #Create Chocolatey repositories
+    New-NexusNugetHostedRepository -Name ChocolateyCore -DeploymentPolicy Allow
     New-NexusNugetHostedRepository -Name ChocolateyInternal -DeploymentPolicy Allow
     New-NexusNugetHostedRepository -Name ChocolateyTest -DeploymentPolicy Allow
     New-NexusRawHostedRepository -Name choco-install -DeploymentPolicy Allow -ContentDisposition Attachment
@@ -56,11 +57,11 @@ process {
 
     # Push all packages from previous steps to NuGet repo
     Get-ChildItem -Path "$env:SystemDrive\choco-setup\files\packages" -Filter *.nupkg | ForEach-Object {
-        Invoke-Choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --apikey $NugetApiKey --force
+        Invoke-Choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyCore').url)/index.json" --apikey $NugetApiKey --force
     }
 
     # Temporary workaround to reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
-    Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
+    Remove-NexusRepositoryFolder -RepositoryName ChocolateyCore -Name v3
 
     # Push latest ChocolateyInstall.ps1 to raw repo
     $ScriptDir = "$env:SystemDrive\choco-setup\files\scripts"
@@ -84,10 +85,13 @@ process {
     # Add ChocolateyInternal as a source repository
     Invoke-Choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --priority 1
 
-    #Remove Local Chocolatey Setup Source
+    # Remove Local Chocolatey Setup Source
     $chocoArgs = @('source', 'remove', '--name="LocalChocolateySetup"')
     & Invoke-Choco @chocoArgs
     
+    # Add ChocolateyCore as a source repository
+    Invoke-Choco source add -n 'ChocolateyCore' -s "$((Get-NexusRepository -Name 'ChocolateyCore').url)/index.json" --priority 0 --admin-only
+
     # Install a non-IE browser for browsing the Nexus web portal.
     if (-not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')) {
         Write-Host "Installing Microsoft Edge, to allow viewing the Nexus site"
