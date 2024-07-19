@@ -33,7 +33,26 @@ param(
         }
         $true
     })]
-    [string]$LicensePath = "C:\ProgramData\chocolatey\license\chocolatey.license.xml",
+    [string]$LicensePath = $(
+        if (Test-Path $PSScriptRoot\files\chocolatey.license.xml) {
+            # Offline setup has been run, we should use that license.
+            Join-Path $PSScriptRoot "files\chocolatey.license.xml"
+        } elseif (Test-Path $env:ChocolateyInstall\license\chocolatey.license.xml) {
+            # Chocolatey is already installed, we can use that license.
+            Join-Path $env:ChocolateyInstall "license\chocolatey.license.xml"
+        } else {
+            # Prompt the user for the license.
+            $Wshell = New-Object -ComObject Wscript.Shell
+            $null = $Wshell.Popup('You will need to provide the license file location. Please select your Chocolatey License in the next file dialog.')
+            $null = [System.Reflection.Assembly]::LoadWithPartialName("System.windows.forms")
+            $OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
+            $OpenFileDialog.initialDirectory = "$env:USERPROFILE\Downloads"
+            $OpenFileDialog.filter = 'All Files (*.*)| *.*'
+            $null = $OpenFileDialog.ShowDialog()
+
+            $OpenFileDialog.filename
+        }
+    ),
 
     [string]$WorkingDirectory = $(Join-Path $env:Temp "choco-offline")
 )

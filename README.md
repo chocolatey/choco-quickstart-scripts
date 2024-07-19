@@ -71,6 +71,14 @@ Below are the minimum requirements for setting up your C4B server via this guide
 > :warning:**DISCLAIMER**: This guide utilizes code from a GitHub repository, namely: [choco-quickstart-scripts](https://github.com/chocolatey/choco-quickstart-scripts). Though we explain what each script does in drop-down boxes, please do your due diligence to review this code and ensure it meets your Organizational requirements.
 
 > :memo:**Offline Install**: If your C4B server does not have unrestricted access to the internet, you can download the `choco-quickstart-scripts` repository to a Windows machine that is connected to the internet and run `OfflineInstallPreparation.ps1`. This will use Chocolatey to save all of the required assets into the repository folder, which can then be transferred to the target C4B server.
+> - Download [choco-quickstart-scripts by clicking here](https://github.com/chocolatey/choco-quickstart-scripts/archive/refs/heads/main.zip).
+> - Unzip it, e.g.: `Expand-Archive -Path ~\Downloads\choco-quickstart-scripts-main.zip -DestinationPath ~\Downloads\choco-quickstart-scripts`.
+> - Run the OfflineInstallPreparation script, e.g.: `~\Downloads\choco-quickstart-scripts\choco-quickstart-scripts-main\OfflineInstallPreparation.ps1`.
+> - Run the following to zip up your offline bundle: `Compress-Archive -Path ~\Downloads\choco-quickstart-scripts\choco-quickstart-scripts-main\* -DestinationPath ~\Downloads\C4B-Files.zip`.
+> - Transfer the `C4B-Files.zip` from your downloads folder to your offline system. All further steps will be carried out on the offline system.
+> - Run `Expand-Archive -Path \path\to\C4B-Files.zip -DestinationPath C:\choco-setup\files -Force` on your offline system.
+> - Run `Set-Location "$env:SystemDrive\choco-setup\files"; Set-ExecutionPolicy Bypass Process; .\Start-C4bSetup.ps1` on your offline system.
+> - Proceed to Step 2!
 
 ### Step 1: Begin C4B Setup
 
