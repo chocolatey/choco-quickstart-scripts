@@ -8,21 +8,18 @@ Param(
 Describe "Chocolatey Central Management Configuration" {
     Context "Services" {
         BeforeAll {
+            $expectedCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object { "CN=$Fqdn" -like $_.Subject }
             $centralManagementServiceCertificate = Get-RemoteCertificate -Computername $Fqdn -Port 24020
-            $expectedServiceCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object { "CN=$Fqdn" -like $_.Subject }
-
             $centralManagementWebCertificate = Get-RemoteCertificate -ComputerName $Fqdn -Port 443
-            $expectedWebCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object { "CN=$Fqdn" -like $_.Subject }
 
             $centralManagementFirewallRule = (Get-NetFirewallRule -DisplayName Choco*)
 
-            $CCMService = try { 
+            $CCMService = try {
                 ([System.Net.WebRequest]::Create("https://$($Fqdn):24020/ChocolateyManagementService") -as [System.net.HttpWebRequest]).GetResponse().StatusCode 
-            } 
-            catch { 
+            }
+            catch {
                 $_.Exception.Message -match '400'
-            } 
-
+            }
         }
 
         It "Website is listening on port 443" {
@@ -32,10 +29,10 @@ Describe "Chocolatey Central Management Configuration" {
             $CCMService | Should -Be $true       
         }
         It "Web interface is using correct SSL Certificate" {
-            $centralManagementWebCertificate -eq $expectedWebCertificate | Should -Be $true
+            $centralManagementWebCertificate | Should -Be $expectedCertificate
         }
         It "Central Management service is using correct SSL Certificate" {
-            $centralManagementServiceCertificate -eq $expectedServiceCertificate | Should -Be $true
+            $centralManagementServiceCertificate | Should -Be $expectedCertificate
         }
         It "Firewall rule for Central Management Service exists" {
             $centralManagementFirewallRule | Should -Not -BeNullOrEmpty

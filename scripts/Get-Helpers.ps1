@@ -20,7 +20,18 @@ function Invoke-Choco {
         $Arguments += '--limit-output'
     }
 
-    & choco.exe $Command $Arguments | Tee-Object -Variable Result | Where-Object {$_} | ForEach-Object {
+    $chocoPath = if ($CommandPath = Get-Command choco.exe -ErrorAction SilentlyContinue) {
+        $CommandPath.Source
+    } elseif ($env:ChocolateyInstall) {
+        Join-Path $env:ChocolateyInstall "choco.exe"
+    } elseif (Test-Path C:\ProgramData\chocolatey\choco.exe) {
+        "C:\ProgramData\chocolatey\choco.exe"
+    } else {
+        Write-Error "Could not find 'choco.exe' - unexpected behaviour is expected!"
+        "choco.exe"
+    }
+
+    & $chocoPath $Command $Arguments | Tee-Object -Variable Result | Where-Object {$_} | ForEach-Object {
         Write-Information -MessageData $_ -Tags Choco
     }
 
