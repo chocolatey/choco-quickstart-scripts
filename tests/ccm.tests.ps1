@@ -12,7 +12,7 @@ Describe "Chocolatey Central Management Configuration" {
             $expectedServiceCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object { "CN=$Fqdn" -like $_.Subject }
 
             $centralManagementWebCertificate = Get-RemoteCertificate -ComputerName $Fqdn -Port 443
-            $expectedWebCertificate = Get-ChildItem Cert:\LocalMachine\My | Where-Object { "CN=$Fqdn" -like $_.Subject }
+            $expectedWebCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object { "CN=$Fqdn" -like $_.Subject }
 
             $centralManagementFirewallRule = (Get-NetFirewallRule -DisplayName Choco*)
 
