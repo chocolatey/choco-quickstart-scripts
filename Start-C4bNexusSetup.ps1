@@ -96,20 +96,24 @@ process {
     choco source add -n 'ChocolateyCore' -s "$((Get-NexusRepository -Name 'ChocolateyCore').url)/index.json" --priority 0 --admin-only
 
     # Install a non-IE browser for browsing the Nexus web portal.
-    if (-not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')) {
+    if (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'){
+        Write-Host "Syncing Microsoft Edge, to bring it under Chocolatey management"
+        choco sync --id="Microsoft Edge" --package-id="microsoft-edge"
+    }
+    else {
         Write-Host "Installing Microsoft Edge, to allow viewing the Nexus site"
-        choco install microsoft-edge -y --source ChocolateyInternal
-        if ($LASTEXITCODE -eq 0) {
-            if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Edge') {
-                $RegArgs = @{
-                    Path = 'HKLM:\SOFTWARE\Microsoft\Edge\'
-                    Name = 'HideFirstRunExperience'
-                    Type = 'Dword'
-                    Value = 1
-                    Force = $true
-                }
-                $null = Set-ItemProperty @RegArgs
+        choco install microsoft-edge -y --source ChocolateyCore
+    }
+    if ($LASTEXITCODE -eq 0) {
+        if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Edge') {
+            $RegArgs = @{
+                Path = 'HKLM:\SOFTWARE\Microsoft\Edge\'
+                Name = 'HideFirstRunExperience'
+                Type = 'Dword'
+                Value = 1
+                Force = $true
             }
+            $null = Set-ItemProperty @RegArgs
         }
     }
 
