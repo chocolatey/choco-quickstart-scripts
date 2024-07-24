@@ -60,17 +60,11 @@ param(
     $Hostname = [System.Net.Dns]::GetHostName(),
 
     # API key of your Nexus repo, to add to the source setup on C4B Server.
-    [string]$NuGetApiKey = $(Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
+    [string]$NuGetApiKey = $(Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey,
+
+    # If provided, will skip launching the browser
+    [switch]$SkipBrowserLaunch
 )
-
-begin {
-    if($host.name -ne 'ConsoleHost') {
-        Write-Warning "This script cannot be ran from within PowerShell ISE"
-        Write-Warning "Please launch powershell.exe as an administrator, and run this script again"
-        break
-    }
-}
-
 process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
@@ -120,7 +114,7 @@ process {
     Copy-CertToStore -Certificate $Certificate
 
     # Generate Nexus keystore
-    $null = New-NexusCert -Thumbprint $Certificate.Thumbprint
+    $null = Set-NexusCert -Thumbprint $Certificate.Thumbprint
 
     # Add firewall rule for Nexus
     netsh advfirewall firewall add rule name="Nexus-8443" dir=in action=allow protocol=tcp localport=8443
@@ -193,9 +187,8 @@ process {
             "--password='$NexusPw'"
         )
         & choco @ChocoArgs
-    
     }
-    
+
     else {
         $ChocoArgs = @(
             'source',
@@ -245,7 +238,7 @@ process {
     # Remove old CCM web binding, and add new CCM web binding
     Stop-CcmService
     Remove-CcmBinding
-    New-CcmBinding
+    New-CcmBinding -Thumbprint $Certificate.Thumbprint
     Start-CcmService
 
     # Create the site hosting the certificate import script on port 80
@@ -347,38 +340,40 @@ end {
     Write-Host 'Cleaning up temporary data'
     Remove-JsonFiles
 
-    $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
-    $Timeout = New-TimeSpan -Seconds 10
-    $Stopwatch = [System.Diagnostics.Stopwatch]::new()
-    $Stopwatch.Start()
-    Write-Host $Message -NoNewline -ForegroundColor Green
-    do {
-        # wait for a key to be available:
-        if ([Console]::KeyAvailable) {
-            # read the key, and consume it so it won't
-            # be echoed to the console:
-            $keyInfo = [Console]::ReadKey($true)
-            Write-Host "`nSkipping the Opening of sites in your browser." -ForegroundColor Green
-            # exit loop
-            break
+    if (-not $SkipBrowserLaunch -and $Host.Name -eq 'ConsoleHost') {
+        $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
+        $Timeout = New-TimeSpan -Seconds 10
+        $Stopwatch = [System.Diagnostics.Stopwatch]::new()
+        $Stopwatch.Start()
+        Write-Host $Message -NoNewline -ForegroundColor Green
+        do {
+            # wait for a key to be available:
+            if ([Console]::KeyAvailable) {
+                # read the key, and consume it so it won't
+                # be echoed to the console:
+                $keyInfo = [Console]::ReadKey($true)
+                Write-Host "`nSkipping the Opening of sites in your browser." -ForegroundColor Green
+                # exit loop
+                break
+            }
+            # write a dot and wait a second
+            Write-Host '.' -NoNewline -ForegroundColor Green
+            Start-Sleep -Seconds 1
         }
-        # write a dot and wait a second
-        Write-Host '.' -NoNewline -ForegroundColor Green
-        Start-Sleep -Seconds 1
-    }
-    while ($Stopwatch.Elapsed -lt $Timeout)
-    $Stopwatch.Stop()
+        while ($Stopwatch.Elapsed -lt $Timeout)
+        $Stopwatch.Stop()
 
-    if (-not ($keyInfo)) {
-        Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
-        $Readme = 'file:///C:/Users/Public/Desktop/README.html'
-        $Ccm = "https://$($SubjectWithoutCn)/Account/Login"
-        $Nexus = "https://$($SubjectWithoutCn):8443"
-        $Jenkins = "https://$($SubjectWithoutCn):7443"
-        try {
-            Start-Process msedge.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
-        } catch {
-            Start-Process chrome.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
+        if (-not ($keyInfo)) {
+            Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
+            $Readme = 'file:///C:/Users/Public/Desktop/README.html'
+            $Ccm = "https://$($SubjectWithoutCn)/Account/Login"
+            $Nexus = "https://$($SubjectWithoutCn):8443"
+            $Jenkins = "https://$($SubjectWithoutCn):7443"
+            try {
+                Start-Process msedge.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
+            } catch {
+                Start-Process chrome.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
+            }
         }
     }
 

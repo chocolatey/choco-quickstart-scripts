@@ -16,16 +16,6 @@ param(
     # API key of your Nexus repo, for Chocolatey Jenkins jobs to use
     [string]$NuGetApiKey = $(Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
 )
-
-begin {
-    if ($host.name -ne 'ConsoleHost') {
-        Write-Warning "This script cannot be ran from within PowerShell ISE"
-        Write-Warning "Please launch powershell.exe as an administrator, and run this script again"
-        break
-    }
-}
-
-
 process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'

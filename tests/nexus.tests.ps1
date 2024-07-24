@@ -10,7 +10,7 @@ Param(
 Describe "Nexus Configuration" {
     Context "Installation Integrity" {
         BeforeAll {
-            $nexus = choco.exe list -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version | Where-Object Package -eq nexus-repository
+            $nexus = C:\ProgramData\chocolatey\choco.exe list -r | ConvertFrom-Csv -Delimiter '|' -Header Package, Version | Where-Object Package -EQ nexus-repository
             $service = Get-Service nexus
         }
 
@@ -32,36 +32,18 @@ Describe "Nexus Configuration" {
             $serviceCertificate = Get-RemoteCertificate -ComputerName $Fqdn -Port 8443
 
             $ConfigurationFile = Get-Content "C:\ProgramData\sonatype-work\nexus3\etc\nexus.properties"
-            $expectedConfiguation = @'
-# Jetty section
-# application-port=8081
-# application-host=0.0.0.0
-# nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-http.xml,${jetty.etc}/jetty-requestlog.xml
-# nexus-context-path=/
-
-# Nexus section
-# nexus-edition=nexus-pro-edition
-# nexus-features=\
-#  nexus-pro-feature
-
-# nexus.hazelcast.discovery.isEnabled=true
-jetty.https.stsMaxAge=-1
-application-port-ssl=8443
-nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml
-
-'@
         }
 
         It "Service has HSTS disabled" {
-            $ConfigurationFile[12] -eq 'jetty.https.stsMaxAge=-1' | Should -Be $true
+            $ConfigurationFile -contains 'jetty.https.stsMaxAge=-1' | Should -Be $true
         }
 
         It "Service is using port 8443" {
-            $ConfigurationFile[13] -eq 'application-port-ssl=8443' | Should -Be $true
+            $ConfigurationFile -contains 'application-port-ssl=8443' | Should -Be $true
         }
 
         It "Service is using jetty-https.xml" {
-            $ConfigurationFile[14] -eq 'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml' | Should -Be $true
+            $ConfigurationFile -contains 'nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jetty-requestlog.xml' | Should -Be $true
         }
 
         It "Service is using the appropriate SSL Certificate" {
@@ -101,11 +83,11 @@ nexus-args=${jetty.etc}/jetty.xml,${jetty.etc}/jetty-https.xml,${jetty.etc}/jett
 
     Context "Package Availability" {
         BeforeAll {
-            if (([version] (choco.exe --version).Split('-')[0]) -ge [version] '2.1.0') {
+            if (([version] (C:\ProgramData\chocolatey\choco.exe --version).Split('-')[0]) -ge [version] '2.1.0') {
                 choco cache remove
             }
 
-            $packages = choco.exe search -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package,Version
+            $packages = C:\ProgramData\chocolatey\choco.exe search -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package, Version
         }
 
         It "<Name> is in the repository" -ForEach @( $JointPackages + $RepositoryOnlyPackages ) {

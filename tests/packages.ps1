@@ -20,7 +20,6 @@ $ServerOnlyPackages = @(
     @{Name = 'KB3033929' }
     @{Name = 'KB3035131' }
     @{Name = 'KB3063858' }
-    @{Name = 'microsoft-edge' }
     @{Name = 'nexus-repository' }
     @{Name = 'Pester' }
     @{Name = 'sql-server-express' }
