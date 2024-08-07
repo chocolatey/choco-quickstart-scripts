@@ -74,7 +74,7 @@ Describe "Jenkins Configuration" {
 
     Context "Required Plugins" {
         BeforeDiscovery {
-            $ExpectedPlugins = (Get-Content $PSScriptRoot\..\files\jenkins.json | ConvertFrom-Json).plugins.name
+            $ExpectedPlugins = (Get-Content $PSScriptRoot\..\packages\jenkins.json | ConvertFrom-Json).plugins.name
         }
 
         BeforeAll {

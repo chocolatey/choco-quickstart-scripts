@@ -13,7 +13,7 @@ param(
     # Local path used to build the license package.
     [Parameter()]
     [string]
-    $PackagesPath = "$env:SystemDrive\choco-setup\files\files",
+    $PackagesPath = "$env:SystemDrive\choco-setup\files\packages",
 
     # Path to the license file.
     [Parameter()]

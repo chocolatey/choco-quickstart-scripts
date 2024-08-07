@@ -26,7 +26,7 @@ process {
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bNexusSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
-    $Packages = (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertFrom-Json).packages
+    $Packages = (Get-Content $PSScriptRoot\packages\chocolatey.json | ConvertFrom-Json).packages
 
     # Install base nexus-repository package
     Write-Host "Installing Sonatype Nexus Repository"
@@ -55,7 +55,7 @@ process {
     $NuGetApiKey = (Get-NexusNuGetApiKey -Credential $Credential).apikey
 
     # Push all packages from previous steps to NuGet repo
-    Get-ChildItem -Path "$env:SystemDrive\choco-setup\files\files" -Filter *.nupkg | ForEach-Object {
+    Get-ChildItem -Path "$env:SystemDrive\choco-setup\files\packages" -Filter *.nupkg | ForEach-Object {
         Invoke-Choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --apikey $NugetApiKey --force
     }
 

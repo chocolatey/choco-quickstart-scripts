@@ -68,10 +68,10 @@ process {
     Stop-Service -Name Jenkins
 
     #region Jenkins Plugin Install & Update
-    $JenkinsPlugins = (Get-Content $PSScriptRoot\files\jenkins.json | ConvertFrom-Json).plugins
+    $JenkinsPlugins = (Get-Content $PSScriptRoot\packages\jenkins.json | ConvertFrom-Json).plugins
 
-    if (Test-Path $PSScriptRoot\files\JenkinsPlugins.zip) {
-        Expand-Archive -Path $PSScriptRoot\files\JenkinsPlugins.zip -DestinationPath $jenkinsHome\plugins\ -Force
+    if (Test-Path $PSScriptRoot\packages\JenkinsPlugins.zip) {
+        Expand-Archive -Path $PSScriptRoot\packages\JenkinsPlugins.zip -DestinationPath $jenkinsHome\plugins\ -Force
     }
 
     # Performance is killed by Invoke-WebRequest's progress bars, turning them off to speed this up
