@@ -65,7 +65,7 @@ process {
     $NuGetApiKey = (Get-NexusNuGetApiKey -Credential $Credential).apikey
 
     # Push all packages from previous steps to NuGet repo
-    Get-ChildItem -Path "$env:SystemDrive\choco-setup\files\files" -Filter *.nupkg | ForEach-Object {
+    Get-ChildItem -Path "$env:SystemDrive\choco-setup\files\packages" -Filter *.nupkg | ForEach-Object {
         choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --apikey $NugetApiKey --force
     }
 

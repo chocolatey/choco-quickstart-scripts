@@ -39,7 +39,7 @@ process {
     # Dot-source helper functions
     . .\scripts\Get-Helpers.ps1
 
-    $Packages = (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertFrom-Json).packages
+    $Packages = (Get-Content $PSScriptRoot\packages\chocolatey.json | ConvertFrom-Json).packages
 
     # DB Setup
     Write-Host "Installing SQL Server Express"

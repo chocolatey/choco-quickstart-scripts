@@ -90,8 +90,8 @@ if (-not $Licensed) {
         }
         Copy-Item $LicensePath $InstalledLicensePath -Force
     }
-    $ExtensionSource = if (Test-Path $PSScriptRoot\files\chocolatey.extension.*.nupkg) {
-        Convert-Path $PSScriptRoot\files\
+    $ExtensionSource = if (Test-Path $PSScriptRoot\packages\chocolatey.extension.*.nupkg) {
+        Convert-Path $PSScriptRoot\packages\
     } else {
         'https://licensedpackages.chocolatey.org/api/v2/'
     }
@@ -103,7 +103,7 @@ $PackageWorkingDirectory = Join-Path $WorkingDirectory "Packages"
 if (-not (Test-Path $PackageWorkingDirectory)) {
     $null = New-Item -Path $PackageWorkingDirectory -ItemType Directory -Force
 }
-foreach ($Package in (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertFrom-Json).packages) {
+foreach ($Package in (Get-Content $PSScriptRoot\packages\chocolatey.json | ConvertFrom-Json).packages) {
     $ChocoArgs = @(
         "download", "$($Package.Name)"
         "--output-directory", $PackageWorkingDirectory
@@ -118,7 +118,7 @@ foreach ($Package in (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertF
     }
 
     try {
-        if (-not (Get-ChocolateyPackageMetadata -Path $PackageWorkingDirectory -Id $Package.Name) -and -not (Get-ChocolateyPackageMetadata -Path "$PSScriptRoot\files\" -Id $Package.Name)) {
+        if (-not (Get-ChocolateyPackageMetadata -Path $PackageWorkingDirectory -Id $Package.Name) -and -not (Get-ChocolateyPackageMetadata -Path "$PSScriptRoot\packages\" -Id $Package.Name)) {
             Write-Host "Downloading '$($Package.Name)'"
 
             while ((Get-ChildItem $PackageWorkingDirectory -Filter *.nupkg).Where{$_.CreationTime -gt (Get-Date).AddMinutes(-1)}.Count -gt 5) {
@@ -132,18 +132,18 @@ foreach ($Package in (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertF
         throw $_
     }
 }
-Move-Item -Path $PackageWorkingDirectory\*.nupkg -Destination $PSScriptRoot\files\
+Move-Item -Path $PackageWorkingDirectory\*.nupkg -Destination $PSScriptRoot\packages\
 
 # Jenkins Plugins
 $PluginsWorkingDirectory = Join-Path $WorkingDirectory "JenkinsPlugins"
 if (-not (Test-Path $PluginsWorkingDirectory)) {
     $null = New-Item -Path $PluginsWorkingDirectory -ItemType Directory -Force
 }
-if (Test-Path $PSScriptRoot\files\JenkinsPlugins.zip) {
-    Expand-Archive -Path $PSScriptRoot\files\JenkinsPlugins.zip -DestinationPath $PluginsWorkingDirectory -Force
+if (Test-Path $PSScriptRoot\packages\JenkinsPlugins.zip) {
+    Expand-Archive -Path $PSScriptRoot\packages\JenkinsPlugins.zip -DestinationPath $PluginsWorkingDirectory -Force
 }
 $ProgressPreference = "Ignore"
-foreach ($Plugin in (Get-Content $PSScriptRoot\files\jenkins.json | ConvertFrom-Json).plugins) {
+foreach ($Plugin in (Get-Content $PSScriptRoot\packages\jenkins.json | ConvertFrom-Json).plugins) {
     $RestArgs = @{
         Uri     = "https://updates.jenkins-ci.org/latest/$($Plugin.Name).hpi"
         OutFile = Join-Path $PluginsWorkingDirectory "$($Plugin.Name).hpi"
@@ -155,12 +155,12 @@ foreach ($Plugin in (Get-Content $PSScriptRoot\files\jenkins.json | ConvertFrom-
         Invoke-WebRequest @RestArgs -UseBasicParsing
     }
 }
-Compress-Archive -Path $PluginsWorkingDirectory\* -Destination $PSScriptRoot\files\JenkinsPlugins.zip -Force
+Compress-Archive -Path $PluginsWorkingDirectory\* -Destination $PSScriptRoot\packages\JenkinsPlugins.zip -Force
 
 # BCryptDll
 $null = Get-BcryptDll
 
 # License
-if ($LicensePath -ne "$PSScriptRoot\files\chocolatey.license.xml") {
-    Copy-Item -Path (Convert-Path $LicensePath) -Destination $PSScriptRoot\files\chocolatey.license.xml
+if ($LicensePath -ne "$PSScriptRoot\packages\chocolatey.license.xml") {
+    Copy-Item -Path (Convert-Path $LicensePath) -Destination $PSScriptRoot\packages\chocolatey.license.xml
 }
