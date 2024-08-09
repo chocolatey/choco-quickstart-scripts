@@ -139,7 +139,10 @@ process {
     Write-Host "Nexus is ready!"
 
     choco source remove --name="'ChocolateyInternal'"
-    $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/index.json"
+    $InternalRepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/index.json"
+
+    choco source remove --name="'ChocolateyCore'"
+    $CoreRepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyCore/index.json"
 
     # Build Credential Object, Connect to Nexus
     $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
@@ -187,8 +190,19 @@ process {
             'source',
             'add',
             "--name='ChocolateyInternal'",
-            "--source='$RepositoryUrl'",
+            "--source='$InternalRepositoryUrl'",
             '--priority=1',
+            "--user='chocouser'",
+            "--password='$NexusPw'"
+        )
+        & choco @ChocoArgs
+
+        $ChocoArgs = @(
+            'source',
+            'add',
+            "--name='ChocolateyCore'",
+            "--source='$CoreRepositoryUrl'",
+            '--priority=0',
             "--user='chocouser'",
             "--password='$NexusPw'"
         )
@@ -201,14 +215,26 @@ process {
             'source',
             'add',
             "--name='ChocolateyInternal'",
-            "--source='$RepositoryUrl'",
+            "--source='$InternalRepositoryUrl'",
             '--priority=1'
+        )
+        & choco @ChocoArgs
+
+        $ChocoArgs = @(
+            'source',
+            'add',
+            "--name='ChocolateyCore'",
+            "--source='$CoreRepositoryUrl'",
+            '--priority=0'
         )
         & choco @ChocoArgs
     }
 
     # Update Repository API key
-    $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
+    $chocoArgs = @('apikey', "--source='$InternalRepositoryUrl'", "--api-key='$NuGetApiKey'")
+    & choco @chocoArgs
+
+    $chocoArgs = @('apikey', "--source='$CoreRepositoryUrl'", "--api-key='$NuGetApiKey'")
     & choco @chocoArgs
 
     # Reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
@@ -216,7 +242,7 @@ process {
 
     Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\nexus.json" -Properties @{
         NexusUri = "https://$($SubjectWithoutCn):8443"
-        NexusRepo = $RepositoryUrl
+        NexusRepo = $CoreRepositoryUrl
         ChocoUserPassword = $NexusPw
     }
 
@@ -271,7 +297,7 @@ process {
 # Touch NOTHING below this line
 `$User = 'chocouser'
 `$SecurePassword = `$NexusUserPW | ConvertTo-SecureString -AsPlainText -Force
-`$RepositoryUrl = "https://`$(`$fqdn):8443/repository/ChocolateyInternal/index.json"
+`$RepositoryUrl = "https://`$(`$fqdn):8443/repository/ChocolateyCore/index.json"
 
 `$credential = [pscredential]::new(`$user, `$securePassword)
 

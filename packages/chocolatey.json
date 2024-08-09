@@ -25,6 +25,7 @@
         { "name": "KB3063858", "internalize": false },
         { "name": "microsoft-edge" },
         { "name": "nexus-repository" },
+        { "name": "pester" },
         { "name": "sql-server-express" },
         { "name": "temurin21jre" },
         { "name": "vcredist140" }
