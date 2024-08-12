@@ -24,7 +24,7 @@
         { "name": "KB3035131", "internalize": false },
         { "name": "KB3063858", "internalize": false },
         { "name": "microsoft-edge" },
-        { "name": "nexus-repository" },
+        { "name": "nexus-repository", "version": "3.70.1.2" },
         { "name": "sql-server-express" },
         { "name": "temurin21jre" },
         { "name": "vcredist140" }
