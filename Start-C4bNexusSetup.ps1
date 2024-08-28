@@ -90,6 +90,9 @@ process {
         Write-Error "ChocolateyInstall.ps1 script signature is not valid. Please investigate."
     }
 
+    # Nexus NuGet V3 Compatibility
+    choco feature disable --name="'usePackageRepositoryOptimizations'"
+
     # Add ChocolateyInternal as a source repository
     choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --priority 1
 

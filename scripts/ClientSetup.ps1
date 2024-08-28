@@ -111,6 +111,9 @@ $script = $webClient.DownloadString("https://${hostAddress}/repository/choco-ins
 choco config set cacheLocation $env:ChocolateyInstall\choco-cache
 choco config set commandExecutionTimeoutSeconds 14400
 
+# Nexus NuGet V3 Compatibility
+choco feature disable --name="'usePackageRepositoryOptimizations'"
+
 if ($InternetEnabled) {
     choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --allow-self-service --user="'$($Credential.UserName)'" --password="'$($Credential.GetNetworkCredential().Password)'" --priority=1
 }
