@@ -42,7 +42,7 @@ process {
 
     # Install base nexus-repository package
     Write-Host "Installing Sonatype Nexus Repository"
-    $chocoArgs = @('install', 'nexus-repository', "--version=$($Packages.Where{$_.Name -eq 'nexus-repository'}.Version)", '--pin', '-y' ,'--no-progress', "--package-parameters='/Fqdn:localhost'")
+    $chocoArgs = @('install', 'nexus-repository', '-y' ,'--no-progress', "--package-parameters='/Fqdn:localhost'")
     & choco @chocoArgs
 
     #Build Credential Object, Connect to Nexus
