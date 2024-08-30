@@ -82,7 +82,8 @@ jobs:
 
   build:
     name: Build Package Cache
-    # needs: matrix  # If we want to block this from running until after the ~7s matrix job...
+    needs: matrix
+    if: success()
     runs-on: windows-latest
     steps:
       - name: Check out code
@@ -359,7 +360,7 @@ jobs:
   cleanup:
     name: Cleanup Test Resources
     runs-on: ubuntu-latest
-    needs: runner_test_deploy
+    needs: [build, runner_test_deploy]
     if: success() || failure()
     steps:
       - name: Login to Azure
@@ -372,6 +373,19 @@ jobs:
         uses: azure/powershell@v2
         with:
           inlineScript: |
+            if ('${{ needs.build.outputs.artifact-url }}' -match 'https://github.com/(?<Owner>.+)/(?<Repository>.+)/actions/runs/(?<RunId>\d+)/artifacts/(?<ArtifactId>\d+)') {
+              $DeleteArgs = @{
+                Uri = "https://api.github.com/repos/$($Matches.Owner)/$($Matches.Repository)/actions/artifacts/$($Matches.ArtifactId)"
+                Method = "DELETE"
+                Headers = @{
+                  Authorization = "Bearer ${{ secrets.GITHUB_TOKEN }}"
+                  Accept = "application/vnd.github+json"
+                  "X-GitHub-Api-Version" = "2022-11-28"
+                }
+              }
+              Invoke-RestMethod @DeleteArgs
+            }
+
             $ResourceGroupName = "qsg-testing"
             if ('${{ github.run_id }}' -ne "`$`{{ github.run_id }}") {$ResourceGroupName += '-${{ github.run_id }}'}
             if (Get-AzResourceGroup -ResourceGroupName $ResourceGroupName -ErrorAction SilentlyContinue) {
