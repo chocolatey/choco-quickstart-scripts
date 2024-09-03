@@ -11,9 +11,11 @@ process {
     $Helpers = Join-Path $HelperPath -ChildPath 'Get-Helpers.ps1'
     . $Helpers
 
-    Write-Host "Installing Pester 5 to run validation tests"
-    $chocoArgs = @('install', 'pester', '-y', '--source="https://community.chocolatey.org/api/v2/"')
-    & choco @chocoArgs
+    if (-not (Get-Module Pester -ListAvailable).Where{$_.Version -gt "5.0"}) {
+        Write-Host "Installing Pester 5 to run validation tests"
+        $chocoArgs = @('install', 'pester', '-y', '--no-progress', '--source="https://community.chocolatey.org/api/v2/"')
+        & choco @chocoArgs
+    }
 
     $files = (Get-ChildItem C:\choco-setup\files\tests\ -Recurse -Filter *.ps1).Fullname
     Write-Host "Configuring Pester to complete verification tests"
