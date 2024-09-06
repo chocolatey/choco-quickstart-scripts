@@ -84,15 +84,12 @@ if ($Credential) {
 
 # Find the latest version of Chocolatey, if a version was not specified
 $NupkgUrl = if (-not $ChocolateyVersion) {
-    $QueryString = "((Id eq 'chocolatey') and (not IsPrerelease)) and IsLatestVersion"
-    $Query = 'Packages()?$filter={0}' -f [uri]::EscapeUriString($queryString)
-    $QueryUrl = ($RepositoryUrl.TrimEnd('/index.json'), $Query) -join '/'
-
-    [xml]$result = $webClient.DownloadString($QueryUrl)
-    $result.feed.entry.content.src
+    $QueryUrl = ($RepositoryUrl.TrimEnd('/index.json'), "v3/registration/Chocolatey/index.json") -join '/'
+    $Result = $webClient.DownloadString($QueryUrl) | ConvertFrom-Json
+    $Result.items.items[-1].packageContent
 } else {
     # Otherwise, assume the URL
-    "$($RepositoryUrl.TrimEnd('/index.json'))/chocolatey/$($ChocolateyVersion)"
+    "$($RepositoryUrl.TrimEnd('/index.json'))/v3/content/chocolatey/$($ChocolateyVersion)/chocolatey.$($ChocolateyVersion).nupkg"
 }
 
 # Download the NUPKG
