@@ -2056,7 +2056,7 @@ function Invoke-TextReplacementInFile {
     }
 }
 
-function Update-JsonFile {
+function Update-Clixml {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
@@ -2065,11 +2065,13 @@ function Update-JsonFile {
         [Parameter(Mandatory)]
         [hashtable]$Properties
     )
-    $Json = Get-Content -Path $Path | ConvertFrom-Json
+    #$Json = Get-Content -Path $Path | ConvertFrom-Json
+    $CliXml = Import-Clixml $Path
     $Properties.GetEnumerator().ForEach{
-        Add-Member -InputObject $Json -MemberType NoteProperty -Name $_.Key -Value $_.Value -Force
+        Add-Member -InputObject $CliXml -MemberType NoteProperty -Name $_.Key -Value $_.Value -Force
     }
-    $Json | ConvertTo-Json | Set-Content -Path $Path
+
+    $CliXml | Export-Clixml $Path -Force
 }
 
 function Set-JenkinsCertificate {
@@ -2156,32 +2158,6 @@ function Set-JenkinsCertificate {
 #endregion
 
 #region README functions
-function Remove-JsonFiles {
-    <#
-.SYNOPSIS
-Removes unnecessary json data files from the system upon completion of the Quickstart Guide.
-.PARAMETER JsonPath
-The path to the JSON data files. Defaults to 'C:\choco-setup\logs'.
-.EXAMPLE
-./Start-C4bCleanup.ps1
-.EXAMPLE
-./Start-C4bCleanup.ps1 -JsonPath C:\Temp\
-#>
-
-
-    [CmdletBinding()]
-    Param(
-        [Parameter()]
-        [String]
-        $JsonPath = "$env:SystemDrive\choco-setup\logs"
-    )
-
-    process {
-
-        Get-ChildItem $JsonPath  -Filter '*.json' | Foreach-Object { Remove-Item $_.FullName -Force }
-    }
-}
-
 Function New-QuickstartReadme {
     <#
 .SYNOPSIS
@@ -2197,9 +2173,9 @@ The host name of the C4B instance.
     param()
     process {
         try {
-            $CCMData = Get-Content "$env:SystemDrive\choco-setup\logs\ccm.json" | ConvertFrom-Json
-            $NexusData = Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json
-            $JenkinsData = Get-Content "$env:SystemDrive\choco-setup\logs\jenkins.json" | ConvertFrom-Json
+            $CCMData = Import-Clixml "$env:SystemDrive\choco-setup\clixml\ccm.xml" 
+            $NexusData = Import-Clixml "$env:SystemDrive\choco-setup\clixml\nexus.xml"
+            $JenkinsData = Import-Clixml "$env:SystemDrive\choco-setup\clixml\jenkins.xml"
         } catch {
             Write-Error "Unable to read JSON files. Ensure the Quickstart Guide has been completed."
         }
@@ -2215,20 +2191,20 @@ The host name of the C4B instance.
 
             # Chocolatey Configuration Values
             "{{ ccm_encryption_password .*?}}" = "Requested on first run."
-            "{{ ccm_client_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode($CCMData.ClientSalt)
-            "{{ ccm_service_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode($CCMData.ServiceSalt)
-            "{{ chocouser_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($NexusData.ChocoUserPassword)
+            "{{ ccm_client_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode([System.Net.NetworkCredential]::new('',$CCMData.ClientSalt).Password)
+            "{{ ccm_service_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode([System.Net.NetworkCredential]::new('',$CCMData.ServiceSalt).Password)
+            "{{ chocouser_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($NexusData.NexusCredential.GetNetworkCredential().Password)
 
             # Nexus Values
             "{{ nexus_fqdn .*?}}" = ([uri]$NexusData.NexusUri).DnsSafeHost
             "{{ nexus_port .*?}}" = ([uri]$NexusData.NexusUri).Port
-            "{{ nexus_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($NexusData.NexusPw)
-            "{{ lookup\('file', 'credentials\/nexus_apikey'\) .*?}}" = $NexusJson.NuGetApiKey
+            "{{ nexus_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($NexusData.NexusCredential.GetNetworkCredential().Password)
+            "{{ lookup\('file', 'credentials\/nexus_apikey'\) .*?}}" = [System.Net.NetworkCredential]::new('',$NexusData.NugetApiKey).Password
 
             # Jenkins Values
             "{{ jenkins_fqdn .*?}}" = ([uri]$JenkinsData.JenkinsUri).DnsSafeHost
             "{{ jenkins_port .*?}}" = ([uri]$JenkinsData.JenkinsUri).Port
-            "{{ jenkins_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($JenkinsData.JenkinsPw)
+            "{{ jenkins_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($JenkinsData.JenkinsCredential.GetNetworkCredential().Password)
         }
     }
 }

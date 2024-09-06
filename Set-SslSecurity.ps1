@@ -60,7 +60,7 @@ param(
     $Hostname = [System.Net.Dns]::GetHostName(),
 
     # API key of your Nexus repo, to add to the source setup on C4B Server.
-    [string]$NuGetApiKey = $(Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey,
+    [string]$NuGetApiKey = $($x = Import-Clixml "C:\choco-setup\clixml\nexus.xml" ; [System.Net.NetworkCredential]::new('',$x.NuGetApiKey).Password),
 
     # If provided, will skip launching the browser
     [switch]$SkipBrowserLaunch
@@ -207,7 +207,7 @@ process {
     # Reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
     Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
 
-    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\nexus.json" -Properties @{
+    Update-Clixml -Path "$env:SystemDrive\choco-setup\clixml\nexus.xml" -Properties @{
         NexusUri = "https://$($SubjectWithoutCn):8443"
         NexusRepo = $RepositoryUrl
         ChocoUserPassword = $NexusPw
@@ -227,7 +227,7 @@ process {
     # Add firewall rule for Jenkins
     netsh advfirewall firewall add rule name="Jenkins-7443" dir=in action=allow protocol=tcp localport=7443
 
-    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\jenkins.json" -Properties @{
+    Update-Clixml -Path "$env:SystemDrive\choco-setup\clixml\jenkins.xml" -Properties @{
         JenkinsUri = "https://$($SubjectWithoutCn):7443"
     }
 
@@ -316,29 +316,25 @@ Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-
         }
     }
 
-    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\ccm.json" -Properties @{
+    Update-Clixml -Path "$env:SystemDrive\choco-setup\clixml\ccm.xml" -Properties @{
         CCMWebPortal = "https://$($SubjectWithoutCn)/Account/Login"
         CCMServiceURL = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
-        ServiceSalt = $ServiceSaltValue
-        ClientSalt = $ClientSaltValue
+        ServiceSalt = $ServiceSaltValue | ConvertTo-SecureString -AsPlainText -Force
+        ClientSalt = $ClientSaltValue | ConvertTo-SecureString -AsPlainText -Force
     }
 
     # Save useful params to JSON
-    $SslJson = @{
+    [PSCustomObject]@{
         CertSubject    = $SubjectWithoutCn
         CertThumbprint = $Certificate.Thumbprint
         CertExpiry     = $Certificate.NotAfter
         IsSelfSigned   = $IsSelfSigned
-    }
-    $SslJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ssl.json"
+    } | Export-Clixml "$env:SystemDrive\choco-setup\clixml\ssl.xml"
 }
 
 end {
     Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
     New-QuickstartReadme
-
-    Write-Host 'Cleaning up temporary data'
-    Remove-JsonFiles
 
     if (-not $SkipBrowserLaunch -and $Host.Name -eq 'ConsoleHost') {
         $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'

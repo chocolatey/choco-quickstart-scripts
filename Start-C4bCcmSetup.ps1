@@ -147,14 +147,13 @@ process {
     & choco @chocoArgs
 
     $CcmSvcUrl = choco config get centralManagementServiceUrl -r
-    $CcmJson = @{
+    [pscustomobject]@{
         CCMServiceURL        = $CcmSvcUrl
         CCMWebPortal         = "http://localhost/Account/Login"
         DefaultUser          = "ccmadmin"
         DefaultPwToBeChanged = "123qwe"
         CCMDBUser            = $DatabaseUser
-    }
-    $CcmJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ccm.json"
+    } | Export-Clixml "$env:SystemDrive\choco-setup\clixml\ccm.xml"
 
     Write-Host "Chocolatey Central Management Setup has now completed" -ForegroundColor Green
 

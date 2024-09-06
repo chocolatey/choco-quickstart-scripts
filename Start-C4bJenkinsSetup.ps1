@@ -14,7 +14,7 @@ param(
     [string]$HostName = $env:ComputerName,
 
     # API key of your Nexus repo, for Chocolatey Jenkins jobs to use
-    [string]$NuGetApiKey = $(Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey
+    [string]$NuGetApiKey = $($x = Import-Clixml "C:\choco-setup\clixml\nexus.xml" ; [System.Net.NetworkCredential]::new('',$x.NuGetApiKey).Password)
 )
 process {
     $DefaultEap = $ErrorActionPreference
@@ -115,12 +115,10 @@ process {
     Start-Service -Name Jenkins
 
     # Save useful params to JSON
-    $JenkinsJson = @{
+    [PSCustomObject]@{
         JenkinsUri  = "http://$($HostName):8080"
-        JenkinsUser = "admin"
-        JenkinsPw   = $JenkinsCred.GetNetworkCredential().Password
-    }
-    $JenkinsJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\jenkins.json"
+        JenkinsCredential = $JenkinsCred
+    } | Export-Clixml "$env:SystemDrive\choco-setup\clixml\jenkins.xml"
 
     Write-Host 'Jenkins setup complete' -ForegroundColor Green
 
