@@ -145,6 +145,9 @@ choco feature enable --name="'useBackgroundServiceWithNonAdministratorsOnly'"
 choco feature enable --name="'allowBackgroundServiceUninstallsFromUserInstallsOnly'"
 choco config set --name="'backgroundServiceAllowedCommands'" --value="'install,upgrade,uninstall'"
 
+# Enable Package Hash Validation (Good security practice)
+choco feature enable --name="'usePackageHashValidation'"
+
 # CCM Check-in Configuration
 choco config set CentralManagementServiceUrl "https://${hostName}:24020/ChocolateyManagementService"
 if ($ClientSalt) {
