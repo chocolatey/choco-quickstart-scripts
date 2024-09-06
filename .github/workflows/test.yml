@@ -21,11 +21,10 @@ on:
         description: The configurations to test with.
         default: self-signed, single, wildcard
 
-  pull_request:
-    paths:
-      - files/**.json
-      - "**.ps1"
-      - scripts/**.ps1
+  pull_request_target:
+    paths-ignore:
+      - .github/workflows/**
+
     types:
       - opened
       - reopened
@@ -361,7 +360,7 @@ jobs:
     name: Cleanup Test Resources
     runs-on: ubuntu-latest
     needs: [build, runner_test_deploy]
-    if: success() || failure()
+    if: always()
     steps:
       - name: Login to Azure
         uses: azure/login@v2
@@ -383,12 +382,12 @@ jobs:
                   "X-GitHub-Api-Version" = "2022-11-28"
                 }
               }
-              Invoke-RestMethod @DeleteArgs
+              Invoke-RestMethod @DeleteArgs -ErrorAction SilentlyContinue
             }
 
             $ResourceGroupName = "qsg-testing"
             if ('${{ github.run_id }}' -ne "`$`{{ github.run_id }}") {$ResourceGroupName += '-${{ github.run_id }}'}
             if (Get-AzResourceGroup -ResourceGroupName $ResourceGroupName -ErrorAction SilentlyContinue) {
-              Remove-AzResourceGroup -ResourceGroupName $ResourceGroupName -Force  # -AsJob
+              Remove-AzResourceGroup -ResourceGroupName $ResourceGroupName -Force
             }
           azPSVersion: latest
