@@ -153,7 +153,7 @@ function CopyToClipboard(id)
   <li>Login with the credentials named <b>Chocolatey Central Management</b> from the <a href="#accounts">table below</a><br><i>(if javascript is enabled, you can click the password to copy it to your clipboard)</i></li>
   <li><a href="#connect">Install Chocolatey Agent on another computer</a></li>
   <li><a href="https://docs.chocolatey.org/en-us/central-management/usage/website/deployments#creating-a-deployment">Create a new deployment</a>, or import <a href="https://ch0.co/deployment-templates">example deployments</a>.</li>
-  <li><a href="https://{{ jenkins_fqdn }}:{{ jenkins_port }}/job/Internalize%20packages%20from%20the%20Chocolatey%20Community%20and%20Licensed%20Repositories/build?delay=0sec">Internalize some new packages</a> with Jenkins</li>
+  <li><a href="https://{{ jenkins_fqdn }}:{{ jenkins_port }}/job/Internalize%20packages%20from%20the%20Community%20Repository/build?delay=0sec">Internalize some new packages</a> with Jenkins</li>
 </ul>
 <h2 id="accounts">Accounts and Secrets</h2>
 <table>
@@ -208,25 +208,8 @@ function CopyToClipboard(id)
 </p></div></blockquote>
 
 <h2 id="connect">Adding Computers to Chocolatey Central Management</h2>
-<p>To connect a computer to the Chocolatey Central Management instance, you can use Ansible:</p>
-<pre><code>
-- name: Connect to Chocolatey Central Management
-  win_chocolateyagent:
-    ccm_hostname: {{ ccm_fqdn }}
-    client_salt: {{ ccm_client_salt | default('') | e }}
-    service_salt: {{ ccm_service_salt | default('') | e }}
-    repository:
-      - name: ChocolateyInternal
-        url: https://{{ nexus_fqdn }}:{{ nexus_port }}/repository/ChocolateyInternal/index.json
-        username: chocouser
-        password: {{ chocouser_password | e }}
-</code></pre>
-<p>You can use PowerShell:</p>
-<pre><code>
-  $Credential = [PSCredential]::new("chocouser", (ConvertTo-SecureString '{{ chocouser_password | e }}' -AsPlainText -Force))
-  Invoke-WebRequest https://{{ nexus_fqdn }}:{{ nexus_port }}/repository/choco-install/ClientSetup.ps1 -OutFile $env:Temp\ClientSetup.ps1 -Credential $Credential
-  $env:Temp\ClientSetup.ps1 -Credential $Credential -ClientSalt '{{ ccm_client_salt | default('') | e }}' -ServerSalt '{{ ccm_service_salt | default('') | e }}'
-</code></pre>
+<p>To add a computer to Chocolatey Central Management you must register it as a Chocolatey For Business (C4B) Endpoint</p>
+<p>To register a computer please run the <b>Register-C4bEndpoint.ps1</b> script as shown in <a href="https://docs.chocolatey.org/en-us/c4b-environments/quick-start-environment/chocolatey-for-business-quick-start-guide/#step-7-setting-up-endpoints">Step 7: Setting up Endpoints</a> of the Quickstart Guide.</p>
 </div>
 </body>
 </html>
