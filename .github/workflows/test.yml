@@ -59,7 +59,7 @@ jobs:
               $Images = (-split '${{ inputs.images }}').Trim(',;')
               $Variants = (-split '${{ inputs.variants }}').Trim(',;')
             }
-            'pull_request' {
+            'pull_request_target' {
               # This is a pull request. If it's from a known maintainer, run a test - otherwise, exit.
               $Trigger = Invoke-RestMethod "$GitHubApi/repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission" @AuthHeaders
 
