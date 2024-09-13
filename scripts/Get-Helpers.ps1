@@ -1675,7 +1675,7 @@ function Set-NexusCert {
 
         # Using a job to hide improper non-output streams
         $Job = Start-Job {
-            $string = ($using:KeystoreCredential.Password | & $using:KeyTool -list -v -keystore $using:TempCertPath) -match '^Alias.*'
+            $string = ($using:KeystoreCredential.Password | & $using:KeyTool -list -v -keystore $using:TempCertPath -J"-Duser.language=en") -match '^Alias.*'
             $currentAlias = ($string -split ':')[1].Trim()
             & $using:KeyTool -importkeystore -srckeystore $using:TempCertPath -srcstoretype PKCS12 -srcstorepass $using:KeystoreCredential.Password -destkeystore $using:KeyStorePath -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $using:KeystoreCredential.Password
             & $using:KeyTool -keypasswd -keystore $using:KeyStorePath -alias jetty -storepass $using:KeystoreCredential.Password -keypass $using:KeystoreCredential.Password -new $using:KeystoreCredential.Password
@@ -2095,7 +2095,7 @@ function Set-JenkinsCertificate {
     )
 
     $KeyStore = "C:\ProgramData\Jenkins\.jenkins\keystore.jks"
-    $KeyTool = Convert-Path "C:\Program Files\Eclipse Adoptium\jre-*.*\bin\keytool.exe"  # Using Temurin11jre package keytool
+    $KeyTool = Convert-Path "C:\Program Files\Eclipse Adoptium\jre-*.*\bin\keytool.exe"  # Using Temurin jre package keytool
     $Passkey = [System.Net.NetworkCredential]::new(
         "JksPassword",
         (New-ServicePassword -AvailableCharacters @(48..57 + 65..90 + 97..122))
@@ -2118,7 +2118,7 @@ function Set-JenkinsCertificate {
 
         # Using a job to hide improper non-output streams
         $Job = Start-Job {
-            $CurrentAlias = ($($using:CertificatePassword.Password | & $using:KeyTool -list -v -storetype PKCS12 -keystore $using:CertificatePath) -match "^Alias.*").Split(':')[1].Trim()
+            $CurrentAlias = ($($using:CertificatePassword.Password | & $using:KeyTool -list -v -storetype PKCS12 -keystore $using:CertificatePath -J"-Duser.language=en") -match "^Alias.*").Split(':')[1].Trim()
 
             $null = & $using:KeyTool -importkeystore -srckeystore $using:CertificatePath -srcstoretype PKCS12 -srcstorepass $using:CertificatePassword.Password -destkeystore $using:KeyStore -deststoretype JKS -alias $currentAlias -destalias jetty -deststorepass $using:Passkey
             $null = & $using:KeyTool -keypasswd -keystore $using:KeyStore -alias jetty -storepass $using:Passkey -keypass $using:CertificatePassword.Password -new $using:Passkey

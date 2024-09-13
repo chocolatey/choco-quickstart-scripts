@@ -50,7 +50,7 @@ Write-Host "Exporting .pfx file to C:\, will remove when finished" -ForegroundCo
 $certificate | Export-PfxCertificate -FilePath C:\cert.pfx -Password $password
 Get-ChildItem -Path c:\cert.pfx | Import-PfxCertificate -CertStoreLocation Cert:\LocalMachine\My -Exportable -Password $password
 Write-Warning -Message "You'll now see prompts and other outputs, things are working as expected, don't do anything"
-$string = ("chocolatey" | & $KeyTool -list -v -keystore C:\cert.pfx) -match '^Alias.*'
+$string = ("chocolatey" | & $KeyTool -list -v -keystore C:\cert.pfx -J"-Duser.language=en") -match '^Alias.*'
 $currentAlias = ($string -split ':')[1].Trim()
 
 $passkey = '9hPRGDmfYE3bGyBZCer6AUsh4RTZXbkw'
