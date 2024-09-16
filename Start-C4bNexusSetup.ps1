@@ -114,13 +114,13 @@ process {
     }
     $null = New-NetFirewallRule @FwRuleParams
 
-    # Save useful params to JSON
-    [PSCustomObject]@{
+    # Save useful params
+    Update-Clixml -Properties @{
         NexusUri = "http://localhost:8081"
         NexusCredential = $Credential
         NexusRepo = "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json"
         NuGetApiKey = $NugetApiKey | ConvertTo-SecureString -AsPlainText -Force
-    } | Export-Clixml "$env:SystemDrive\choco-setup\clixml\nexus.xml"
+    }
 
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript

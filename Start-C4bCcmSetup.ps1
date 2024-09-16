@@ -31,6 +31,8 @@ process {
 
     $Packages = (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertFrom-Json).packages
 
+    Set-ChocoEnvironmentProperty -Name DatabaseUser -Value $DatabaseCredential
+
     # DB Setup
     Write-Host "Installing SQL Server Express"
     $chocoArgs = @('upgrade', 'sql-server-express', '-y', '--no-progress')
@@ -147,13 +149,13 @@ process {
     & choco @chocoArgs
 
     $CcmSvcUrl = choco config get centralManagementServiceUrl -r
-    [pscustomobject]@{
+    Update-Clixml -Properties @{
         CCMServiceURL        = $CcmSvcUrl
         CCMWebPortal         = "http://localhost/Account/Login"
         DefaultUser          = "ccmadmin"
         DefaultPwToBeChanged = "123qwe"
         CCMDBUser            = $DatabaseUser
-    } | Export-Clixml "$env:SystemDrive\choco-setup\clixml\ccm.xml"
+    }
 
     Write-Host "Chocolatey Central Management Setup has now completed" -ForegroundColor Green
 
