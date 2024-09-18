@@ -40,6 +40,10 @@ function Invoke-Choco {
     }
 }
 
+Update-TypeData -TypeName SecureString -MemberType ScriptMethod -MemberName ToPlainText -Force -Value {
+    [System.Net.NetworkCredential]::new("TempCredential", $this).Password
+}
+
 #region Package functions (OfflineInstallPreparation.ps1)
 if (-not ("System.IO.Compression.ZipArchive" -as [type])) {
     Add-Type -Assembly 'System.IO.Compression'
@@ -2056,20 +2060,78 @@ function Invoke-TextReplacementInFile {
     }
 }
 
-function Update-JsonFile {
+function Update-Clixml {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
-        [string]$Path,
+        [Parameter()]
+        [string]$Path = "$env:SystemDrive\choco-setup\clixml\chocolatey-for-business.xml",
 
         [Parameter(Mandatory)]
         [hashtable]$Properties
     )
-    $Json = Get-Content -Path $Path | ConvertFrom-Json
-    $Properties.GetEnumerator().ForEach{
-        Add-Member -InputObject $Json -MemberType NoteProperty -Name $_.Key -Value $_.Value -Force
+    $CliXml = if (Test-Path $Path) {
+        Import-Clixml $Path
+    } else {
+        if (-not (Test-Path (Split-Path $Path -Parent))) {
+            $null = mkdir (Split-Path $Path -Parent) -Force
+        }
+        [PSCustomObject]@{}
     }
-    $Json | ConvertTo-Json | Set-Content -Path $Path
+
+    $Properties.GetEnumerator().ForEach{
+        Add-Member -InputObject $CliXml -MemberType NoteProperty -Name $_.Key -Value $_.Value -Force
+    }
+
+    $CliXml | Export-Clixml $Path -Force
+}
+
+function Get-ChocoEnvironmentProperty {
+    [CmdletBinding(DefaultParameterSetName="All")]
+    param(
+        [Parameter(ParameterSetName="Specific", Mandatory, ValueFromPipeline, Position=0)]
+        [string]$Name,
+
+        [Parameter(ParameterSetName="Specific")]
+        [switch]$AsPlainText
+    )
+    begin {
+        $Content = Import-Clixml -Path "$env:SystemDrive\choco-setup\clixml\chocolatey-for-business.xml"
+    }
+    process {
+        if ($Name) {
+            if ($AsPlainText -and $Content.$Name -is [System.Security.SecureString]) {
+                return $Content.$Name.ToPlainText()
+            } else {
+                return $Content.$Name
+            }
+        } else {
+            $Content
+        }
+    }
+}
+
+function Set-ChocoEnvironmentProperty {
+    [CmdletBinding(DefaultParameterSetName="Key")]
+    param(
+        [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName="Key", Position=0)]
+        [Alias('Key')]
+        [string]$Name,
+
+        [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName="Key", Position=1)]
+        $Value,
+
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName="Hashtable")]
+        [hashtable]$InputObject = @{}
+    )
+    begin {
+        $Properties = $InputObject
+    }
+    process {
+        $Properties.$Name = $Value
+    }
+    end {
+        Update-Clixml -Path "$env:SystemDrive\choco-setup\clixml\chocolatey-for-business.xml" -Properties $Properties
+    }
 }
 
 function Set-JenkinsCertificate {
@@ -2156,32 +2218,6 @@ function Set-JenkinsCertificate {
 #endregion
 
 #region README functions
-function Remove-JsonFiles {
-    <#
-.SYNOPSIS
-Removes unnecessary json data files from the system upon completion of the Quickstart Guide.
-.PARAMETER JsonPath
-The path to the JSON data files. Defaults to 'C:\choco-setup\logs'.
-.EXAMPLE
-./Start-C4bCleanup.ps1
-.EXAMPLE
-./Start-C4bCleanup.ps1 -JsonPath C:\Temp\
-#>
-
-
-    [CmdletBinding()]
-    Param(
-        [Parameter()]
-        [String]
-        $JsonPath = "$env:SystemDrive\choco-setup\logs"
-    )
-
-    process {
-
-        Get-ChildItem $JsonPath  -Filter '*.json' | Foreach-Object { Remove-Item $_.FullName -Force }
-    }
-}
-
 Function New-QuickstartReadme {
     <#
 .SYNOPSIS
@@ -2197,11 +2233,9 @@ The host name of the C4B instance.
     param()
     process {
         try {
-            $CCMData = Get-Content "$env:SystemDrive\choco-setup\logs\ccm.json" | ConvertFrom-Json
-            $NexusData = Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json
-            $JenkinsData = Get-Content "$env:SystemDrive\choco-setup\logs\jenkins.json" | ConvertFrom-Json
+            $Data = Get-ChocoEnvironmentProperty
         } catch {
-            Write-Error "Unable to read JSON files. Ensure the Quickstart Guide has been completed."
+            Write-Error "Unable to read stored values. Ensure the Quickstart Guide has been completed."
         }
 
         Copy-Item $PSScriptRoot\ReadmeTemplate.html.j2 -Destination $env:Public\Desktop\Readme.html -Force
@@ -2209,26 +2243,26 @@ The host name of the C4B instance.
         # Working around the existing j2 template, so we can keep them roughly in sync
         Invoke-TextReplacementInFile -Path $env:Public\Desktop\Readme.html -Replacement @{
             # CCM Values
-            "{{ ccm_fqdn .*?}}" = ([uri]$CCMData.CCMWebPortal).DnsSafeHost
-            "{{ ccm_port .*?}}"     = ([uri]$CCMData.CCMWebPortal).Port
-            "{{ ccm_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($CCMData.DefaultPwToBeChanged)
+            "{{ ccm_fqdn .*?}}" = ([uri]$Data.CCMWebPortal).DnsSafeHost
+            "{{ ccm_port .*?}}"     = ([uri]$Data.CCMWebPortal).Port
+            "{{ ccm_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.DefaultPwToBeChanged)
 
             # Chocolatey Configuration Values
             "{{ ccm_encryption_password .*?}}" = "Requested on first run."
-            "{{ ccm_client_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode($CCMData.ClientSalt)
-            "{{ ccm_service_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode($CCMData.ServiceSalt)
-            "{{ chocouser_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($NexusData.ChocoUserPassword)
+            "{{ ccm_client_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode((Get-ChocoEnvironmentProperty ClientSalt -AsPlainText))
+            "{{ ccm_service_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode((Get-ChocoEnvironmentProperty ServiceSalt -AsPlainText))
+            "{{ chocouser_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.NexusCredential.Password.ToPlainText())
 
             # Nexus Values
-            "{{ nexus_fqdn .*?}}" = ([uri]$NexusData.NexusUri).DnsSafeHost
-            "{{ nexus_port .*?}}" = ([uri]$NexusData.NexusUri).Port
-            "{{ nexus_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($NexusData.NexusPw)
-            "{{ lookup\('file', 'credentials\/nexus_apikey'\) .*?}}" = $NexusJson.NuGetApiKey
+            "{{ nexus_fqdn .*?}}" = ([uri]$Data.NexusUri).DnsSafeHost
+            "{{ nexus_port .*?}}" = ([uri]$Data.NexusUri).Port
+            "{{ nexus_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.NexusCredential.Password.ToPlainText())
+            "{{ lookup\('file', 'credentials\/nexus_apikey'\) .*?}}" = Get-ChocoEnvironmentProperty NugetApiKey -AsPlainText
 
             # Jenkins Values
-            "{{ jenkins_fqdn .*?}}" = ([uri]$JenkinsData.JenkinsUri).DnsSafeHost
-            "{{ jenkins_port .*?}}" = ([uri]$JenkinsData.JenkinsUri).Port
-            "{{ jenkins_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($JenkinsData.JenkinsPw)
+            "{{ jenkins_fqdn .*?}}" = ([uri]$Data.JenkinsUri).DnsSafeHost
+            "{{ jenkins_port .*?}}" = ([uri]$Data.JenkinsUri).Port
+            "{{ jenkins_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.JenkinsCredential.Password.ToPlainText())
         }
     }
 }

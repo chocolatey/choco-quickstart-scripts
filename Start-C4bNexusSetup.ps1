@@ -114,15 +114,13 @@ process {
     }
     $null = New-NetFirewallRule @FwRuleParams
 
-    # Save useful params to JSON
-    $NexusJson = @{
+    # Save useful params
+    Update-Clixml -Properties @{
         NexusUri = "http://localhost:8081"
-        NexusUser = "admin"
-        NexusPw = "$($Credential.GetNetworkCredential().Password)"
+        NexusCredential = $Credential
         NexusRepo = "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json"
-        NuGetApiKey = $NugetApiKey
+        NuGetApiKey = $NugetApiKey | ConvertTo-SecureString -AsPlainText -Force
     }
-    $NexusJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\nexus.json"
 
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript

@@ -43,7 +43,10 @@ param(
     [Parameter(ParameterSetName='Subject')]
     [Parameter(ParameterSetName='Thumbprint')]
     [string]
-    $CertificateDnsName,
+    $CertificateDnsName = $(
+        if (-not (Get-Command Get-ChocoEnvironmentProperty -ErrorAction SilentlyContinue)) {. $PSScriptRoot\scripts\Get-Helpers.ps1}
+        Get-ChocoEnvironmentProperty CertSubject
+    ),
 
     # This option security hardens your C4B server, in scenarios where you have a non-self-signed certificate.
     # It adds a role and user credential to the Nexus server, which is used to authenticate the source setup on a client endpoint.
@@ -60,7 +63,10 @@ param(
     $Hostname = [System.Net.Dns]::GetHostName(),
 
     # API key of your Nexus repo, to add to the source setup on C4B Server.
-    [string]$NuGetApiKey = $(Get-Content "$env:SystemDrive\choco-setup\logs\nexus.json" | ConvertFrom-Json).NuGetApiKey,
+    [string]$NuGetApiKey = $(
+        if (-not (Get-Command Get-ChocoEnvironmentProperty -ErrorAction SilentlyContinue)) {. $PSScriptRoot\scripts\Get-Helpers.ps1}
+        Get-ChocoEnvironmentProperty NuGetApiKey -AsPlainText
+    ),
 
     # If provided, will skip launching the browser
     [switch]$SkipBrowserLaunch
@@ -207,7 +213,7 @@ process {
     # Reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
     Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
 
-    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\nexus.json" -Properties @{
+    Update-Clixml -Properties @{
         NexusUri = "https://$($SubjectWithoutCn):8443"
         NexusRepo = $RepositoryUrl
         ChocoUserPassword = $NexusPw
@@ -227,7 +233,7 @@ process {
     # Add firewall rule for Jenkins
     netsh advfirewall firewall add rule name="Jenkins-7443" dir=in action=allow protocol=tcp localport=7443
 
-    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\jenkins.json" -Properties @{
+    Update-Clixml -Properties @{
         JenkinsUri = "https://$($SubjectWithoutCn):7443"
     }
 
@@ -294,12 +300,9 @@ process {
         }
 
         Install-ChocolateyAgent @agentArgs
-    }
-
-    else {
-
-         # Agent Setup
-         $agentArgs = @{
+    } else {
+        # Agent Setup
+        $agentArgs = @{
             CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
         }
 
@@ -316,29 +319,26 @@ Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-
         }
     }
 
-    Update-JsonFile -Path "$env:SystemDrive\choco-setup\logs\ccm.json" -Properties @{
+    Update-Clixml -Properties @{
         CCMWebPortal = "https://$($SubjectWithoutCn)/Account/Login"
         CCMServiceURL = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
-        ServiceSalt = $ServiceSaltValue
-        ClientSalt = $ClientSaltValue
-    }
-
-    # Save useful params to JSON
-    $SslJson = @{
         CertSubject    = $SubjectWithoutCn
         CertThumbprint = $Certificate.Thumbprint
         CertExpiry     = $Certificate.NotAfter
         IsSelfSigned   = $IsSelfSigned
     }
-    $SslJson | ConvertTo-Json | Out-File "$env:SystemDrive\choco-setup\logs\ssl.json"
+
+    if ($Hardened) {
+        Update-Clixml -Properties @{
+            ServiceSalt = ConvertTo-SecureString $ServiceSaltValue -AsPlainText -Force
+            ClientSalt = ConvertTo-SecureString $ClientSaltValue -AsPlainText -Force
+        }
+    }
 }
 
 end {
     Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
     New-QuickstartReadme
-
-    Write-Host 'Cleaning up temporary data'
-    Remove-JsonFiles
 
     if (-not $SkipBrowserLaunch -and $Host.Name -eq 'ConsoleHost') {
         $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'

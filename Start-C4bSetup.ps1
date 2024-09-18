@@ -102,8 +102,10 @@ try {
     $PkgsDir = Join-Path $FilesDir "files"
     $TempDir = Join-Path $ChocoPath "temp"
     $TestDir = Join-Path $ChocoPath "tests"
-    @($ChocoPath, $FilesDir, $PkgsDir, $TempDir, $TestDir) | ForEach-Object {
-        $null = New-Item -Path $_ -ItemType Directory -Force -ErrorAction SilentlyContinue
+    $xmlDir = Join-Path $ChocoPath "clixml"
+
+    @($ChocoPath, $FilesDir, $PkgsDir, $TempDir, $TestDir,$xmlDir) | ForEach-Object {
+        $null = New-Item -Path $_ -ItemType Directory -Force -ErrorAction Stop
     }
 
     if (-not $PSScriptRoot -or $PSScriptRoot -ne $FilesDir) {
