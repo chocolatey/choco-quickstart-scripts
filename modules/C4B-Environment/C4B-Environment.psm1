@@ -1,7 +1,6 @@
 # Helper Functions for the various QSG scripts
 function Invoke-Choco {
     [CmdletBinding()]
-    [Alias('choco')]
     param(
         [Parameter(Position=0)]
         [string]$Command,

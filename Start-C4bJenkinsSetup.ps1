@@ -27,7 +27,7 @@ process {
 
     # Install temurin21jre to meet JRE>11 dependency of Jenkins
     $chocoArgs = @('install', 'temurin21jre', '-y', '--no-progress', "--params='/ADDLOCAL=FeatureJavaHome'")
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     # Environment variable used to disable jenkins install login prompts
     [Environment]::SetEnvironmentVariable('JAVA_OPTS', '-Djenkins.install.runSetupWizard=false', 'Machine')
@@ -35,7 +35,7 @@ process {
     # Install Jenkins
     Write-Host "Installing Jenkins"
     $chocoArgs = @('install', 'jenkins', '-y', '--no-progress')
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
     Start-Sleep -Seconds 30  # Jenkins needs a moment

@@ -136,7 +136,7 @@ process {
     } until($response.StatusCode -eq '200')
     Write-Host "Nexus is ready!"
 
-    choco source remove --name="'ChocolateyInternal'"
+    Invoke-Choco source remove --name="'ChocolateyInternal'"
     $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/index.json"
 
     # Build Credential Object, Connect to Nexus
@@ -190,7 +190,7 @@ process {
             "--user='chocouser'",
             "--password='$NexusPw'"
         )
-        & choco @ChocoArgs
+        & Invoke-Choco @ChocoArgs
     }
 
     else {
@@ -201,12 +201,12 @@ process {
             "--source='$RepositoryUrl'",
             '--priority=1'
         )
-        & choco @ChocoArgs
+        & Invoke-Choco @ChocoArgs
     }
 
     # Update Repository API key
     $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     # Reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
     Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
@@ -251,7 +251,7 @@ process {
         $IsSelfSigned = $true
         .\scripts\New-IISCertificateHost.ps1
     }
-    
+
     # Generate Register-C4bEndpoint.ps1
     $EndpointScript = "$PSScriptRoot\scripts\Register-C4bEndpoint.ps1"
 

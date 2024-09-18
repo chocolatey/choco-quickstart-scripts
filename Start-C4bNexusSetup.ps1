@@ -31,7 +31,7 @@ process {
     # Install base nexus-repository package
     Write-Host "Installing Sonatype Nexus Repository"
     $chocoArgs = @('install', 'nexus-repository', '-y' ,'--no-progress', "--package-parameters='/Fqdn:localhost'")
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     #Build Credential Object, Connect to Nexus
     Write-Host "Configuring Sonatype Nexus Repository"
@@ -56,7 +56,7 @@ process {
 
     # Push all packages from previous steps to NuGet repo
     Get-ChildItem -Path "$env:SystemDrive\choco-setup\files\files" -Filter *.nupkg | ForEach-Object {
-        choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --apikey $NugetApiKey --force
+        Invoke-Choco push $_.FullName --source "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --apikey $NugetApiKey --force
     }
 
     # Temporary workaround to reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
@@ -79,15 +79,15 @@ process {
     }
 
     # Nexus NuGet V3 Compatibility
-    choco feature disable --name="'usePackageRepositoryOptimizations'"
+    Invoke-Choco feature disable --name="'usePackageRepositoryOptimizations'"
 
     # Add ChocolateyInternal as a source repository
-    choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --priority 1
+    Invoke-Choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --priority 1
 
     # Install a non-IE browser for browsing the Nexus web portal.
     if (-not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')) {
         Write-Host "Installing Microsoft Edge, to allow viewing the Nexus site"
-        choco install microsoft-edge -y --source ChocolateyInternal
+        Invoke-Choco install microsoft-edge -y --source ChocolateyInternal
         if ($LASTEXITCODE -eq 0) {
             if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Edge') {
                 $RegArgs = @{

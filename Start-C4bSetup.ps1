@@ -135,11 +135,11 @@ try {
     & $FilesDir\OfflineInstallPreparation.ps1 -LicensePath $LicenseFile
 
     if (Test-Path $FilesDir\files\*.nupkg) {
-        choco source add --name LocalChocolateySetup --source $FilesDir\files\ --Priority 1
+        Invoke-Choco source add --name LocalChocolateySetup --source $FilesDir\files\ --Priority 1
     }
 
     # Set Choco Server Chocolatey Configuration
-    choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"
+    Invoke-Choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"
 
     # Convert license to a "choco-license" package, and install it locally to test
     Write-Host "Creating a 'chocolatey-license' package, and testing install." -ForegroundColor Green
