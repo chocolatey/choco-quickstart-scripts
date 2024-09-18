@@ -1,3 +1,4 @@
+#requires -modules C4B-Environment
 using namespace System.Net.Sockets
 using namespace System.Net.Security
 using namespace System.Security.Cryptography.X509Certificates
@@ -75,10 +76,7 @@ process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslCertificate-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
-    
-    # Dot-source helper functions
-    $ScriptDir = Join-Path $PSScriptRoot "scripts"
-    . $ScriptDir\Get-Helpers.ps1
+
     # Collect current certificate configuration
     $Certificate = if ($Subject) {
         Get-Certificate -Subject $Subject
@@ -149,7 +147,7 @@ process {
     Connect-NexusServer -Hostname $SubjectWithoutCn -Credential $Credential -UseSSL
 
     # Push ClientSetup.ps1 to raw repo
-    $ClientScript = "$ScriptDir\ClientSetup.ps1"
+    $ClientScript = "$PSScriptRoot\scripts\ClientSetup.ps1"
     (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
     New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
 
@@ -255,7 +253,7 @@ process {
     }
     
     # Generate Register-C4bEndpoint.ps1
-    $EndpointScript = "$ScriptDir\Register-C4bEndpoint.ps1"
+    $EndpointScript = "$PSScriptRoot\scripts\Register-C4bEndpoint.ps1"
 
     if ($Hardened) {
 

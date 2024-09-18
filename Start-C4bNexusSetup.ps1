@@ -1,3 +1,4 @@
+#requires -Modules C4B-Environment
 <#
 .SYNOPSIS
 C4B Quick-Start Guide Nexus setup script
@@ -24,9 +25,6 @@ process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bNexusSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
-
-    # Dot-source helper functions
-    . .\scripts\Get-Helpers.ps1
 
     $Packages = (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertFrom-Json).packages
 

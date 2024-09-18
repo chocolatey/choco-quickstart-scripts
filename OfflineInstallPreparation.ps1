@@ -60,7 +60,7 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 $LicensePath = Convert-Path $LicensePath
 
-. $PSScriptRoot\scripts\Get-Helpers.ps1
+Import-Module $PSScriptRoot\modules\C4B-Environment
 
 $ChocoInstallScript = Join-Path $PSScriptRoot "scripts\ChocolateyInstall.ps1"
 if (-not (Test-Path $ChocoInstallScript)) {

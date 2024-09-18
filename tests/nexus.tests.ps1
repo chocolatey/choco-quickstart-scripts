@@ -84,7 +84,7 @@ Describe "Nexus Configuration" {
     Context "Package Availability" {
         BeforeAll {
             if (([version] (C:\ProgramData\chocolatey\choco.exe --version).Split('-')[0]) -ge [version] '2.1.0') {
-                choco cache remove
+                C:\ProgramData\chocolatey\choco.exe cache remove
             }
 
             $packages = C:\ProgramData\chocolatey\choco.exe search -s ChocolateyInternal -r | ConvertFrom-Csv -Delimiter '|' -Header Package, Version
