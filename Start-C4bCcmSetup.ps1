@@ -97,13 +97,13 @@ process {
     $chocoArgs = @('install', 'IIS-ApplicationInit', "--source='windowsfeatures'" ,'--no-progress', '-y')
     & choco @chocoArgs -ValidExitCodes 0, 3010
 
-    $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='$($Packages.Where{$_.Name -eq 'dotnet-aspnetcoremodule-v2'}.Version)'", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-web V 0.12.0"', '-y')
+    $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='$($Packages.Where{$_.Name -eq 'dotnet-aspnetcoremodule-v2'}.Version)'", '--no-progress', '-y')
     & choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-6.0-runtime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-6.0-runtime'}.Version)", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-database V 0.12.0"', '-y')
+    $chocoArgs = @('install', 'dotnet-8.0-runtime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-8.0-runtime'}.Version)", '--no-progress', '-y')
     & choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-6.0-aspnetruntime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-6.0-aspnetruntime'}.Version)", '--no-progress', '--pin', '--pin-reason="Latest version compatible with chocolatey-management-database V 0.12.0"', '-y')
+    $chocoArgs = @('install', 'dotnet-8.0-aspnetruntime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-8.0-aspnetruntime'}.Version)", '--no-progress', '-y')
     & choco @chocoArgs
 
     Write-Host "Creating Chocolatey Central Management Database"

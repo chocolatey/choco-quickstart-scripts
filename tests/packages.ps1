@@ -12,8 +12,8 @@ $JointPackages = @(
 )
 $ServerOnlyPackages = @(
     @{Name = 'chocolatey-windowsupdate.extension' }
-    @{Name = 'dotnet-6.0-aspnetruntime' }
-    @{Name = 'dotnet-6.0-runtime' }
+    @{Name = 'dotnet-8.0-aspnetruntime' }
+    @{Name = 'dotnet-8.0-runtime' }
     @{Name = 'dotnet-aspnetcoremodule-v2' }
     @{Name = 'jenkins' }
     @{Name = 'KB2999226' }
