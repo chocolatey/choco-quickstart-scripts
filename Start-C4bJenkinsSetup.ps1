@@ -14,7 +14,10 @@ param(
     [string]$HostName = $env:ComputerName,
 
     # API key of your Nexus repo, for Chocolatey Jenkins jobs to use
-    [string]$NuGetApiKey = $(Get-ChocoEnvironmentProperty NuGetApiKey -AsPlainText)
+    [string]$NuGetApiKey = $(
+        if (-not (Get-Command Get-ChocoEnvironmentProperty -ErrorAction SilentlyContinue)) {. $PSScriptRoot\scripts\Get-Helpers.ps1}
+        Get-ChocoEnvironmentProperty NuGetApiKey -AsPlainText
+    )
 )
 process {
     $DefaultEap = $ErrorActionPreference

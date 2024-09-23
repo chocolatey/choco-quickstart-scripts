@@ -87,6 +87,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          ref: "refs/pull/${{ github.event.number }}/merge"
 
       - name: Create License File
         run: |
@@ -141,6 +143,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          ref: "refs/pull/${{ github.event.number }}/merge"
 
       - name: Login to Azure
         uses: azure/login@v2
