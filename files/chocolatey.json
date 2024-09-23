@@ -22,7 +22,6 @@
         { "name": "KB2999226", "internalize": false },
         { "name": "KB3033929", "internalize": false },
         { "name": "KB3035131", "internalize": false },
-        { "name": "KB3063858", "internalize": false },
         { "name": "microsoft-edge" },
         { "name": "nexus-repository" },
         { "name": "sql-server-express" },
