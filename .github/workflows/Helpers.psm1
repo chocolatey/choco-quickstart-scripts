@@ -122,37 +122,45 @@ function New-HoplessRemotingSession {
         UseSSL = $true
         SessionOption = New-PSSessionOption -SkipCACheck -SkipCNCheck
     }
-    try {
-        $Session = New-PSSession @RemotingArgs -ConfigurationName Hopless -ErrorAction Stop
-    } catch [System.Management.Automation.Remoting.PSRemotingTransportException] {
-        if ($_.Exception.Message -match 'Cannot find the Hopless session configuration') {
-            Write-Host "Creating Hopless Configuration for $($Credential.UserName)@$($ComputerName)"
-            # This throws an error when the session terminates, so we catch the PSRemotingTransportException 
-            try {
-                $null = Invoke-Command @RemotingArgs {
-                    Register-PSSessionConfiguration -Name "Hopless" -RunAsCredential $using:Credential -Force -WarningAction SilentlyContinue
-                } -ErrorAction Stop
-            } catch [System.Management.Automation.Remoting.PSRemotingTransportException] {}
-        
-            Start-Sleep -Seconds 30  # Hate this, but just testing the idea out.
-        
-            Write-Verbose "Recreating Session after WinRM restart..."
-            $Timeout = [System.Diagnostics.Stopwatch]::StartNew()
-            while ($Session.Availability -ne 'Available' -and $Timeout.Elapsed.TotalSeconds -lt 180) {
+    $Timeout = [System.Diagnostics.Stopwatch]::StartNew()
+    while (-not $Session -and $Timeout.Elapsed.TotalSeconds -lt 300) {
+        try {
+            $Session = New-PSSession @RemotingArgs -ConfigurationName Hopless -ErrorAction Stop
+        } catch [System.Management.Automation.Remoting.PSRemotingTransportException] {
+            if ($_.Exception.Message -match 'Cannot find the Hopless session configuration') {
+                Write-Host "Creating Hopless Configuration for $($Credential.UserName)@$($ComputerName)"
+                # This throws an error when the session terminates, so we catch the PSRemotingTransportException 
                 try {
-                    $Session = New-PSSession @RemotingArgs -ConfigurationName Hopless
-                } catch {
-                    Start-Sleep -Seconds 5
+                    $null = Invoke-Command @RemotingArgs {
+                        Register-PSSessionConfiguration -Name "Hopless" -RunAsCredential $using:Credential -Force -WarningAction SilentlyContinue
+                    } -ErrorAction Stop
+                } catch [System.Management.Automation.Remoting.PSRemotingTransportException] {}
+            
+                Write-Verbose "Recreating Session after WinRM restart..."
+                $Timeout = [System.Diagnostics.Stopwatch]::StartNew()
+                while ($Session.Availability -ne 'Available' -and $Timeout.Elapsed.TotalSeconds -lt 180) {
+                    try {
+                        $Session = New-PSSession @RemotingArgs -ConfigurationName Hopless -ErrorAction Stop
+                    } catch {
+                        Start-Sleep -Seconds 10
+                    }
                 }
-            }
 
-            if ($Session.Availability -ne 'Available') {
-                $Session
-                Write-Error "Failed to re-establish a connection to '$($ComputerName)'"
-            } else {
-                Write-Host "Successfully reconnected after '$($Timeout.Elapsed.TotalSeconds)' seconds" 
-            }
-        } else {throw}
+                if ($Session.Availability -ne 'Available') {
+                    $Session
+                    Write-Error "Failed to re-establish a connection to '$($ComputerName)'"
+                } else {
+                    Write-Host "Successfully reconnected after '$($Timeout.Elapsed.TotalSeconds)' seconds" 
+                }
+            } elseif ($_.Exception.Message -match 'WinRM cannot complete the operation') {
+                Write-Verbose "Retrying connection in 30 seconds..."
+                Start-Sleep -Seconds 30
+                if ($Timeout.Elapsed.TotalSeconds -gt 300) {
+                    Write-Error "Failed to connect after $($Timeout.Elapsed.TotalMinutes) minutes"
+                    throw
+                }
+            } else {throw}
+        }
     }
     return $Session
 }

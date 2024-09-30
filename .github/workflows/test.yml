@@ -176,12 +176,27 @@ jobs:
               Image = '${{ matrix.os }}'
               Size = [string]::IsNullOrEmpty('${{ inputs.vm_size }}') ? 'Standard_B4as_v2' : '${{ inputs.vm_size }}'
             }
-            $VM = New-TestVM -ResourceGroupName $ResourceGroupName @VMArgs
 
-            # Set NSG to have access
-            Request-WinRmAccessForTesting -ResourceGroupName $ResourceGroupName -VmName $VM.Name
+            try {
+              $VM = New-TestVM -ResourceGroupName $ResourceGroupName @VMArgs
 
-            $Session = New-HoplessRemotingSession -ComputerName $Vm.FullyQualifiedDomainName -Credential $Vm.Credential
+              # Set NSG to have access
+              Request-WinRmAccessForTesting -ResourceGroupName $ResourceGroupName -VmName $VM.Name
+
+              $Session = New-HoplessRemotingSession -ComputerName $Vm.FullyQualifiedDomainName -Credential $Vm.Credential
+            } catch {
+              if ($VM) {
+                $VM | Remove-AzVm -AsJob -Force -Confirm:$false
+              }
+
+              # Try again...
+              $VM = New-TestVM -ResourceGroupName $ResourceGroupName @VMArgs
+
+              # Set NSG to have access
+              Request-WinRmAccessForTesting -ResourceGroupName $ResourceGroupName -VmName $VM.Name
+
+              $Session = New-HoplessRemotingSession -ComputerName $Vm.FullyQualifiedDomainName -Credential $Vm.Credential
+            }
 
             # Windows Server 2019 may require Dotnet 4.8 to be installed, and have a reboot
             $DotnetInstall = Install-Dotnet -Session $Session
