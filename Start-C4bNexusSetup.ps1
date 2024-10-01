@@ -84,6 +84,10 @@ process {
     # Add ChocolateyInternal as a source repository
     Invoke-Choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --priority 1
 
+    #Remove Local Chocolatey Setup Source
+    $chocoArgs = @('source', 'remove', '--name="LocalChocolateySetup"')
+    & Invoke-Choco @chocoArgs
+    
     # Install a non-IE browser for browsing the Nexus web portal.
     if (-not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')) {
         Write-Host "Installing Microsoft Edge, to allow viewing the Nexus site"
