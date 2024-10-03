@@ -1,3 +1,4 @@
+#requires -modules C4B-Environment
 <#
 .SYNOPSIS
 C4B Quick-Start Guide CCM setup script
@@ -26,9 +27,6 @@ process {
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
-    # Dot-source helper functions
-    . .\scripts\Get-Helpers.ps1
-
     $Packages = (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertFrom-Json).packages
 
     Set-ChocoEnvironmentProperty -Name DatabaseUser -Value $DatabaseCredential
@@ -36,7 +34,7 @@ process {
     # DB Setup
     Write-Host "Installing SQL Server Express"
     $chocoArgs = @('upgrade', 'sql-server-express', '-y', '--no-progress')
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     # https://docs.microsoft.com/en-us/sql/tools/configuration-manager/tcp-ip-properties-ip-addresses-tab
     Write-Verbose 'SQL Server: Configuring Remote Access on SQL Server Express.'
@@ -92,19 +90,19 @@ process {
     # Install prerequisites for CCM
     Write-Host "Installing Chocolatey Central Management Prerequisites"
     $chocoArgs = @('install', 'IIS-WebServer', "--source='windowsfeatures'", '--no-progress', '-y')
-    & choco @chocoArgs -ValidExitCodes 0, 3010
+    & Invoke-Choco @chocoArgs -ValidExitCodes 0, 3010
 
     $chocoArgs = @('install', 'IIS-ApplicationInit', "--source='windowsfeatures'" ,'--no-progress', '-y')
-    & choco @chocoArgs -ValidExitCodes 0, 3010
+    & Invoke-Choco @chocoArgs -ValidExitCodes 0, 3010
 
     $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='$($Packages.Where{$_.Name -eq 'dotnet-aspnetcoremodule-v2'}.Version)'", '--no-progress', '-y')
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     $chocoArgs = @('install', 'dotnet-8.0-runtime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-8.0-runtime'}.Version)", '--no-progress', '-y')
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     $chocoArgs = @('install', 'dotnet-8.0-aspnetruntime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-8.0-aspnetruntime'}.Version)", '--no-progress', '-y')
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     Write-Host "Creating Chocolatey Central Management Database"
     choco install chocolatey-management-database -y --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'" --no-progress
@@ -133,7 +131,7 @@ process {
         else {
             Write-Verbose "Certificate has been successfully found in correct store"
             $chocoArgs = @('install', 'chocolatey-management-service', '-y', "--package-parameters-sensitive='/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User Id=$DatabaseUser;Password=$DatabaseUserPw'")
-            & choco @chocoArgs
+            & Invoke-Choco @chocoArgs
 
             Set-CcmCertificate -CertificateThumbprint $CertificateThumbprint
         }
@@ -141,14 +139,14 @@ process {
 
     else {
         $chocoArgs = @('install', 'chocolatey-management-service', '-y', "--package-parameters-sensitive=`"/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'`"", '--no-progress')
-        & choco @chocoArgs
+        & Invoke-Choco @chocoArgs
     }
 
     Write-Host "Installing Chocolatey Central Management Website"
     $chocoArgs = @('install', 'chocolatey-management-web', '-y', "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
-    $CcmSvcUrl = choco config get centralManagementServiceUrl -r
+    $CcmSvcUrl = Invoke-Choco config get centralManagementServiceUrl -r
     Update-Clixml -Properties @{
         CCMServiceURL        = $CcmSvcUrl
         CCMWebPortal         = "http://localhost/Account/Login"

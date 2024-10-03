@@ -119,8 +119,14 @@ try {
         }
     }
 
-    # Import Helper Functions
-    . $FilesDir\scripts\Get-Helpers.ps1
+    # Add the Module Path and Import Helper Functions
+    if (-not (Get-Module C4B-Environment -ListAvailable)) {
+        if ($env:PSModulePath.Split(';') -notcontains "$PSScriptRoot\modules") {
+            [Environment]::SetEnvironmentVariable("PSModulePath", "$env:PSModulePath;$PSScriptRoot\modules" ,"Machine")
+            $env:PSModulePath = [Environment]::GetEnvironmentVariables("Machine").PSModulePath
+        }
+    }
+    Import-Module C4B-Environment -Verbose:$false
 
     # Downloading all CCM setup packages below
     Write-Host "Downloading missing nupkg files to $($PkgsDir)." -ForegroundColor Green
@@ -129,11 +135,11 @@ try {
     & $FilesDir\OfflineInstallPreparation.ps1 -LicensePath $LicenseFile
 
     if (Test-Path $FilesDir\files\*.nupkg) {
-        choco source add --name LocalChocolateySetup --source $FilesDir\files\ --Priority 1
+        Invoke-Choco source add --name LocalChocolateySetup --source $FilesDir\files\ --Priority 1
     }
 
     # Set Choco Server Chocolatey Configuration
-    choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"
+    Invoke-Choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"
 
     # Convert license to a "choco-license" package, and install it locally to test
     Write-Host "Creating a 'chocolatey-license' package, and testing install." -ForegroundColor Green

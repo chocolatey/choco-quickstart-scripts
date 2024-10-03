@@ -1,20 +1,15 @@
+#requires -modules C4B-Environment
 [CmdletBinding()]
 Param(
     [Parameter(Mandatory)]
     [String]
     $Fqdn
 )
-
 process {
-    #Load helper functions in scope for tests
-    $HelperPath  = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) -ChildPath 'scripts'
-    $Helpers = Join-Path $HelperPath -ChildPath 'Get-Helpers.ps1'
-    . $Helpers
-
     if (-not (Get-Module Pester -ListAvailable).Where{$_.Version -gt "5.0"}) {
         Write-Host "Installing Pester 5 to run validation tests"
         $chocoArgs = @('install', 'pester', '-y', '--no-progress', '--source="https://community.chocolatey.org/api/v2/"')
-        & choco @chocoArgs
+        & Invoke-Choco @chocoArgs
     }
 
     $files = (Get-ChildItem C:\choco-setup\files\tests\ -Recurse -Filter *.ps1).Fullname

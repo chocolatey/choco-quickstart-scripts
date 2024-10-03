@@ -331,7 +331,7 @@ jobs:
                   param(
                     $Path
                   )
-                  . C:\choco-setup\files\scripts\Get-Helpers.ps1
+                  Import-Module C:\choco-setup\files\modules\C4B-Environment
                   $configuration = New-PesterConfiguration @{
                     Run        = @{
                       Container = New-PesterContainer -Path $Path -Data @{ Fqdn = $using:CertDetails.FQDN }

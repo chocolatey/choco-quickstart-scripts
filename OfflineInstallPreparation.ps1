@@ -60,7 +60,7 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 $LicensePath = Convert-Path $LicensePath
 
-. $PSScriptRoot\scripts\Get-Helpers.ps1
+Import-Module $PSScriptRoot\modules\C4B-Environment
 
 $ChocoInstallScript = Join-Path $PSScriptRoot "scripts\ChocolateyInstall.ps1"
 if (-not (Test-Path $ChocoInstallScript)) {
@@ -95,7 +95,7 @@ if (-not $Licensed) {
     } else {
         'https://licensedpackages.chocolatey.org/api/v2/'
     }
-    choco install chocolatey.extension --source $ExtensionSource --params="'/NoContextMenu'" --confirm
+    Invoke-Choco install chocolatey.extension --source $ExtensionSource --params="'/NoContextMenu'" --confirm
 }
 
 # Download each set of packages to the output directories
@@ -126,7 +126,7 @@ foreach ($Package in (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertF
                 Start-Sleep -Seconds 5
             }
 
-            choco @ChocoArgs
+            Invoke-Choco @ChocoArgs
         }
     } catch {
         throw $_

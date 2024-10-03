@@ -1,3 +1,4 @@
+#requires -modules C4B-Environment
 using namespace System.Net.Sockets
 using namespace System.Net.Security
 using namespace System.Security.Cryptography.X509Certificates
@@ -75,10 +76,7 @@ process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslCertificate-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
-    
-    # Dot-source helper functions
-    $ScriptDir = Join-Path $PSScriptRoot "scripts"
-    . $ScriptDir\Get-Helpers.ps1
+
     # Collect current certificate configuration
     $Certificate = if ($Subject) {
         Get-Certificate -Subject $Subject
@@ -138,7 +136,7 @@ process {
     } until($response.StatusCode -eq '200')
     Write-Host "Nexus is ready!"
 
-    choco source remove --name="'ChocolateyInternal'"
+    Invoke-Choco source remove --name="'ChocolateyInternal'"
     $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/index.json"
 
     # Build Credential Object, Connect to Nexus
@@ -149,7 +147,7 @@ process {
     Connect-NexusServer -Hostname $SubjectWithoutCn -Credential $Credential -UseSSL
 
     # Push ClientSetup.ps1 to raw repo
-    $ClientScript = "$ScriptDir\ClientSetup.ps1"
+    $ClientScript = "$PSScriptRoot\scripts\ClientSetup.ps1"
     (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
     New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
 
@@ -192,7 +190,7 @@ process {
             "--user='chocouser'",
             "--password='$NexusPw'"
         )
-        & choco @ChocoArgs
+        & Invoke-Choco @ChocoArgs
     }
 
     else {
@@ -203,12 +201,12 @@ process {
             "--source='$RepositoryUrl'",
             '--priority=1'
         )
-        & choco @ChocoArgs
+        & Invoke-Choco @ChocoArgs
     }
 
     # Update Repository API key
     $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     # Reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
     Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
@@ -253,9 +251,9 @@ process {
         $IsSelfSigned = $true
         .\scripts\New-IISCertificateHost.ps1
     }
-    
+
     # Generate Register-C4bEndpoint.ps1
-    $EndpointScript = "$ScriptDir\Register-C4bEndpoint.ps1"
+    $EndpointScript = "$PSScriptRoot\scripts\Register-C4bEndpoint.ps1"
 
     if ($Hardened) {
 

@@ -1,3 +1,4 @@
+#requires -Modules C4B-Environment
 <#
 .SYNOPSIS
 C4B Quick-Start Guide Jenkins setup script
@@ -24,12 +25,9 @@ process {
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bJenkinsSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
-    # Dot-source helper functions
-    . .\scripts\Get-Helpers.ps1
-
     # Install temurin21jre to meet JRE>11 dependency of Jenkins
     $chocoArgs = @('install', 'temurin21jre', '-y', '--no-progress', "--params='/ADDLOCAL=FeatureJavaHome'")
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     # Environment variable used to disable jenkins install login prompts
     [Environment]::SetEnvironmentVariable('JAVA_OPTS', '-Djenkins.install.runSetupWizard=false', 'Machine')
@@ -37,7 +35,7 @@ process {
     # Install Jenkins
     Write-Host "Installing Jenkins"
     $chocoArgs = @('install', 'jenkins', '-y', '--no-progress')
-    & choco @chocoArgs
+    & Invoke-Choco @chocoArgs
 
     Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
     Start-Sleep -Seconds 30  # Jenkins needs a moment
