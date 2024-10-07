@@ -121,8 +121,8 @@ try {
 
     # Add the Module Path and Import Helper Functions
     if (-not (Get-Module C4B-Environment -ListAvailable)) {
-        if ($env:PSModulePath.Split(';') -notcontains "$PSScriptRoot\modules") {
-            [Environment]::SetEnvironmentVariable("PSModulePath", "$env:PSModulePath;$PSScriptRoot\modules" ,"Machine")
+        if ($env:PSModulePath.Split(';') -notcontains "$FilesDir\modules") {
+            [Environment]::SetEnvironmentVariable("PSModulePath", "$env:PSModulePath;$FilesDir\modules" ,"Machine")
             $env:PSModulePath = [Environment]::GetEnvironmentVariables("Machine").PSModulePath
         }
     }
