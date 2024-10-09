@@ -105,6 +105,13 @@ $script = $webClient.DownloadString("https://${hostAddress}/repository/choco-ins
 # Run the Chocolatey Install script with the parameters provided
 & ([scriptblock]::Create($script)) @params
 
+# If FIPS is enabled, configure Chocolatey to use FIPS compliant checksums
+$fipsStatus = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa\FipsAlgorithmPolicy" -Name Enabled
+if ($fipsStatus.Enabled -eq 1) {
+    Write-Warning -Message "FIPS is enabled on this system. Ensuring Chocolatey uses FIPS compliant checksums"
+    choco feature enable --name='useFipsCompliantChecksums'
+}
+
 choco config set cacheLocation $env:ChocolateyInstall\choco-cache
 choco config set commandExecutionTimeoutSeconds 14400
 
