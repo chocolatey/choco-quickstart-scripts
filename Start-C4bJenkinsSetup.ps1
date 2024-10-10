@@ -26,7 +26,7 @@ process {
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bJenkinsSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
     # Install temurin21jre to meet JRE>11 dependency of Jenkins
-    $chocoArgs = @('install', 'temurin21jre', '-y', '--no-progress', "--params='/ADDLOCAL=FeatureJavaHome'")
+    $chocoArgs = @('install', 'temurin21jre', "--source='ChocolateyInternal'", '-y', '--no-progress', "--params='/ADDLOCAL=FeatureJavaHome'")
     & Invoke-Choco @chocoArgs
 
     # Environment variable used to disable jenkins install login prompts
@@ -34,7 +34,7 @@ process {
 
     # Install Jenkins
     Write-Host "Installing Jenkins"
-    $chocoArgs = @('install', 'jenkins', '-y', '--no-progress')
+    $chocoArgs = @('install', 'jenkins', "--source='ChocolateyInternal'", '-y', '--no-progress')
     & Invoke-Choco @chocoArgs
 
     Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green

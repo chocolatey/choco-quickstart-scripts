@@ -295,6 +295,7 @@ process {
             CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
             ServiceSalt = $ServiceSaltValue
             ClientSalt = $ClientSaltValue
+            Source = "ChocolateyInternal"
         }
 
         Install-ChocolateyAgent @agentArgs
@@ -302,6 +303,7 @@ process {
         # Agent Setup
         $agentArgs = @{
             CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
+            Source = "ChocolateyInternal"
         }
 
         Install-ChocolateyAgent @agentArgs

@@ -8,7 +8,7 @@ Param(
 process {
     if (-not (Get-Module Pester -ListAvailable).Where{$_.Version -gt "5.0"}) {
         Write-Host "Installing Pester 5 to run validation tests"
-        $chocoArgs = @('install', 'pester', '-y', '--no-progress', '--source="https://community.chocolatey.org/api/v2/"')
+        $chocoArgs = @('install', 'pester', "--source='ChocolateyInternal'", '-y', '--no-progress', '--source="https://community.chocolatey.org/api/v2/"')
         & Invoke-Choco @chocoArgs
     }
 
