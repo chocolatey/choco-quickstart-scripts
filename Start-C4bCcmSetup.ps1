@@ -33,7 +33,7 @@ process {
 
     # DB Setup
     Write-Host "Installing SQL Server Express"
-    $chocoArgs = @('upgrade', 'sql-server-express', '-y', '--no-progress')
+    $chocoArgs = @('upgrade', 'sql-server-express', "--source='ChocolateyInternal'", '-y', '--no-progress')
     & Invoke-Choco @chocoArgs
 
     # https://docs.microsoft.com/en-us/sql/tools/configuration-manager/tcp-ip-properties-ip-addresses-tab
@@ -95,17 +95,17 @@ process {
     $chocoArgs = @('install', 'IIS-ApplicationInit', "--source='windowsfeatures'" ,'--no-progress', '-y')
     & Invoke-Choco @chocoArgs -ValidExitCodes 0, 3010
 
-    $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--version='$($Packages.Where{$_.Name -eq 'dotnet-aspnetcoremodule-v2'}.Version)'", '--no-progress', '-y')
+    $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--source='ChocolateyInternal'", "--version='$($Packages.Where{$_.Name -eq 'dotnet-aspnetcoremodule-v2'}.Version)'", '--no-progress', '-y')
     & Invoke-Choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-8.0-runtime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-8.0-runtime'}.Version)", '--no-progress', '-y')
+    $chocoArgs = @('install', 'dotnet-8.0-runtime', "--source='ChocolateyInternal'", "--version=$($Packages.Where{$_.Name -eq 'dotnet-8.0-runtime'}.Version)", '--no-progress', '-y')
     & Invoke-Choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-8.0-aspnetruntime', "--version=$($Packages.Where{$_.Name -eq 'dotnet-8.0-aspnetruntime'}.Version)", '--no-progress', '-y')
+    $chocoArgs = @('install', 'dotnet-8.0-aspnetruntime', "--source='ChocolateyInternal'", "--version=$($Packages.Where{$_.Name -eq 'dotnet-8.0-aspnetruntime'}.Version)", '--no-progress', '-y')
     & Invoke-Choco @chocoArgs
 
     Write-Host "Creating Chocolatey Central Management Database"
-    choco install chocolatey-management-database -y --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'" --no-progress
+    choco install chocolatey-management-database --source='ChocolateyInternal' -y --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'" --no-progress
 
     # Add Local Windows User:
     $DatabaseUser = $DatabaseCredential.UserName
@@ -138,12 +138,12 @@ process {
     }
 
     else {
-        $chocoArgs = @('install', 'chocolatey-management-service', '-y', "--package-parameters-sensitive=`"/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'`"", '--no-progress')
+        $chocoArgs = @('install', 'chocolatey-management-service', "--source='ChocolateyInternal'", '-y', "--package-parameters-sensitive=`"/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'`"", '--no-progress')
         & Invoke-Choco @chocoArgs
     }
 
     Write-Host "Installing Chocolatey Central Management Website"
-    $chocoArgs = @('install', 'chocolatey-management-web', '-y', "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
+    $chocoArgs = @('install', 'chocolatey-management-web', "--source='ChocolateyInternal'", '-y', "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
     & Invoke-Choco @chocoArgs
 
     $CcmSvcUrl = Invoke-Choco config get centralManagementServiceUrl -r

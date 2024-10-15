@@ -1,5 +1,19 @@
 . $PSScriptRoot/packages.ps1
 Describe "Server Integrity" {
+    Context "Chocolatey Sources" {
+        BeforeAll {
+            $sources = C:\ProgramData\chocolatey\choco.exe source list -r | ConvertFrom-Csv -Delimiter '|' -Header Name, Url, Disabled, Username, Password, Priority, BypassProxy, SelfService, AdminOnly
+        }
+
+        It "LocalChocolateySetup source was removed" {
+            "LocalChocolateySetup" -in $sources.Name | Should -BeFalse
+        }
+
+        It "ChocolateyInternal source exists" {
+            "ChocolateyInternal" -in $sources.Name | Should -Be $true
+        }
+    }
+
     Context "Required Packages" {
         BeforeAll {
             $packages = C:\ProgramData\chocolatey\choco.exe list -r | ConvertFrom-Csv -Delimiter '|' -Header Package, Version
