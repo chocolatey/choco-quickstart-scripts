@@ -81,6 +81,14 @@ if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -eq 
 }
 
 # Initialize environment, ensure Chocolatey For Business, etc.
+
+#Check for and configure FIPs enforcement, if required.
+$fipsStatus = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa\FipsAlgorithmPolicy" -Name Enabled
+if ($fipsStatus.Enabled -eq 1) {
+    Write-Warning -Message "FIPs is enabled for this system. Ensuring Chocolatey uses FIPs compliant checksums"
+    Invoke-Choco feature enable --name='useFipsCompliantChecksums'
+}
+
 $Licensed = ($($(choco.exe)[0] -match "^Chocolatey (?<Version>\S+)\s*(?<LicenseType>Business)?$") -and $Matches.LicenseType)
 $InstalledLicensePath = "$env:ChocolateyInstall\license\chocolatey.license.xml"
 if (-not $Licensed) {
