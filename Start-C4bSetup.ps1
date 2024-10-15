@@ -140,6 +140,7 @@ try {
 
     # Set Choco Server Chocolatey Configuration
     Invoke-Choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"
+    Invoke-Choco feature enable --name="'usePackageHashValidation'"
 
     # Convert license to a "choco-license" package, and install it locally to test
     Write-Host "Creating a 'chocolatey-license' package, and testing install." -ForegroundColor Green
