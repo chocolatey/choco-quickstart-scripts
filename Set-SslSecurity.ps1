@@ -32,7 +32,11 @@ param(
         }
     })]
     [string]
-    $Thumbprint = (Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Select-Object -ExpandProperty Thumbprint),
+    $Thumbprint = $(
+        Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Sort-Object {
+            $_.Issuer -eq $_.Subject # Prioritise any certificates above self-signed
+        } | Select-Object -ExpandProperty Thumbprint -First 1
+    ),
 
     # The certificate subject that identifies the target SSL certificate in
     # the local machine certificate stores.
@@ -40,7 +44,7 @@ param(
     [string]
     $Subject,
 
-    #If using a wildcard certificate, provide a DNS name you want to use to access services secured by the certificate.
+    # If using a wildcard certificate, provide a DNS name you want to use to access services secured by the certificate.
     [Parameter(ParameterSetName='Subject')]
     [Parameter(ParameterSetName='Thumbprint')]
     [string]
@@ -48,20 +52,6 @@ param(
         if (-not (Get-Command Get-ChocoEnvironmentProperty -ErrorAction SilentlyContinue)) {. $PSScriptRoot\scripts\Get-Helpers.ps1}
         Get-ChocoEnvironmentProperty CertSubject
     ),
-
-    # This option security hardens your C4B server, in scenarios where you have a non-self-signed certificate.
-    # It adds a role and user credential to the Nexus server, which is used to authenticate the source setup on a client endpoint.
-    # It also adds a Client and Service Salt to further secure the SSL conneciton with CCM.
-    # Finally, it updates the Register-C4bEndpoint.ps1 script to use these new credentials.
-    [Parameter()]
-    [switch]
-    $Hardened,
-
-    # The C4B server hostname for which to generate a new self-signed certificate.
-    # Ignored/unused if a certificate thumbprint or subject is supplied.
-    [Parameter(ParameterSetName='SelfSigned')]
-    [string]
-    $Hostname = [System.Net.Dns]::GetHostName(),
 
     # API key of your Nexus repo, to add to the source setup on C4B Server.
     [string]$NuGetApiKey = $(
@@ -101,13 +91,6 @@ process {
     }
     else {
         $SubjectWithoutCn = $CertificateDnsName
-    }
-
-    if ($Hardened) {
-        $CertValidation = Test-SelfSignedCertificate -Certificate $Certificate
-        if ($CertValidation) {
-            throw "Self-Signed Certificates not valid for Internet-Hardened configurations. Please use a valid purchased or generated certificate."
-        }
     }
 
     <# Nexus #>
@@ -151,58 +134,45 @@ process {
     (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
     New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
 
-    if ($Hardened) {        
-        # Disable anonymous authentication
-        Set-NexusAnonymousAuth -Disabled
+    # Disable anonymous authentication
+    Set-NexusAnonymousAuth -Disabled
 
-        if (-not (Get-NexusRole -Role 'chocorole' -ErrorAction SilentlyContinue)) {
-            # Create Nexus role
-            $RoleParams = @{
-                Id          = "chocorole"
-                Name        = "chocorole"
-                Description = "Role for web enabled choco clients"
-                Privileges  = @('nx-repository-view-nuget-*-browse', 'nx-repository-view-nuget-*-read', 'nx-repository-view-raw-*-read', 'nx-repository-view-raw-*-browse')
-            }
-            New-NexusRole @RoleParams
+    if (-not (Get-NexusRole -Role 'chocorole' -ErrorAction SilentlyContinue)) {
+        # Create Nexus role
+        $RoleParams = @{
+            Id          = "chocorole"
+            Name        = "chocorole"
+            Description = "Role for web enabled choco clients"
+            Privileges  = @('nx-repository-view-nuget-*-browse', 'nx-repository-view-nuget-*-read', 'nx-repository-view-raw-*-read', 'nx-repository-view-raw-*-browse')
         }
-
-        if (-not (Get-NexusUser -User 'chocouser' -ErrorAction SilentlyContinue)) {
-            $NexusPw = [System.Web.Security.Membership]::GeneratePassword(32, 12)
-            # Create Nexus user
-            $UserParams = @{
-                Username     = 'chocouser'
-                Password     = ($NexusPw | ConvertTo-SecureString -AsPlainText -Force)
-                FirstName    = 'Choco'
-                LastName     = 'User'
-                EmailAddress = 'chocouser@foo.com'
-                Status       = 'Active'
-                Roles        = 'chocorole'
-            }
-            New-NexusUser @UserParams
-        }
-
-        $ChocoArgs = @(
-            'source',
-            'add',
-            "--name='ChocolateyInternal'",
-            "--source='$RepositoryUrl'",
-            '--priority=1',
-            "--user='chocouser'",
-            "--password='$NexusPw'"
-        )
-        & Invoke-Choco @ChocoArgs
+        New-NexusRole @RoleParams
     }
 
-    else {
-        $ChocoArgs = @(
-            'source',
-            'add',
-            "--name='ChocolateyInternal'",
-            "--source='$RepositoryUrl'",
-            '--priority=1'
-        )
-        & Invoke-Choco @ChocoArgs
+    if (-not (Get-NexusUser -User 'chocouser' -ErrorAction SilentlyContinue)) {
+        $NexusPw = [System.Web.Security.Membership]::GeneratePassword(32, 12)
+        # Create Nexus user
+        $UserParams = @{
+            Username     = 'chocouser'
+            Password     = ($NexusPw | ConvertTo-SecureString -AsPlainText -Force)
+            FirstName    = 'Choco'
+            LastName     = 'User'
+            EmailAddress = 'chocouser@foo.com'
+            Status       = 'Active'
+            Roles        = 'chocorole'
+        }
+        New-NexusUser @UserParams
     }
+
+    $ChocoArgs = @(
+        'source',
+        'add',
+        "--name='ChocolateyInternal'",
+        "--source='$RepositoryUrl'",
+        '--priority=1',
+        "--user='chocouser'",
+        "--password='$NexusPw'"
+    )
+    & Invoke-Choco @ChocoArgs
 
     # Update Repository API key
     $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
@@ -255,11 +225,9 @@ process {
     # Generate Register-C4bEndpoint.ps1
     $EndpointScript = "$PSScriptRoot\scripts\Register-C4bEndpoint.ps1"
 
-    if ($Hardened) {
-
-        $ClientSaltValue = New-CCMSalt
-        $ServiceSaltValue = New-CCMSalt
-        $ScriptBlock = @"
+    $ClientSaltValue = New-CCMSalt
+    $ServiceSaltValue = New-CCMSalt
+    $ScriptBlock = @"
 `$ClientCommunicationSalt = '$ClientSaltValue'
 `$ServiceCommunicationSalt = '$ServiceSaltValue'
 `$FQDN = '$SubjectWithoutCN'
@@ -288,36 +256,26 @@ process {
 & ([scriptblock]::Create(`$script)) @params
 "@
 
-        $ScriptBlock | Set-Content -Path $EndpointScript
+    $ScriptBlock | Set-Content -Path $EndpointScript
 
-        # Agent Setup
-        $agentArgs = @{
-            CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
-            ServiceSalt = $ServiceSaltValue
-            ClientSalt = $ClientSaltValue
-            Source = "ChocolateyInternal"
-        }
+    # Agent Setup
+    $agentArgs = @{
+        CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
+        ServiceSalt = $ServiceSaltValue
+        ClientSalt = $ClientSaltValue
+    }
 
-        Install-ChocolateyAgent @agentArgs
-    } else {
-        # Agent Setup
-        $agentArgs = @{
-            CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
-            Source = "ChocolateyInternal"
-        }
-
-        Install-ChocolateyAgent @agentArgs
-
+    if (Test-SelfSignedCertificate -Certificate $Certificate) {
         # Register endpoint script
         (Get-Content -Path $EndpointScript) -replace "{{hostname}}", "'$SubjectWithoutCn'" | Set-Content -Path $EndpointScript
-        if ($IsSelfSigned) {
             $ScriptBlock = @"
 `$downloader = New-Object -TypeName System.Net.WebClient
 Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-ChocoServerCertificate.ps1"))
 "@
         (Get-Content -Path $EndpointScript) -replace "# placeholder if using a self-signed cert", $ScriptBlock | Set-Content -Path $EndpointScript
-        }
     }
+
+    Install-ChocolateyAgent @agentArgs
 
     Update-Clixml -Properties @{
         CCMWebPortal = "https://$($SubjectWithoutCn)/Account/Login"
@@ -326,16 +284,10 @@ Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-
         CertThumbprint = $Certificate.Thumbprint
         CertExpiry     = $Certificate.NotAfter
         IsSelfSigned   = $IsSelfSigned
-    }
-
-    if ($Hardened) {
-        Update-Clixml -Properties @{
-            ServiceSalt = ConvertTo-SecureString $ServiceSaltValue -AsPlainText -Force
-            ClientSalt = ConvertTo-SecureString $ClientSaltValue -AsPlainText -Force
-        }
+        ServiceSalt = ConvertTo-SecureString $ServiceSaltValue -AsPlainText -Force
+        ClientSalt = ConvertTo-SecureString $ClientSaltValue -AsPlainText -Force
     }
 }
-
 end {
     Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
     New-QuickstartReadme

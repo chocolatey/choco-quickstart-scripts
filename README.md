@@ -181,26 +181,26 @@ Below are the minimum requirements for setting up your C4B server via this guide
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Set-SslSecurity.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>' -Hardened
+    .\Set-SslSecurity.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>'
     ```
 
     > :warning:**REMINDER**: If you are using your own SSL certificate, be sure to place this certificate in the `Local Machine > Personal` certificate store before running the above script, and ensure that the private key is exportable.
 
     > :memo: **NOTE**
-    > You may have noticed the `-Hardened` parameter we've added above. When using a custom SSL certificate, this parameter will further secure access to your C4B Server. A Role and User credential will be configured to limit access to your Nexus repositories. As well, CCM Client and Service Salts are configured to further encrypt your connection between CCM and your endpoint clients. These additional settings are also incorporated into your `Register-C4bEndpoint.ps1` script for onboarding endpoints. We do require you to enable this option if your C4B Server will be Internet-facing, with a FQDN that resolves to a public IP.
+    > A Role and User credential will be configured to limit access to your Nexus repositories. As well, CCM Client and Service Salts are configured to further encrypt your connection between CCM and your endpoint clients. These additional settings are also incorporated into your `Register-C4bEndpoint.ps1` script for onboarding endpoints.
 
     **ALTERNATIVE 2 : Wildcard SSL Certificate** - If you have a wildcard certificate, you will also need to provide a DNS name you wish to use for that certificate:
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Set-SslSecurity.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>' -CertificateDnsName '<YOUR_DESIRED_FQDN_HERE>' -Hardened
+    .\Set-SslSecurity.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>' -CertificateDnsName '<YOUR_DESIRED_FQDN_HERE>'
     ```
 
     For example, with a wildcard certificate with a thumbprint of `deee9b2fabb24bdaae71d82286e08de1` you wish to use `chocolatey.foo.org`, the following would be required:
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Set-SslSecurity.ps1 -Thumbprint deee9b2fabb24bdaae71d82286e08de1 -CertificateDnsName chocolatey.foo.org -Hardened
+    .\Set-SslSecurity.ps1 -Thumbprint deee9b2fabb24bdaae71d82286e08de1 -CertificateDnsName chocolatey.foo.org
     ```
 
     > <details>
@@ -215,7 +215,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > </ul>
     > </details>
 
-    > :mag: **FYI**: A `Readme.html` file will now be generated on your desktop. This file contains login information for all 3 web portals (CCM, Nexus, and Jenkins). This `Readme.html`, along with all 3 web portals, will automatically be opened in your browser. 
+    > :mag: **FYI**: A `Readme.html` file will now be generated on your desktop. This file contains login information for all 3 web portals (CCM, Nexus, and Jenkins). This `Readme.html`, along with all 3 web portals, will automatically be opened in your browser.
 
 ### Step 6: Verification
 
