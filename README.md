@@ -2,7 +2,7 @@
 
 This repository contains a set of supporting scripts used for the Chocolatey for Business (C4B) Quick-Start Guide (QSG).
 
-These scripts can be used to assist in setup of a brand new Windows Server as a C4B Server.
+These scripts can be used to assist in the setup of a brand-new Windows Server as a C4B Server.
 
 Below is the Quick Start Guide as it exists currently on the [Chocolatey Docs](https://docs.chocolatey.org/en-us/guides/organizations/quick-start-guide/chocolatey-for-business-quick-start-guide).
 
@@ -34,14 +34,16 @@ As illustrated in the diagram above, there are four main components to a Chocola
 
 1. **C4B Licensed components**: A licensed version of Chocolatey includes:
     - Installation of the Chocolatey OSS client package itself (`chocolatey`)
-    - Chocolatey license file (`chocolatey.license.xml`) installed in the correct directory (`ProgramData\chocolatey\license`)
+    - The Chocolatey license file (`chocolatey.license.xml`) installed in the correct directory (`ProgramData\chocolatey\license`)
     - Installation of the Chocolatey Licensed extension (`chocolatey.extension`), giving you access to features like Package Builder, Package Internalizer, etc. (full list [here](https://docs.chocolatey.org/en-us/features/)).
 
-1. **NuGet V3 Repository Server App (Nexus)**: Chocolatey works best with a NuGet V3 repository. This application hosts and manages versioning of your Chocolatey package artifacts, in their enhanced NuGet package (.nupkg) file format. The quick start guide helps you setup [Sonatype Nexus Repository Manager (OSS)](https://www.sonatype.com/products/nexus-repository).
+1. **Repository Server (Sonatype Nexus)**: Chocolatey works best with a NuGet repository. This repository hosts and manages the versioning of your Chocolatey package artifacts, in their enhanced NuGet package (.nupkg) file format. The quick start guide helps you set up [Sonatype Nexus Repository Manager (OSS)](https://www.sonatype.com/products/nexus-repository).
 
-1. **Chocolatey Central Management (CCM)**: CCM is the Web UI portal for your entire Chocolatey environment. Your endpoints check-in to CCM to report their package status. This includes the Chocolatey packages they have installed, and whether any of these packages are outdated. And now, with CCM Deployments, you can also deploy packages or package updates to groups of endpoints, as well as ad-hoc PowerShell commands. CCM is backed by an MS SQL Database. This guide will set up MS SQL Express for you.
+1. **Chocolatey Central Management (CCM)**: CCM is a web-based application for managing the state of Chocolatey packages in your environment. Your endpoints check in via the Chocolatey agent and report basic computer information (host name, IP address), and what Chocolatey packages are installed, as well as if any of those packages are outdated. A deployment capability allows you to install, upgrade, or uninstall packages, and for more advanced scenarios run ad-hoc PowerShell code on your endpoints.
 
-1. **Automation Pipeline (Jenkins)**: A pipeline tool will help you automate repetitive tasks, such checking for updates to a set of Chocolatey Packages from the Chocolatey Community Repository (CCR). If updates exist, the pipeline task will auto-internalize your list of packages, and push them into your NuGet repository for you. This guide will help you set up Jenkins as your automation pipeline.
+CCM is backed by an MS SQL Database, which this guide will set up and configure for you based on Microsoft SQL Server Express.
+
+1. **Automation Pipeline (Jenkins)**: A pipeline tool will help you automate repetitive tasks, such as checking for updates to a set of Chocolatey Packages from the Chocolatey Community Repository (CCR). If updates exist, the pipeline task will auto-internalize your list of packages, and push them into your NuGet repository for you. This guide will help you set up Jenkins as your automation pipeline.
 
 ## Requirements
 
@@ -62,7 +64,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
 
 1. Install all Windows Updates.
 
-1. If you plan on joining this server to your Active Directory domain, do so now before beginning setup below.
+1. If you plan on joining this server to your Active Directory domain, do so now before beginning the setup below.
 
 1. If you plan to use a Purchased/Acquired or Domain SSL certificate, please ensure the CN/Subject value matches the DNS-resolvable Fully Qualified Domain Name (FQDN) of your C4B Server. Place this certificate in the `Local Machine > Personal` certificate store, and ensure that the private key is exportable.
 
@@ -120,9 +122,11 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <ul class="list-style-type-disc">
     > <li>Installs Sonatype Nexus Repository Manager OSS instance</li>
     > <li>Cleans up all demo repositories on Nexus</li>
+    > <li>Creates a "ChocolateyCore" NuGet repository</li>
     > <li>Creates a "ChocolateyInternal" NuGet repository</li>
     > <li>Creates a "ChocolateyTest" NuGet repository</li>
     > <li>Creates a "choco-install" raw repository</li>
+    > <li>Sets up "ChocolateyCore" on C4B Server as source, with API key</li>
     > <li>Sets up "ChocolateyInternal" on C4B Server as source, with API key</li>
     > <li>Adds firewall rule for repository access</li>
     > <li>Installs MS Edge, and disables first-run experience</li>
@@ -177,7 +181,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     .\Set-SslSecurity.ps1
     ```
 
-    **ALTERNATIVE 1 : Custom SSL Certificate** - If you have your own custom SSL certificate (purchased/acquired, or from your Domain CA), you can paste and run the following script with the `Thumbprint` value of your SSL certificate specified:
+    **ALTERNATIVE 1: Custom SSL Certificate** - If you have your own custom SSL certificate (purchased/acquired, or from your Domain CA), you can paste and run the following script with the `Thumbprint` value of your SSL certificate specified:
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
@@ -189,7 +193,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > :memo: **NOTE**
     > You may have noticed the `-Hardened` parameter we've added above. When using a custom SSL certificate, this parameter will further secure access to your C4B Server. A Role and User credential will be configured to limit access to your Nexus repositories. As well, CCM Client and Service Salts are configured to further encrypt your connection between CCM and your endpoint clients. These additional settings are also incorporated into your `Register-C4bEndpoint.ps1` script for onboarding endpoints. We do require you to enable this option if your C4B Server will be Internet-facing, with a FQDN that resolves to a public IP.
 
-    **ALTERNATIVE 2 : Wildcard SSL Certificate** - If you have a wildcard certificate, you will also need to provide a DNS name you wish to use for that certificate:
+    **ALTERNATIVE 2: Wildcard SSL Certificate** - If you have a wildcard certificate, you will also need to provide a DNS name you wish to use for that certificate:
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
@@ -272,9 +276,3 @@ Below are the minimum requirements for setting up your C4B server via this guide
 Congratulations! If you followed all the steps detailed above, you should now have a fully functioning Chocolatey for Business implementation deployed in your environment.
 
 It is worth mentioning that some customers may have a more bespoke environment, with the presence of proxies and additional configuration management applications. Chocolatey is engineered to be quite flexible, specifically to account for these scenarios. Please refer to the many options for installation referenced on the [Installation page](https://docs.chocolatey.org/en-us/licensed-extension/setup#more-install-options). Again, If you have any questions or would like to discuss more involved implementations, please feel free to reach out to your Chocolatey representative.
-
-### See it in Action
-
-If you'd prefer to watch and follow along, here is a recording of our Chocolatey Team going through this guide live on our Twitch stream:
-
-[YouTube Video](https://www.youtube.com/embed/qbIclPMEgig)

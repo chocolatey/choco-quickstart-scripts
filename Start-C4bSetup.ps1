@@ -21,9 +21,9 @@ param(
     [Parameter(ParameterSetName='Attended')]
     [string]
     $LicenseFile = $(
-        if (Test-Path $PSScriptRoot\files\chocolatey.license.xml) {
+        if (Test-Path $PSScriptRoot\packages\chocolatey.license.xml) {
             # Offline setup has been run, we should use that license.
-            Join-Path $PSScriptRoot "files\chocolatey.license.xml"
+            Join-Path $PSScriptRoot "packages\chocolatey.license.xml"
         } elseif (Test-Path $env:ChocolateyInstall\license\chocolatey.license.xml) {
             # Chocolatey is already installed, we can use that license.
             Join-Path $env:ChocolateyInstall "license\chocolatey.license.xml"
@@ -99,7 +99,7 @@ try {
     Write-Host "Setting up initial directories in"$env:SystemDrive\choco-setup"" -ForegroundColor Green
     $ChocoPath = "$env:SystemDrive\choco-setup"
     $FilesDir = Join-Path $ChocoPath "files"
-    $PkgsDir = Join-Path $FilesDir "files"
+    $PkgsDir = Join-Path $FilesDir "packages"
     $TempDir = Join-Path $ChocoPath "temp"
     $TestDir = Join-Path $ChocoPath "tests"
     $xmlDir = Join-Path $ChocoPath "clixml"
@@ -134,8 +134,8 @@ try {
 
     & $FilesDir\OfflineInstallPreparation.ps1 -LicensePath $LicenseFile
 
-    if (Test-Path $FilesDir\files\*.nupkg) {
-        Invoke-Choco source add --name LocalChocolateySetup --source $FilesDir\files\ --Priority 1
+    if (Test-Path $FilesDir\packages\*.nupkg) {
+        Invoke-Choco source add --name LocalChocolateySetup --source $FilesDir\packages\ --Priority 1
     }
 
     # Set Choco Server Chocolatey Configuration

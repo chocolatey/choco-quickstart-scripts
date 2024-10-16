@@ -27,7 +27,7 @@ process {
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
-    $Packages = (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertFrom-Json).packages
+    $Packages = (Get-Content $PSScriptRoot\packages\chocolatey.json | ConvertFrom-Json).packages
 
     Set-ChocoEnvironmentProperty -Name DatabaseUser -Value $DatabaseCredential
 

@@ -1,0 +1,43 @@
+<?xml version="1.1" encoding="UTF-8"?><flow-definition plugin="workflow-job@2.37">
+  <actions/>
+  <description>Automatically update any out of date packages in the ChocolateyCore repository from the Licensed and Community Repositories</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <org.jenkinsci.plugins.workflow.job.properties.DisableConcurrentBuildsJobProperty/>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>P_LOCAL_REPO_URL</name>
+          <description>Internal core repository.</description>
+          <defaultValue>https://{{hostname}}:8443/repository/ChocolateyCore/index.json</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>P_REMOTE_REPO_URL</name>
+          <description>Remote repositories containing updated package versions.</description>
+          <defaultValue>https://licensedpackages.chocolatey.org/api/v2/;https://community.chocolatey.org/api/v2/</defaultValue>
+          <trim>true</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.PasswordParameterDefinition>
+          <name>P_LOCAL_REPO_API_KEY</name>
+          <description>API key for the internal core repository where updated packages will be pushed.</description>
+          <defaultValue>{{NugetApiKey}}</defaultValue>
+        </hudson.model.PasswordParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.80">
+    <script>node {
+    powershell '''
+        Set-Location (Join-Path "$env:SystemDrive" -ChildPath 'scripts')
+        .\\Get-UpdatedPackage.ps1  -LocalRepo $env:P_LOCAL_REPO_URL `
+        -LocalRepoApiKey $env:P_LOCAL_REPO_API_KEY `
+        -RemoteRepo $env:P_REMOTE_REPO_URL `
+        -Verbose
+    '''
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

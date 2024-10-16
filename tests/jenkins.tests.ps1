@@ -64,6 +64,10 @@ Describe "Jenkins Configuration" {
         It "'Update test repository from Chocolatey Community Repository' is present" {
             'Update test repository from Chocolatey Community Repository' -in $jobs | Should -Be $true
         }
+
+        It "'Update ChocolateyCore Repository' is present" {
+            'Update ChocolateyCore Repository' -in $jobs | Should -Be $true
+        }
     }
 
     Context "Web Interface" {
@@ -74,7 +78,7 @@ Describe "Jenkins Configuration" {
 
     Context "Required Plugins" {
         BeforeDiscovery {
-            $ExpectedPlugins = (Get-Content $PSScriptRoot\..\files\jenkins.json | ConvertFrom-Json).plugins.name
+            $ExpectedPlugins = (Get-Content $PSScriptRoot\..\packages\jenkins.json | ConvertFrom-Json).plugins.name
         }
 
         BeforeAll {
