@@ -60,8 +60,6 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 $LicensePath = Convert-Path $LicensePath
 
-Import-Module $PSScriptRoot\modules\C4B-Environment
-
 $ChocoInstallScript = Join-Path $PSScriptRoot "scripts\ChocolateyInstall.ps1"
 if (-not (Test-Path $ChocoInstallScript)) {
     Invoke-WebRequest -Uri 'https://chocolatey.org/install.ps1' -OutFile $ChocoInstallScript
@@ -79,6 +77,8 @@ if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -eq 
 } else {
     Write-Error "ChocolateyInstall.ps1 script signature is not valid. Please investigate." -ErrorAction Stop
 }
+
+Import-Module $PSScriptRoot\modules\C4B-Environment -Force
 
 # Initialize environment, ensure Chocolatey For Business, etc.
 $Licensed = ($($(choco.exe)[0] -match "^Chocolatey (?<Version>\S+)\s*(?<LicenseType>Business)?$") -and $Matches.LicenseType)
