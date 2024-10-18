@@ -244,9 +244,9 @@ jobs:
             Write-Host "Setting up '${{ matrix.variant }}' Certificate"
             $Certificate = switch ('${{ matrix.variant }}') {
               'self-signed' {
-                Write-Host "Creating a Self-Signed Certificate for '$($Vm.Name)'"
+                Write-Host "Using a Self-Signed Certificate for '$($Vm.Name)'"
                 $CertDetails = @{FQDN = $Vm.Name}
-                @{Hostname = $CertDetails.FQDN}
+                @{}
               }
               'single' {
                 $CertDetails = Invoke-Command -Session $Session -ScriptBlock {
@@ -268,7 +268,7 @@ jobs:
                   }
                 }
                 Write-Host "Using Certificate with Thumbprint '$($Thumbprint)'"
-                @{Thumbprint = $CertDetails.Thumbprint; Hardened = $true}
+                @{Thumbprint = $CertDetails.Thumbprint}
               }
               'wildcard' {
                 $CertDetails = Invoke-Command -Session $Session -ScriptBlock {
@@ -290,7 +290,7 @@ jobs:
                   }
                 }
                 Write-Host "Using Wildcard with Thumbprint '$($Thumbprint)'"
-                @{Thumbprint = $CertDetails.Thumbprint; CertificateDnsName = $CertDetails.FQDN; Hardened = $true}
+                @{Thumbprint = $CertDetails.Thumbprint; CertificateDnsName = $CertDetails.FQDN}
               }
             }
 
