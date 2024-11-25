@@ -153,6 +153,7 @@ process {
         DefaultUser          = "ccmadmin"
         DefaultPwToBeChanged = "123qwe"
         CCMDBUser            = $DatabaseUser
+        CCMInstallUser       = whoami
     }
 
     Write-Host "Chocolatey Central Management Setup has now completed" -ForegroundColor Green
