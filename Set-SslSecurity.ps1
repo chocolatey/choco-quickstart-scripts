@@ -120,7 +120,6 @@ process {
     Write-Host "Nexus is ready!"
 
     Invoke-Choco source remove --name="'ChocolateyInternal'"
-    $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/index.json"
 
     # Build Credential Object, Connect to Nexus
     $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
@@ -156,34 +155,39 @@ process {
             Password     = ($NexusPw | ConvertTo-SecureString -AsPlainText -Force)
             FirstName    = 'Choco'
             LastName     = 'User'
-            EmailAddress = 'chocouser@foo.com'
+            EmailAddress = 'chocouser@example.com'
             Status       = 'Active'
             Roles        = 'chocorole'
         }
         New-NexusUser @UserParams
     }
 
-    $ChocoArgs = @(
-        'source',
-        'add',
-        "--name='ChocolateyInternal'",
-        "--source='$RepositoryUrl'",
-        '--priority=1',
-        "--user='chocouser'",
-        "--password='$NexusPw'"
-    )
-    & Invoke-Choco @ChocoArgs
+    # Update all sources with credentials and the new path
+    foreach ($Repository in Get-NexusRepository -Format nuget | Where-Object Type -eq 'hosted') {
+        $RepositoryUrl = "https://${SubjectWithoutCn}:8443/repository/$($Repository.Name)/index.json"
 
-    # Update Repository API key
-    $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
-    & Invoke-Choco @chocoArgs
+        $ChocoArgs = @(
+            'source',
+            'add',
+            "--name='$($Repository.Name)'",
+            "--source='$RepositoryUrl'",
+            '--priority=1',
+            "--user='chocouser'",
+            "--password='$NexusPw'"
+        )
+        & Invoke-Choco @ChocoArgs
 
-    # Reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
-    Remove-NexusRepositoryFolder -RepositoryName ChocolateyInternal -Name v3
+        # Update Repository API key
+        $chocoArgs = @('apikey', "--source='$RepositoryUrl'", "--api-key='$NuGetApiKey'")
+        & Invoke-Choco @chocoArgs
+
+        # Reset the NuGet v3 cache, such that it doesn't capture localhost as the FQDN
+        Remove-NexusRepositoryFolder -RepositoryName $Repository.Name -Name v3
+    }
 
     Update-Clixml -Properties @{
         NexusUri = "https://$($SubjectWithoutCn):8443"
-        NexusRepo = $RepositoryUrl
+        NexusRepo = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/index.json"
         ChocoUserPassword = $NexusPw
     }
 
