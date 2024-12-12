@@ -84,7 +84,11 @@ process {
     # Add ChocolateyInternal as a source repository
     Invoke-Choco source add -n 'ChocolateyInternal' -s "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json" --priority 1
 
-    #Remove Local Chocolatey Setup Source
+    # Add ChocolateyTest as a source repository, to enable authenticated pushing
+    Invoke-Choco source add -n 'ChocolateyTest' -s "$((Get-NexusRepository -Name 'ChocolateyTest').url)/index.json"
+    Invoke-Choco source disable -n 'ChocolateyTest'
+
+    # Remove Local Chocolatey Setup Source
     $chocoArgs = @('source', 'remove', '--name="LocalChocolateySetup"')
     & Invoke-Choco @chocoArgs
     

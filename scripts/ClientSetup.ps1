@@ -84,12 +84,12 @@ if ($Credential) {
 
 # Find the latest version of Chocolatey, if a version was not specified
 $NupkgUrl = if (-not $ChocolateyVersion) {
-    $QueryUrl = ($RepositoryUrl.TrimEnd('/index.json'), "v3/registration/Chocolatey/index.json") -join '/'
+    $QueryUrl = (($RepositoryUrl -replace '/index\.json$'), "v3/registration/Chocolatey/index.json") -join '/'
     $Result = $webClient.DownloadString($QueryUrl) | ConvertFrom-Json
     $Result.items.items[-1].packageContent
 } else {
     # Otherwise, assume the URL
-    "$($RepositoryUrl.TrimEnd('/index.json'))/v3/content/chocolatey/$($ChocolateyVersion)/chocolatey.$($ChocolateyVersion).nupkg"
+    "$($RepositoryUrl -replace '/index\.json$')/v3/content/chocolatey/$($ChocolateyVersion)/chocolatey.$($ChocolateyVersion).nupkg"
 }
 
 # Download the NUPKG
