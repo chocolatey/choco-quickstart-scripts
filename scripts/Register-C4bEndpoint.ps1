@@ -1,4 +1,55 @@
-[CmdletBinding()]
+<#
+    .SYNOPSIS
+    Deploys Chocolatey onto an endpoint.
+
+    .EXAMPLE
+
+    Some endpoints may require a different set of features. The default installation will apply our _recommended_ configuration.
+    However, you can override these defaults or enable/disable additional features by providing the `-AdditionalFeatures` parameter.
+
+    In this example we will disable the use of the background service so non-admin users cannot use Chocolatey (not recommended), and enable Gloabl Confirmation so you no longer need to pass -y when performing a package operation.
+    
+    . .\Register-C4bEndpoint.ps1 -RepositoryCredential (Get-Credential) -AdditionalFeatures @{ useBackgroundService = 'Disabled'; allowGlobalCOnfirmation = 'Enabled' }
+    
+    .EXAMPLE
+    You can apply custom configuration which overrides the defaults or provides additional configuration by providing the `-AdditionalConfiguration` parameter.
+    The following example sets the `centralManagementReportPackagesTimerIntervalInSeconds` configuration item to 21600 seconds (6 hours).
+
+    . .\Register-C4bEndpoint.ps1 -RepositoryCredential (Get-Credential) -AdditionalConfiguration @{ 'centralManagementReportPackagesTimerIntervalInSeconds' = '21600'}
+
+    .EXAMPLE
+    You can include additional Chocolatey sources during the installation process by providing the `-AdditionalSources` parameter.
+
+    . .\Register-C4bEndpoint.ps1 -RepositoryCredential (Get-Credential) -AdditionalSources @{Name = 'ChocolateyUpstream'; Source = 'https://community.chocolatey.org/api/v2/'}
+
+    .EXAMPLE
+    This example include Packaging Tools and sets up a local folder source for package development testing.
+    The local folder must exist prior to using this source.
+
+    . .\Register-C4bEndpoint.ps1 -RepositoryCredential (Get-Credential) -AdditionalSources @{Name = 'LocalTest'; Source = 'C:\packages\testing'}
+
+
+    .EXAMPLE
+    The following example installs the notepadplusplus.install package.
+
+    . .\Register-C4bEndpoint.ps1 -RepositoryCredential (Get-Credential) -AdditionalPackages @{Id ='notepadplusplus.install'}
+
+    .EXAMPLE
+    The following example installs version 8.7.5 of the notepadplusplus.install package.
+    
+    . .\Register-C4bEndpoint.ps1 -RepositoryCredential (Get-Credential) -AdditionalPackages @{Id ='notepadplusplus.install'; Version = '8.7.5'}
+    
+    .EXAMPLE
+    The following example installs version 8.7.5 of the notepadplusplus.install package and pins it so that it is not upgraded when using `choco upgrade`
+    To upgrade this package, you will need to first unpin it, and then perform the upgrade.
+   
+    . .\Register-C4bEndpoint.ps1 -RepositoryCredential (Get-Credential) -AdditionalPackages @{Id ='notepadplusplus.install'; Version = '8.7.5'; Pin = $true}
+    
+    .NOTES
+
+    Full documentation is available at https://docs.chocolatey.org/en-us/c4b-environments/quick-start-environment/advanced-client-configuration/
+    #>
+[CmdletBinding(HelpUri = 'https://docs.chocolatey.org/en-us/c4b-environments/quick-start-environment/advanced-client-configuration/')]
 Param(
     # The DNS name of the server that hosts your repository, Jenkins, and Chocolatey Central Management
     [Parameter()]
