@@ -43,13 +43,23 @@ begin {
         Join-Path -ChildPath $Guid |
         New-Item -ItemType Directory -Path { $_ } |
         Select-Object -ExpandProperty FullName
+
+    $LocalRepoSource = $(choco source --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Uri, Disabled).Where{
+        $_.Uri -eq $RepositoryUrl
+    }[0]
 }
 process {
     foreach ($item in $Package) {
         choco download $item --internalize --output-directory="'$TempFolder'" --no-progress --internalize-all-urls --append-use-original-location --source="'$RemoteRepo'"
-        Get-ChildItem -Path $TempFolder -Filter *.nupkg -Recurse -File | ForEach-Object {
-            choco push $_.Fullname --source="'$RepositoryUrl'" --api-key="'$NexusApiKey'" --force
-            Remove-Item -Path $_.FullName -Force
+        try {
+            if ([bool]::Parse($LocalRepoSource.Disabled)) {choco source enable --name="$($LocalRepoSource.Name)" -r | Write-Verbose}
+
+            Get-ChildItem -Path $TempFolder -Filter *.nupkg -Recurse -File | ForEach-Object {
+                choco push $_.Fullname --source="'$RepositoryUrl'" --api-key="'$NexusApiKey'" --force
+                Remove-Item -Path $_.FullName -Force
+            }
+        } finally {
+            if ([bool]::Parse($LocalRepoSource.Disabled)) {choco source disable --name="$($LocalRepoSource.Name)" -r | Write-Verbose}
         }
     }
 }
