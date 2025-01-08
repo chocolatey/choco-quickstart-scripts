@@ -18,8 +18,18 @@ if (([version] (choco --version).Split('-')[0]) -ge [version] '2.1.0') {
     choco cache remove
 }
 
+$LocalRepoSource = $(choco source --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Uri, Disabled).Where{
+    $_.Uri -eq $TestRepo -or
+    $_.Name -eq $TestRepo
+}[0]
+
 Write-Verbose "Checking the list of packages available in the test and prod repositories"
-$testPkgs = choco search --source $TestRepo --all-versions --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version
+try {
+    if ([bool]::Parse($LocalRepoSource.Disabled)) {choco source enable --name="$($LocalRepoSource.Name)" -r | Write-Verbose}
+    $testPkgs = choco search --source $TestRepo --all-versions --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version
+} finally {
+    if ([bool]::Parse($LocalRepoSource.Disabled)) {choco source disable --name="$($LocalRepoSource.Name)" -r | Write-Verbose}
+}
 $prodPkgs = choco search --source $ProdRepo --all-versions --limit-output | ConvertFrom-Csv -Delimiter '|' -Header Name, Version
 $tempPath = Join-Path -Path $env:TEMP -ChildPath ([GUID]::NewGuid()).GUID
 
@@ -35,7 +45,12 @@ else {
 
 $Packages | ForEach-Object {
     Write-Verbose "Downloading package '$($_.Name)' v$($_.Version) to '$tempPath'."
-    choco download $_.Name --version $_.Version --no-progress --output-directory=$tempPath --source=$TestRepo --ignore-dependencies
+    try {
+        if ([bool]::Parse($LocalRepoSource.Disabled)) {choco source enable --name="$($LocalRepoSource.Name)" -r | Write-Verbose}
+        choco download $_.Name --version $_.Version --no-progress --output-directory=$tempPath --source=$TestRepo --ignore-dependencies
+    } finally {
+        if ([bool]::Parse($LocalRepoSource.Disabled)) {choco source disable --name="$($LocalRepoSource.Name)" -r | Write-Verbose}
+    }
 
     if ($LASTEXITCODE -eq 0) {
         $pkgPath = (Get-Item -Path (Join-Path -Path $tempPath -ChildPath '*.nupkg')).FullName
