@@ -204,13 +204,13 @@ if ($AdditionalConfiguration) {
     #>
 
     $AdditionalConfiguration.GetEnumerator() | ForEach-Object {
-        $c = [System.Collections.Generic.list[string]]::new()
-        $c.Add('config')
-        $c.Add('set')
-        $c.Add("--name='$($_.Key)'")
-        $c.Add("--value='$($_.Value)'")
+        $Config = [System.Collections.Generic.list[string]]::new()
+        $Config.Add('config')
+        $Config.Add('set')
+        $Config.Add("--name='$($_.Key)'")
+        $Config.Add("--value='$($_.Value)'")
 
-        & choco @c
+        & choco @Config
     }
 }
 
@@ -224,8 +224,8 @@ if ($AdditionalFeatures) {
     #>
    $AdditionalFeatures.GetEnumerator() | ForEach-Object {
 
-        $c = [System.Collections.Generic.list[string]]::new()
-        $c.Add('feature')
+        $Feature = [System.Collections.Generic.list[string]]::new()
+        $Feature.Add('feature')
 
         $state = switch ($_.Value) {
             'Enabled' { 'enable' }
@@ -233,9 +233,9 @@ if ($AdditionalFeatures) {
             default { Write-Error 'State must be either Enabled or Disabled' }
         }
 
-        $c.Add($state)
-        $c.add("--name='$($_.Key)'")
-        & choco @c
+        $Feature.Add($state)
+        $Feature.add("--name='$($_.Key)'")
+        & choco @Feature
     }
 }
 
@@ -256,31 +256,31 @@ if ($AdditionalSources) {
         CertificatePassword = 's0mepa$$'
     }
 #>
-    Foreach ($a in $AdditionalSources) {
-        $c = [System.Collections.Generic.List[string]]::new()
+    Foreach ($Source in $AdditionalSources) {
+        $SourceSplat = [System.Collections.Generic.List[string]]::new()
         # Required items
-        $c.Add('source')
-        $c.Add('add')
-        $c.Add("--name='$($a.Name)'")
-        $c.Add("--source='$($a.Source)'")
+        $SourceSplat.Add('source')
+        $SourceSplat.Add('add')
+        $SourceSplat.Add("--name='$($Source.Name)'")
+        $SourceSplat.Add("--source='$($Source.Source)'")
 
         # Add credentials if source has them
-        if ($a.ContainsKey('Credentials')) {
-            $c.Add("--user='$($a.Credentials.Username)'")
-            $c.Add("--password='$($a.Credentials.GetNetworkCredential().Password)'")
+        if ($Source.ContainsKey('Credentials')) {
+            $SourceSplat.Add("--user='$($Source.Credentials.Username)'")
+            $SourceSplat.Add("--password='$($Source.Credentials.GetNetworkCredential().Password)'")
         }
 
         switch ($true) {
-            $a['AllowSelfService'] { $c.add('--allow-self-service') }
-            $a['AdminOnly'] { $c.Add('--admin-only') }
-            $a['BypassProxy'] { $c.Add('--bypass-proxy') }
-            $a.ContainsKey('Priority') { $c.Add("--priority='$($a.Priority)'") }
-            $a.ContainsKey('Certificate') { $c.Add("--cert='$($a.Certificate)'") }
-            $a.ContainsKey('CerfificatePassword') { $c.Add("--certpassword='$($a.CertificatePassword)'") }
+            $Source['AllowSelfService'] { $SourceSplat.add('--allow-self-service') }
+            $Source['AdminOnly'] { $SourceSplat.Add('--admin-only') }
+            $Source['BypassProxy'] { $SourceSplat.Add('--bypass-proxy') }
+            $Source.ContainsKey('Priority') { $SourceSplat.Add("--priority='$($Source.Priority)'") }
+            $Source.ContainsKey('Certificate') { $SourceSplat.Add("--cert='$($Source.Certificate)'") }
+            $Source.ContainsKey('CerfificatePassword') { $SourceSplat.Add("--certpassword='$($Source.CertificatePassword)'") }
         }
     }
 
-    & choco @c
+    & choco @SourceSplat
 }
 
 if ($AdditionalPackages) {
@@ -297,19 +297,19 @@ if ($AdditionalPackages) {
     #>
     foreach ($package in $AdditionalPackages.GetEnumerator()) {
         
-        $c = [System.Collections.Generic.list[string]]::new()
-        $c.add('install')
-        $c.add($package['Id'])
+        $PackageSplat = [System.Collections.Generic.list[string]]::new()
+        $PackageSplat.add('install')
+        $PackageSplat.add($package['Id'])
 
         switch ($true) {
-            $package.ContainsKey('Version') { $c.Add("--version='$($package.version)'") }
-            $package.ContainsKey('Pin') { $c.Add('--pin') }
+            $package.ContainsKey('Version') { $PackageSplat.Add("--version='$($package.version)'") }
+            $package.ContainsKey('Pin') { $PackageSplat.Add('--pin') }
         }
 
         # Ensure packages install and they don't flood the console output
-        $c.Add('-y')
-        $c.Add('--no-progress')
+        $PackageSplat.Add('-y')
+        $PackageSplat.Add('--no-progress')
 
-        & choco @c       
+        & choco @PackageSplat
     }
 }
