@@ -65,7 +65,7 @@ param(
 process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
-    Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslCertificate-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
+    Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslSecurity-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
     # Collect current certificate configuration
     $Certificate = if ($Subject) {
@@ -131,10 +131,10 @@ process {
     # Push ClientSetup.ps1 to raw repo
     $ClientScript = "$PSScriptRoot\scripts\ClientSetup.ps1"
     (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
-    New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
+    $null = New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
 
     # Disable anonymous authentication
-    Set-NexusAnonymousAuth -Disabled
+    $null = Set-NexusAnonymousAuth -Disabled
 
     if (-not (Get-NexusRole -Role 'chocorole' -ErrorAction SilentlyContinue)) {
         # Create Nexus role
@@ -144,7 +144,12 @@ process {
             Description = "Role for web enabled choco clients"
             Privileges  = @('nx-repository-view-nuget-*-browse', 'nx-repository-view-nuget-*-read', 'nx-repository-view-raw-*-read', 'nx-repository-view-raw-*-browse')
         }
-        New-NexusRole @RoleParams
+        $null = New-NexusRole @RoleParams
+
+        $Timeout = [System.Diagnostics.Stopwatch]::StartNew()
+        while ($Timeout.Elapsed.TotalSeconds -lt 30 -and -not (Get-NexusRole -Role $RoleParams.Id -ErrorAction SilentlyContinue)) {
+            Start-Sleep -Seconds 3
+        }
     }
 
     if (-not (Get-NexusUser -User 'chocouser' -ErrorAction SilentlyContinue)) {
@@ -159,7 +164,14 @@ process {
             Status       = 'Active'
             Roles        = 'chocorole'
         }
-        New-NexusUser @UserParams
+        $null = New-NexusUser @UserParams
+
+        $Timeout = [System.Diagnostics.Stopwatch]::StartNew()
+        while ($Timeout.Elapsed.TotalSeconds -lt 30 -and -not (Get-NexusUser -User $UserParams.Username -ErrorAction SilentlyContinue)) {
+            Start-Sleep -Seconds 3
+        }
+    } else {
+        $NexusPw = Get-ChocoEnvironmentProperty ChocoUserPassword
     }
 
     # Update all sources with credentials and the new path

@@ -33,6 +33,9 @@ process {
     $chocoArgs = @('install', 'nexus-repository', '-y' ,'--no-progress', "--package-parameters='/Fqdn:localhost'")
     & Invoke-Choco @chocoArgs
 
+    $chocoArgs = @('install', 'nexushell', '-y' ,'--no-progress')
+    & Invoke-Choco @chocoArgs
+
     #Build Credential Object, Connect to Nexus
     Write-Host "Configuring Sonatype Nexus Repository"
     $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
