@@ -33,6 +33,9 @@ process {
     $chocoArgs = @('install', 'nexus-repository', '-y' ,'--no-progress', "--package-parameters='/Fqdn:localhost'")
     & Invoke-Choco @chocoArgs
 
+    $chocoArgs = @('install', 'nexushell', '-y' ,'--no-progress')
+    & Invoke-Choco @chocoArgs
+
     #Build Credential Object, Connect to Nexus
     Write-Host "Configuring Sonatype Nexus Repository"
     $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
@@ -73,7 +76,7 @@ process {
     $Signature = Get-AuthenticodeSignature -FilePath $ChocoInstallScript
 
     if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -eq 'CN="Chocolatey Software, Inc", O="Chocolatey Software, Inc", L=Topeka, S=Kansas, C=US') {
-        New-NexusRawComponent -RepositoryName 'choco-install' -File $ChocoInstallScript
+        $null = New-NexusRawComponent -RepositoryName 'choco-install' -File $ChocoInstallScript
     } else {
         Write-Error "ChocolateyInstall.ps1 script signature is not valid. Please investigate."
     }

@@ -116,7 +116,9 @@ PrivateData = @{
         # RequireLicenseAcceptance = $false
 
         # External dependent modules of this module
-        # ExternalModuleDependencies = @()
+        ExternalModuleDependencies = @(
+            "NexuShell"
+        )
 
     } # End of PSData hashtable
 

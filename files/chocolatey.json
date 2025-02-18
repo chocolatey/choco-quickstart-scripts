@@ -25,6 +25,7 @@
         { "name": "KB3033929", "internalize": false },
         { "name": "KB3035131", "internalize": false },
         { "name": "microsoft-edge" },
+        { "name": "nexushell", "version": "1.2.0" },
         { "name": "nexus-repository" },
         { "name": "pester", "internalize": false },
         { "name": "sql-server-express" },

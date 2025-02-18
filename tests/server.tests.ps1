@@ -45,8 +45,8 @@ Describe "Server Integrity" {
             $Logs = Get-ChildItem C:\choco-setup\logs -Recurse -Filter *.txt
         }
 
-        It "<File> log file was created during installation" -Foreach @(
-            @{File = 'Set-SslCertificate'}
+        It "<File> log file was created during installation" -ForEach @(
+            @{File = 'Set-SslSecurity'}
             @{File = 'Start-C4bCcmSetup'}
             @{File = 'Start-C4bJenkinsSetup'}
             @{File = 'Start-C4bNexusSetup'}
