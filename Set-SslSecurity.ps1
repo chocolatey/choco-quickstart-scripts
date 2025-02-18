@@ -65,13 +65,12 @@ param(
 process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
-    Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslCertificate-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
+    Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslSecurity-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
     # Collect current certificate configuration
     $Certificate = if ($Subject) {
         Get-Certificate -Subject $Subject
-    }
-    elseif ($Thumbprint) {
+    } elseif ($Thumbprint) {
         Get-Certificate -Thumbprint $Thumbprint
     }
 
@@ -84,12 +83,10 @@ process {
                 $CertificateDnsName = Read-Host -Prompt "$(if ($CertificateDnsName) {"'$($CertificateDnsName)' is not a subdomain of '$($Matches.Subject)'. "})Please provide an FQDN to use with the certificate '$($Matches.Subject)'"
             }
             $CertificateDnsName
-        }
-        else {
+        } else {
             $Matches.Subject
         }
-    }
-    else {
+    } else {
         $SubjectWithoutCn = $CertificateDnsName
     }
 
@@ -105,7 +102,7 @@ process {
 
     # Add firewall rule for Nexus
     netsh advfirewall firewall add rule name="Nexus-8443" dir=in action=allow protocol=tcp localport=8443
-    
+
     Write-Verbose "Starting up Nexus"
     Start-Service nexus
 
@@ -116,14 +113,18 @@ process {
             Invoke-WebRequest "https://${SubjectWithoutCn}:8443" -UseBasicParsing -ErrorAction Stop
             Start-Sleep -Seconds 3
         } catch {}
-    } until($response.StatusCode -eq '200')
+    } until ($response.StatusCode -eq '200')
     Write-Host "Nexus is ready!"
 
     Invoke-Choco source remove --name="'ChocolateyInternal'"
 
     # Build Credential Object, Connect to Nexus
-    $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
-    $Credential = [System.Management.Automation.PSCredential]::new('admin', $securePw)
+    if ($Credential = Get-ChocoEnvironmentProperty NexusCredential) {
+        Write-Verbose "Using stored Nexus Credential"
+    } elseif (Test-Path 'C:\programdata\sonatype-work\nexus3\admin.password') {
+        $securePw = (Get-Content 'C:\programdata\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
+        $Credential = [System.Management.Automation.PSCredential]::new('admin', $securePw)
+    }
 
     # Connect to Nexus
     Connect-NexusServer -Hostname $SubjectWithoutCn -Credential $Credential -UseSSL
@@ -131,10 +132,10 @@ process {
     # Push ClientSetup.ps1 to raw repo
     $ClientScript = "$PSScriptRoot\scripts\ClientSetup.ps1"
     (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
-    New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
+    $null = New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
 
     # Disable anonymous authentication
-    Set-NexusAnonymousAuth -Disabled
+    $null = Set-NexusAnonymousAuth -Disabled
 
     if (-not (Get-NexusRole -Role 'chocorole' -ErrorAction SilentlyContinue)) {
         # Create Nexus role
@@ -144,7 +145,12 @@ process {
             Description = "Role for web enabled choco clients"
             Privileges  = @('nx-repository-view-nuget-*-browse', 'nx-repository-view-nuget-*-read', 'nx-repository-view-raw-*-read', 'nx-repository-view-raw-*-browse')
         }
-        New-NexusRole @RoleParams
+        $null = New-NexusRole @RoleParams
+
+        $Timeout = [System.Diagnostics.Stopwatch]::StartNew()
+        while ($Timeout.Elapsed.TotalSeconds -lt 30 -and -not (Get-NexusRole -Role $RoleParams.Id -ErrorAction SilentlyContinue)) {
+            Start-Sleep -Seconds 3
+        }
     }
 
     if (-not (Get-NexusUser -User 'chocouser' -ErrorAction SilentlyContinue)) {
@@ -159,7 +165,14 @@ process {
             Status       = 'Active'
             Roles        = 'chocorole'
         }
-        New-NexusUser @UserParams
+        $null = New-NexusUser @UserParams
+
+        $Timeout = [System.Diagnostics.Stopwatch]::StartNew()
+        while ($Timeout.Elapsed.TotalSeconds -lt 30 -and -not (Get-NexusUser -User $UserParams.Username -ErrorAction SilentlyContinue)) {
+            Start-Sleep -Seconds 3
+        }
+    } else {
+        $NexusPw = Get-ChocoEnvironmentProperty ChocoUserPassword
     }
 
     # Update all sources with credentials and the new path
@@ -209,7 +222,7 @@ process {
     <# CCM #>
     # Update the service certificate
     Set-CcmCertificate -CertificateThumbprint $Certificate.Thumbprint
-    
+
     # Remove old CCM web binding, and add new CCM web binding
     Stop-CcmService
     Remove-CcmBinding
@@ -226,15 +239,24 @@ process {
     # Generate Register-C4bEndpoint.ps1
     $EndpointScript = "$PSScriptRoot\scripts\Register-C4bEndpoint.ps1"
 
-    $ClientSaltValue = New-CCMSalt
-    $ServiceSaltValue = New-CCMSalt
+    if ($ClientSaltValue = Get-ChocoEnvironmentProperty ClientSalt -AsPlainText) {
+        Write-Verbose "Using stored client salt value."
+    } else {
+        $ClientSaltValue = New-CCMSalt
+    }
+
+    if ($ServiceSaltValue = Get-ChocoEnvironmentProperty ClientSalt -AsPlainText) {
+        Write-Verbose "Using stored service salt value."
+    } else {
+        $ServiceSaltValue = New-CCMSalt
+    }
 
     Invoke-TextReplacementInFile -Path $EndpointScript -Replacement @{
         "{{ ClientSaltValue }}" = $ClientSaltValue
-        "{{ ServiceSaltValue }}"     = $ServiceSaltValue
+        "{{ ServiceSaltValue }}" = $ServiceSaltValue
         "{{ FQDN }}" = $SubjectWithoutCn
     }
-    
+
     # Agent Setup
     $agentArgs = @{
         CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
