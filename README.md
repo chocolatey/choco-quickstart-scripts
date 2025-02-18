@@ -125,7 +125,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > <li>Creates a "choco-install" raw repository</li>
     > <li>Sets up "ChocolateyInternal" on C4B Server as source, with API key</li>
     > <li>Adds firewall rule for repository access</li>
-    > <li>Installs MS Edge, and disables first-run experience</li>
+    > <li>Installs MS Edge, as Internet Explorer cannot access the Sonatype Nexus site</li>
     > <li>Outputs data to a JSON file to pass between scripts</li>
     > </ul>
     > </details>
