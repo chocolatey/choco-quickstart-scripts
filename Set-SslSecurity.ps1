@@ -107,16 +107,7 @@ process {
     Start-Service nexus
 
     Write-Warning "Waiting to give Nexus time to start up on 'https://${SubjectWithoutCn}:8443'"
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::tls12
-    do {
-        $response = try {
-            Invoke-WebRequest "https://${SubjectWithoutCn}:8443" -UseBasicParsing -ErrorAction Stop
-            Start-Sleep -Seconds 3
-        } catch {}
-    } until ($response.StatusCode -eq '200')
-    Write-Host "Nexus is ready!"
-
-    Invoke-Choco source remove --name="'ChocolateyInternal'"
+    Wait-Nexus
 
     # Build Credential Object, Connect to Nexus
     if ($Credential = Get-ChocoEnvironmentProperty NexusCredential) {
@@ -134,46 +125,7 @@ process {
     (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
     $null = New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
 
-    # Disable anonymous authentication
-    $null = Set-NexusAnonymousAuth -Disabled
-
-    if (-not (Get-NexusRole -Role 'chocorole' -ErrorAction SilentlyContinue)) {
-        # Create Nexus role
-        $RoleParams = @{
-            Id          = "chocorole"
-            Name        = "chocorole"
-            Description = "Role for web enabled choco clients"
-            Privileges  = @('nx-repository-view-nuget-*-browse', 'nx-repository-view-nuget-*-read', 'nx-repository-view-raw-*-read', 'nx-repository-view-raw-*-browse')
-        }
-        $null = New-NexusRole @RoleParams
-
-        $Timeout = [System.Diagnostics.Stopwatch]::StartNew()
-        while ($Timeout.Elapsed.TotalSeconds -lt 30 -and -not (Get-NexusRole -Role $RoleParams.Id -ErrorAction SilentlyContinue)) {
-            Start-Sleep -Seconds 3
-        }
-    }
-
-    if (-not (Get-NexusUser -User 'chocouser' -ErrorAction SilentlyContinue)) {
-        $NexusPw = [System.Web.Security.Membership]::GeneratePassword(32, 12)
-        # Create Nexus user
-        $UserParams = @{
-            Username     = 'chocouser'
-            Password     = ($NexusPw | ConvertTo-SecureString -AsPlainText -Force)
-            FirstName    = 'Choco'
-            LastName     = 'User'
-            EmailAddress = 'chocouser@example.com'
-            Status       = 'Active'
-            Roles        = 'chocorole'
-        }
-        $null = New-NexusUser @UserParams
-
-        $Timeout = [System.Diagnostics.Stopwatch]::StartNew()
-        while ($Timeout.Elapsed.TotalSeconds -lt 30 -and -not (Get-NexusUser -User $UserParams.Username -ErrorAction SilentlyContinue)) {
-            Start-Sleep -Seconds 3
-        }
-    } else {
-        $NexusPw = Get-ChocoEnvironmentProperty ChocoUserPassword
-    }
+    $NexusPw = Get-ChocoEnvironmentProperty ChocoUserPassword -AsPlainText
 
     # Update all sources with credentials and the new path
     foreach ($Repository in Get-NexusRepository -Format nuget | Where-Object Type -eq 'hosted') {
@@ -201,7 +153,6 @@ process {
     Update-Clixml -Properties @{
         NexusUri = "https://$($SubjectWithoutCn):8443"
         NexusRepo = "https://${SubjectWithoutCn}:8443/repository/ChocolateyInternal/index.json"
-        ChocoUserPassword = $NexusPw
     }
 
     <# Jenkins #>

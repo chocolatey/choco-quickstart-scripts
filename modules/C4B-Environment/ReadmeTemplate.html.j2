@@ -158,21 +158,23 @@ function CopyToClipboard(id)
 <h2 id="accounts">Accounts and Secrets</h2>
 <table>
     <colgroup><col/><col/><col/><col/><col/><col/></colgroup>
-    <tr><th/><th>Name</th><th>Url</th><th>Username</th><th>Password</th><th>ApiKey</th></tr>
+    <tr><th/><th>Name</th><th>Url</th><th>Username</th><th>Password</th></tr>
     <tr>
         <td><img src="https://{{ ccm_fqdn }}:{{ ccm_port }}/favicon.ico" class="logo"></td>
         <td>Chocolatey Central Management</td>
         <td><a href="https://{{ ccm_fqdn }}:{{ ccm_port }}">{{ ccm_fqdn }}:{{ ccm_port }}</a></td>
         <td>ccmadmin</td>
         <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('ccmpw');return false;"><div id="ccmpw" class="pw blurry-text">{{ ccm_password | e }}</div></a></td>
-        <td>N/A</td>
     </tr>
     <tr>
-        <td><img src="https://{{ nexus_fqdn }}:{{ nexus_port }}/favicon.ico" class="logo"></td><td>Nexus</td>
-        <td><a href="https://{{ nexus_fqdn }}:{{ nexus_port }}">{{ nexus_fqdn }}:{{ nexus_port }}</a></td>
+        <td rowspan="2"><img src="https://{{ nexus_fqdn }}:{{ nexus_port }}/favicon.ico" class="logo"></td><td rowspan="2">Nexus</td>
+        <td rowspan="2"><a href="https://{{ nexus_fqdn }}:{{ nexus_port }}">{{ nexus_fqdn }}:{{ nexus_port }}</a></td>
         <td>admin</td>
         <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('nexuspw');return false;"><div id="nexuspw" class="pw blurry-text">{{ nexus_password | e }}</div></a></td>
-        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('nexusapi');return false;"><div id="nexusapi" class="blurry-text">{{ lookup('file', 'credentials/nexus_apikey') | default('Unavailable') }}</div></a></td>
+    </tr>
+    <tr>
+        <td>{{ nexus_client_username }}</td>
+        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('nexusclientpw');return false;"><div id="nexusclientpw" class="pw blurry-text">{{ nexus_client_password | e }}</div></a></td>
     </tr>
     <tr>
         <td><img src="https://{{ jenkins_fqdn }}:{{ jenkins_port }}/favicon.ico" class="logo"></td>
@@ -180,7 +182,6 @@ function CopyToClipboard(id)
         <td><a href="https://{{ jenkins_fqdn }}:{{ jenkins_port }}">{{ jenkins_fqdn }}:{{ jenkins_port }}</a></td>
         <td>admin</td>
         <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('jenkinspw');return false;"><div id="jenkinspw" class="pw blurry-text">{{ jenkins_password | e }}</div></a></td>
-        <td>N/A</td>
     </tr>
 </table>
 <br><br>
@@ -200,14 +201,9 @@ function CopyToClipboard(id)
         <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('ccmservice');return false;"><div id="ccmservice" class="pw blurry-text">{{ ccm_service_salt | e }}</div></a></td>
     </tr>
     <tr>
-        <td>Nexus Repository Source Username</td>
-        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('nexususername');return false;"><div id="nexususername" class="pw blurry-text">{{ nexus_client_username | e }}</div></a></td>
+        <td>Chocolatey Package Uploader API Key</td>
+        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('nexusapi');return false;"><div id="nexusapi" class="pw blurry-text">{{ lookup('file', 'credentials/nexus_apikey') | default('Unavailable') }}</div></a></td>
     </tr>
-    <tr>
-        <td>Nexus Repository Source Password</td>
-        <td><a href="#" class="strip-decoration" onclick="CopyToClipboard('nexuspassword');return false;"><div id="nexuspassword" class="pw blurry-text">{{ nexus_client_password | e }}</div></a></td>
-    </tr>
-
 </table>
 <blockquote>
 <h3>📝 <strong>Note</strong></h3>

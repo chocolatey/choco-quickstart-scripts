@@ -919,16 +919,18 @@ The host name of the C4B instance.
             "{{ nexus_fqdn .*?}}" = ([uri]$Data.NexusUri).DnsSafeHost
             "{{ nexus_port .*?}}" = ([uri]$Data.NexusUri).Port
             "{{ nexus_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.NexusCredential.Password.ToPlainText())
-            "{{ lookup\('file', 'credentials\/nexus_apikey'\) .*?}}" = Get-ChocoEnvironmentProperty NugetApiKey -AsPlainText
+            "{{ lookup\('file', 'credentials\/nexus_apikey'\) .*?}}" = $Data.NugetApiKey.ToPlainText()
+
+            "{{ nexus_client_username .*?}}" = 'chocouser'
+            "{{ nexus_client_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.ChocoUserPassword.ToPlainText())
+
+            "{{ nexus_packager_username .*?}}" = $Data.PackageUploadCredential.Username
+            "{{ nexus_packager_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.PackageUploadCredential.Password.ToPlainText())
 
             # Jenkins Values
             "{{ jenkins_fqdn .*?}}" = ([uri]$Data.JenkinsUri).DnsSafeHost
             "{{ jenkins_port .*?}}" = ([uri]$Data.JenkinsUri).Port
             "{{ jenkins_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.JenkinsCredential.Password.ToPlainText())
-
-            # Nexus Chocolatey Source Credential values
-            "{{ nexus_client_username .*?}}" = 'chocouser'
-            "{{ nexus_client_password .*?}}" = $Data.ChocoUserPassword
         }
     }
 }

@@ -52,7 +52,9 @@ param(
     [Parameter(ParameterSetName='Unattended')]
     [System.Management.Automation.PSCredential]
     $DatabaseCredential = $(
-        if ($PSCmdlet.ParameterSetName -eq 'Unattended') {
+        if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).DatabaseCredential) {
+            (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).DatabaseCredential
+        } elseif ($PSCmdlet.ParameterSetName -eq 'Unattended') {
             $Wshell = New-Object -ComObject Wscript.Shell
             $null = $Wshell.Popup('You will now create a credential for the ChocolateyManagement DB user, to be used by CCM (document this somewhere).')
             Get-Credential -UserName ChocoUser -Message 'Create a credential for the ChocolateyManagement DB user'
@@ -138,6 +140,18 @@ try {
     }
     Import-Module C4B-Environment -Verbose:$false
 
+    Update-Clixml -Properties @{
+        InitialDeployment = Get-Date
+    }
+
+    if ($Thumbprint) {
+        Set-ChocoEnvironmentProperty Thumbprint $Thumbprint
+    }
+
+    if ($DatabaseCredential) {
+        Set-ChocoEnvironmentProperty DatabaseCredential $DatabaseCredential
+    }
+
     # Downloading all CCM setup packages below
     Write-Host "Downloading missing nupkg files to $($PkgsDir)." -ForegroundColor Green
     Write-Host "This will take some time. Feel free to get a tea or coffee." -ForegroundColor Green
@@ -164,7 +178,7 @@ try {
         if ($Thumbprint) {$Certificate.Thumbprint = $Thumbprint}
 
         Set-Location "$env:SystemDrive\choco-setup\files"
-        .\Start-C4BNexusSetup.ps1
+        .\Start-C4BNexusSetup.ps1 @Certificate
         .\Start-C4bCcmSetup.ps1 @Certificate -DatabaseCredential $DatabaseCredential
         .\Start-C4bJenkinsSetup.ps1
         .\Set-SslSecurity.ps1 @Certificate
