@@ -157,17 +157,27 @@ process {
 
     <# Jenkins #>
     $JenkinsHome = "C:\ProgramData\Jenkins\.jenkins"
+    $JenkinsPort = 7443
 
-    Set-JenkinsLocationConfiguration -Url "https://$($SubjectWithoutCn):7443" -Path $JenkinsHome\jenkins.model.JenkinsLocationConfiguration.xml
+    Set-JenkinsLocationConfiguration -Url "https://$($SubjectWithoutCn):$($JenkinsPort)" -Path $JenkinsHome\jenkins.model.JenkinsLocationConfiguration.xml
 
     # Generate Jenkins keystore
-    Set-JenkinsCertificate -Thumbprint $Certificate.Thumbprint
+    Set-JenkinsCertificate -Thumbprint $Certificate.Thumbprint -Port $JenkinsPort
 
     # Add firewall rule for Jenkins
-    netsh advfirewall firewall add rule name="Jenkins-7443" dir=in action=allow protocol=tcp localport=7443
+    netsh advfirewall firewall add rule name="Jenkins-$($JenkinsPort)" dir=in action=allow protocol=tcp localport=$JenkinsPort
+
+    # Update job parameters in Jenkins
+    $NexusUri = Get-ChocoEnvironmentProperty NexusUri
+    Update-JenkinsJobParameters -Replacement @{
+        "P_DST_URL" = "$NexusUri/repository/ChocolateyTest/index.json"
+        "P_LOCAL_REPO_URL" = "$NexusUri/repository/ChocolateyTest/index.json"
+        "P_TEST_REPO_URL" = "$NexusUri/repository/ChocolateyTest/index.json"
+        "P_PROD_REPO_URL" = "$NexusUri/repository/ChocolateyInternal/index.json"
+    }
 
     Update-Clixml -Properties @{
-        JenkinsUri = "https://$($SubjectWithoutCn):7443"
+        JenkinsUri = "https://$($SubjectWithoutCn):$($JenkinsPort)"
     }
 
     <# CCM #>
