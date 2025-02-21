@@ -4,6 +4,8 @@
         { "name": "chocolatey-compatibility.extension" },
         { "name": "chocolatey-core.extension" },
         { "name": "chocolatey-dotnetfx.extension" },
+        { "name": "chocolatey-licensed-jenkins-jobs" },
+        { "name": "chocolatey-licensed-jenkins-scripts" },
         { "name": "chocolatey-management-database", "internalize": false },
         { "name": "chocolatey-management-service", "internalize": false },
         { "name": "chocolatey-management-web", "internalize": false },

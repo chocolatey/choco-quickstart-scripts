@@ -54,16 +54,8 @@ process {
     $JenkinsCred = Set-JenkinsPassword -UserName 'admin' -NewPassword $(New-ServicePassword) -PassThru
     #endregion
 
-    # Long winded way to get the scripts for Jenkins jobs into the right place, but easier to maintain going forward
-    $root = Split-Path -Parent $MyInvocation.MyCommand.Definition
-    $systemRoot = $env:SystemDrive + '\'
-    $JenkinsRoot = Join-Path $root -ChildPath 'jenkins'
-    $jenkinsScripts = Join-Path $JenkinsRoot -ChildPath 'scripts'
-
-    #Set home directory of Jenkins install
+    # Set home directory of Jenkins install
     $JenkinsHome = 'C:\ProgramData\Jenkins\.jenkins'
-
-    Copy-Item $jenkinsScripts $systemRoot -Recurse -Force
 
     Stop-Service -Name Jenkins
 
@@ -103,13 +95,8 @@ process {
     #endregion
 
     #region Job Config
-    Write-Host "Creating Chocolatey Jobs" -ForegroundColor Green
-    Get-ChildItem "$env:SystemDrive\choco-setup\files\jenkins" | Copy-Item -Destination "$JenkinsHome\jobs\" -Recurse -Force
-
-    Get-ChildItem -Path "$JenkinsHome\jobs" -Recurse -File -Filter 'config.xml' | Invoke-TextReplacementInFile -Replacement @{
-        '{{NugetApiKey}}' = $NuGetApiKey
-        '(?<=https:\/\/)(?<HostName>.+)(?=:8443\/repository\/)' = $HostName
-    }
+    $chocoArgs = @('install', 'chocolatey-licensed-jenkins-jobs', "--source='ChocolateyInternal'", '-y', '--no-progress')
+    & Invoke-Choco @chocoArgs
     #endregion
 
     Write-Host "Starting Jenkins service back up" -ForegroundColor Green

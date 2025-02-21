@@ -194,10 +194,7 @@ process {
     <# Jenkins #>
     $JenkinsHome = "C:\ProgramData\Jenkins\.jenkins"
 
-    # Update Jenkins Jobs with Nexus URL
-    Get-ChildItem -Path "$JenkinsHome\jobs" -Recurse -File -Filter 'config.xml' | Invoke-TextReplacementInFile -Replacement @{
-        '(?<=https:\/\/)(?<HostName>.+)(?=:8443\/repository\/)' = $SubjectWithoutCn
-    }
+    Set-JenkinsLocationConfiguration -Url "https://$($SubjectWithoutCn):7443" -Path $JenkinsHome\jenkins.model.JenkinsLocationConfiguration.xml
 
     # Generate Jenkins keystore
     Set-JenkinsCertificate -Thumbprint $Certificate.Thumbprint
