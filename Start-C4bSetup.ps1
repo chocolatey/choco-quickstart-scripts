@@ -180,7 +180,7 @@ try {
         Set-Location "$env:SystemDrive\choco-setup\files"
         .\Start-C4BNexusSetup.ps1 @Certificate
         .\Start-C4bCcmSetup.ps1 @Certificate -DatabaseCredential $DatabaseCredential
-        .\Start-C4bJenkinsSetup.ps1
+        .\Start-C4bJenkinsSetup.ps1 @Certificate
         .\Set-SslSecurity.ps1 @Certificate
     }
 } finally {

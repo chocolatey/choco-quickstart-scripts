@@ -18,12 +18,34 @@ param(
     [string]$NuGetApiKey = $(
         if (-not (Get-Command Get-ChocoEnvironmentProperty -ErrorAction SilentlyContinue)) {. $PSScriptRoot\scripts\Get-Helpers.ps1}
         Get-ChocoEnvironmentProperty NuGetApiKey -AsPlainText
+    ),
+
+    # The certificate thumbprint that identifies the target SSL certificate in
+    # the local machine certificate stores.
+    [Parameter(ValueFromPipeline, ParameterSetName='Thumbprint')]
+    [ArgumentCompleter({
+        Get-ChildItem Cert:\LocalMachine\TrustedPeople | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new(
+                $_.Thumbprint,
+                $_.Thumbprint,
+                "ParameterValue",
+                ($_.Subject -replace "^CN=(?<FQDN>.+),?.*$",'${FQDN}')
+            )
+        }
+    })]
+    [string]
+    $Thumbprint = $(
+        Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Sort-Object {
+            $_.Issuer -eq $_.Subject # Prioritise any certificates above self-signed
+        } | Select-Object -ExpandProperty Thumbprint -First 1
     )
 )
 process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bJenkinsSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
+
+    $JenkinsScheme, $JenkinsPort = "http", "8080"
 
     # Install temurin21jre to meet JRE>11 dependency of Jenkins
     $chocoArgs = @('install', 'temurin21jre', "--source='ChocolateyInternal'", '-y', '--no-progress', "--params='/ADDLOCAL=FeatureJavaHome'")
@@ -47,17 +69,26 @@ process {
     $JenkinsVersion | Out-File -FilePath $JenkinsHome\jenkins.install.UpgradeWizard.state -Encoding utf8
     $JenkinsVersion | Out-File -FilePath $JenkinsHome\jenkins.install.InstallUtil.lastExecVersion -Encoding utf8
 
-    # Set the hostname, such that it's ready for use.
-    Set-JenkinsLocationConfiguration -Url "http://$($HostName):8080" -Path $JenkinsHome\jenkins.model.JenkinsLocationConfiguration.xml
-
     #region Set Jenkins Password
     $JenkinsCred = Set-JenkinsPassword -UserName 'admin' -NewPassword $(New-ServicePassword) -PassThru
     #endregion
 
-    # Set home directory of Jenkins install
-    $JenkinsHome = 'C:\ProgramData\Jenkins\.jenkins'
-
     Stop-Service -Name Jenkins
+
+    if ($Thumbprint) {
+        $JenkinsScheme, $JenkinsPort = "https", 7443
+
+        if ($SubjectWithoutCn = Get-ChocoEnvironmentProperty CertSubject) {
+            $Hostname = $SubjectWithoutCn
+        }
+
+        # Generate Jenkins keystore
+        Set-JenkinsCertificate -Thumbprint $Thumbprint -Port $JenkinsPort
+
+        # Add firewall rule for Jenkins
+        netsh advfirewall firewall add rule name="Jenkins-$($JenkinsPort)" dir=in action=allow protocol=tcp localport=$JenkinsPort
+    }
+    Set-JenkinsLocationConfiguration -Url "$($JenkinsScheme)://$($SubjectWithoutCn):$($JenkinsPort)" -Path $JenkinsHome\jenkins.model.JenkinsLocationConfiguration.xml
 
     #region Jenkins Plugin Install & Update
     $JenkinsPlugins = (Get-Content $PSScriptRoot\files\jenkins.json | ConvertFrom-Json).plugins
@@ -104,7 +135,7 @@ process {
 
     # Save useful params
     Update-Clixml -Properties @{
-        JenkinsUri  = "http://$($HostName):8080"
+        JenkinsUri        = "$($JenkinsScheme)://$($HostName):$($JenkinsPort)"
         JenkinsCredential = $JenkinsCred
     }
 
