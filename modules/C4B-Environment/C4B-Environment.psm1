@@ -2094,7 +2094,9 @@ function Get-ChocoEnvironmentProperty {
         [switch]$AsPlainText
     )
     begin {
-        $Content = Import-Clixml -Path "$env:SystemDrive\choco-setup\clixml\chocolatey-for-business.xml"
+        if (Test-Path "$env:SystemDrive\choco-setup\clixml\chocolatey-for-business.xml") {
+            $Content = Import-Clixml -Path "$env:SystemDrive\choco-setup\clixml\chocolatey-for-business.xml"
+        }
     }
     process {
         if ($Name) {
