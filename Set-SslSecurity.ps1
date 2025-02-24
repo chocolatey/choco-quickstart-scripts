@@ -199,18 +199,8 @@ process {
 
     # Generate Register-C4bEndpoint.ps1
     $EndpointScript = "$PSScriptRoot\scripts\Register-C4bEndpoint.ps1"
-
-    if ($ClientSaltValue = Get-ChocoEnvironmentProperty ClientSalt -AsPlainText) {
-        Write-Verbose "Using stored client salt value."
-    } else {
-        $ClientSaltValue = New-CCMSalt
-    }
-
-    if ($ServiceSaltValue = Get-ChocoEnvironmentProperty ClientSalt -AsPlainText) {
-        Write-Verbose "Using stored service salt value."
-    } else {
-        $ServiceSaltValue = New-CCMSalt
-    }
+    $ClientSaltValue = Get-ChocoEnvironmentProperty ClientSalt -AsPlainText
+    $ServiceSaltValue = Get-ChocoEnvironmentProperty ServiceSalt -AsPlainText
 
     Invoke-TextReplacementInFile -Path $EndpointScript -Replacement @{
         "{{ ClientSaltValue }}" = $ClientSaltValue

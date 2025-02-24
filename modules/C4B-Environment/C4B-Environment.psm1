@@ -538,6 +538,190 @@ function Set-CcmCertificate {
     }
 }
 
+function Get-CcmAuthenticatedSession {
+    [CmdletBinding()]
+    [OutputType([Microsoft.PowerShell.Commands.WebRequestSession])]
+    param(
+        # The CCM server to operate against
+        [string]$CcmEndpoint = "http://localhost",
+
+        # The current credential for the account to change
+        [System.Net.NetworkCredential]$Credential = @{
+            userName = "ccmadmin"
+            password = "123qwe"
+        }
+    )
+    end {
+        # Wait-CCM -Url $CcmEndpoint
+
+        Write-Verbose "Authenticating to CCM Web at '$($CcmEndpoint)'"
+        $methodParams = @{
+            Uri             = "$CcmEndpoint/Account/Login"
+            Body            = @{
+                usernameOrEmailAddress = $Credential.Username
+                password               = $Credential.Password
+            }
+            ContentType     = 'application/x-www-form-urlencoded'
+            Method          = "POST"
+            SessionVariable = "Session"
+        }
+        try {
+            $null = Invoke-WebRequest @methodParams -UseBasicParsing -ErrorAction Stop
+        } catch {
+            Write-Error "Failed to authenticate with '$($CcmEndpoint)': $($_)"
+        }
+
+        $Session
+    }
+}
+
+function Set-CcmAccountPassword {
+    <#
+        .Synopsis
+            Sets the password for a current CCM user
+
+        .Notes
+            Relies on the account not being set to reset-password-on-next-login, and not locked out.
+    #>
+    [CmdletBinding()]
+    param(
+        # The CCM server to operate against
+        [string]$CcmEndpoint = "http://localhost",
+
+        # The current credential for the account to change
+        [System.Net.NetworkCredential]$Credential = @{
+            userName = "ccmadmin"
+            password = "123qwe"
+        },
+
+        # A Valid ConnectionString for the CCM Database
+        [string]$ConnectionString,
+
+        # The new password to set
+        [Parameter(Mandatory)]
+        [SecureString]$NewPassword
+    )
+    $NewCredential = [System.Net.NetworkCredential]::new($Credential.UserName, $NewPassword)
+
+    if ($ConnectionString) {
+        try {
+            $Connection = [System.Data.SQLClient.SqlConnection]::new($ConnectionString)
+            $Connection.Open()
+            $Query = [System.Data.SQLClient.SqlCommand]::new(
+                "UPDATE [dbo].[AbpUsers] SET ShouldChangePasswordOnNextLogin = 0, IsLockoutEnabled = 0 WHERE Name = @UserName and TenantId = '1'",
+                $Connection
+            )
+            $null = $Query.Parameters.Add(
+                [System.Data.SqlClient.SqlParameter]::new('UserName', $Credential.UserName)
+            )
+            $QueryResult = $Query.BeginExecuteReader()
+            while (-not $QueryResult.isCompleted) {
+                Write-Verbose "Waiting for SQL Query to return"
+                Start-Sleep -Milliseconds 100
+            }
+            if ($QueryResult.isCompleted -and -not $QueryResult.IsFaulted) {
+                Write-Verbose "Unset ShouldChangePasswordOnNextLogin for '$($Credential.Username)'"
+            }
+        } finally {
+            $Query.Dispose()
+            $Connection.Close()
+            $Connection.Dispose()
+        }
+    }
+
+    $Session = Get-CcmAuthenticatedSession -CcmEndpoint $CcmEndpoint -Credential $Credential
+
+    Write-Verbose "Changing password for account '$($Credential.UserName)'"
+    $resetParams = @{
+        Uri         = "$CcmEndpoint/api/services/app/Profile/ChangePassword"
+        Body        = @{
+            CurrentPassword   = $Credential.Password
+            NewPassword       = $NewCredential.Password
+            NewPasswordRepeat = $NewCredential.Password
+        } | ConvertTo-Json
+        ContentType = 'application/json'
+        Method      = "POST"
+        WebSession  = $Session
+    }
+    $Result = Invoke-RestMethod @resetParams -UseBasicParsing
+
+    if ($Result.Success -eq 'true') {
+        Write-Verbose "Password for account '$($Credential.UserName)' was changed successfully."
+    }
+}
+
+function Update-CcmSettings {
+    [CmdletBinding()]
+    param(
+        # The CCM server to operate against
+        [string]$CcmEndpoint = "http://localhost",
+
+        # The current credential for the admin account
+        [System.Net.NetworkCredential]$Credential = @{
+            userName = "ccmadmin"
+            password = "123qwe"
+        },
+
+        # A hashtable of settings to update. Only works two levels deep.
+        [hashtable]$Settings
+    )
+    end {
+        $Session = Get-CcmAuthenticatedSession -CcmEndpoint $CcmEndpoint -Credential $Credential
+
+        # Get Current Settings
+        $ServerSettings = (Invoke-RestMethod -Uri $CcmEndpoint/api/services/app/TenantSettings/GetAllSettings -WebSession $Session).result
+
+        # Overwrite Settings via Hashtable
+        foreach ($Heading in $Settings.Keys) {
+            foreach ($Setting in $Settings[$Heading].Keys) {
+                $ServerSettings.$Heading.$Setting = $Settings.$Heading.$Setting
+            }
+        }
+
+        # PUT new Settings to CCM
+        $SettingChange = @{
+            Uri         = "$CcmEndpoint/api/services/app/TenantSettings/UpdateAllSettings"
+            Method      = "PUT"
+            ContentType = 'application/json; charset=utf-8'
+            Body        = $ServerSettings | ConvertTo-Json
+            WebSession  = $Session
+        }
+        $Result = Invoke-RestMethod @SettingChange -ErrorAction Stop
+
+        if ($Result.success) {
+            Write-Verbose "Updated Settings successfully."
+        }
+    }
+}
+
+function Set-CcmEncryptionPassword {
+    [CmdletBinding()]
+    param(
+        # The CCM server to operate against
+        [string]$CcmEndpoint = "http://localhost",
+
+        # The current credential for the account to change
+        [System.Net.NetworkCredential]$Credential = @{
+            userName = "ccmadmin"
+            password = "123qwe"
+        },
+
+        # New encryption password to set
+        [SecureString]$NewPassword,
+
+        # Previous encryption password (unset on fresh install)
+        [SecureString]$OldPassword = [SecureString]::new()
+    )
+    end {
+        Update-CcmSettings -CcmEndpoint $CcmEndpoint -Credential $Credential -Settings @{
+            encryption = @{
+                oldPassphrase     = $OldPassword.ToPlainText()
+                passphrase        = $NewPassword.ToPlainText()
+                confirmPassphrase = $NewPassword.ToPlainText()
+            }
+        }
+    }
+}
 #endregion
 
 #region Jenkins Setup
@@ -929,12 +1113,12 @@ The host name of the C4B instance.
             # CCM Values
             "{{ ccm_fqdn .*?}}" = ([uri]$Data.CCMWebPortal).DnsSafeHost
             "{{ ccm_port .*?}}"     = ([uri]$Data.CCMWebPortal).Port
-            "{{ ccm_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.DefaultPwToBeChanged)
+            "{{ ccm_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.CCMCredential.Password.ToPlainText())
 
             # Chocolatey Configuration Values
-            "{{ ccm_encryption_password .*?}}" = "Requested on first run."
-            "{{ ccm_client_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode((Get-ChocoEnvironmentProperty ClientSalt -AsPlainText))
-            "{{ ccm_service_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode((Get-ChocoEnvironmentProperty ServiceSalt -AsPlainText))
+            "{{ ccm_encryption_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.CCMEncryptionPassword.ToPlainText())
+            "{{ ccm_client_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.ClientSalt.ToPlainText())
+            "{{ ccm_service_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.ServiceSalt.ToPlainText())
             "{{ chocouser_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.NexusCredential.Password.ToPlainText())
 
             # Nexus Values

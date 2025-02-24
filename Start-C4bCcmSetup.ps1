@@ -15,7 +15,13 @@ param(
     [Parameter()]
     [ValidateNotNull()]
     [System.Management.Automation.PSCredential]
-    $DatabaseCredential = (Get-Credential -Username ChocoUser -Message 'Create a credential for the ChocolateyManagement DB user (document this somewhere)'),
+    $DatabaseCredential = (
+        if ($DatabaseCredential = Get-ChocoEnvironmentProperty DatabaseUser) {
+            $DatabaseCredential
+        } else {
+            Get-Credential -Username ChocoUser -Message 'Create a credential for the ChocolateyManagement DB user (document this somewhere)'
+        }
+    ),
 
     # Certificate to use for CCM service
     [Parameter()]
@@ -130,6 +136,7 @@ process {
     if (-not $hostName.EndsWith($domainName)) {
         $hostName += "." + $domainName
     }
+    $CcmEndpoint = "http://$hostName"
 
     Write-Host "Installing Chocolatey Central Management Service"
     $chocoArgs = @('install', 'chocolatey-management-service', "--source='ChocolateyInternal'", '-y', "--package-parameters-sensitive=`"/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'`"", '--no-progress')
@@ -153,12 +160,57 @@ process {
     $chocoArgs = @('install', 'chocolatey-management-web', "--source='ChocolateyInternal'", '-y', "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
     & Invoke-Choco @chocoArgs
 
+    # Setup Website SSL
+    if ($Thumbprint) {
+        Stop-CcmService
+        Remove-CcmBinding
+        New-CcmBinding -Thumbprint $Thumbprint
+        Start-CcmService
+
+        $CcmEndpoint = "https://$(Get-ChocoEnvironmentProperty CertSubject)"
+    }
+
+    # Create the site hosting the certificate import script on port 80
+    if ($MyCertificate.NotAfter -gt (Get-Date).AddYears(5)) {
+        .\scripts\New-IISCertificateHost.ps1
+    }
+
+    # Run initial configuration for CCM Admin
+    if (-not ($CCMCredential = Get-ChocoEnvironmentProperty CCMCredential)) {
+        $CCMCredential = [PSCredential]::new(
+            "ccmadmin",
+            (New-ServicePassword)
+        )
+        Set-CcmAccountPassword -CcmEndpoint $CcmEndpoint -ConnectionString "Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;" -NewPassword $CCMCredential.Password
+        Set-ChocoEnvironmentProperty CCMCredential $CCMCredential
+    }
+
+    if (-not ($CCMEncryptionPassword = Get-ChocoEnvironmentProperty CCMEncryptionPassword)) {
+        $CCMEncryptionPassword = New-ServicePassword
+
+        Set-CcmEncryptionPassword -CcmEndpoint $CcmEndpoint -Credential $CCMCredential -NewPassword $CCMEncryptionPassword
+        Set-ChocoEnvironmentProperty CCMEncryptionPassword $CCMEncryptionPassword
+    }
+
+    # Set Client and Service salts
+    if (-not (Get-ChocoEnvironmentProperty ClientSalt)) {
+        $ClientSaltValue = New-CCMSalt
+        Set-ChocoEnvironmentProperty ClientSalt (ConvertTo-SecureString $ClientSaltValue -AsPlainText -Force)
+
+        Invoke-Choco config set centralManagementClientCommunicationSaltAdditivePassword $ClientSaltValue
+    }
+
+    if (-not (Get-ChocoEnvironmentProperty ServiceSalt)) {
+        $ServiceSaltValue = New-CCMSalt
+        Set-ChocoEnvironmentProperty ServiceSalt (ConvertTo-SecureString $ServiceSaltValue -AsPlainText -Force)
+
+        Invoke-Choco config set centralManagementServiceCommunicationSaltAdditivePassword $ServiceSaltValue
+    }
+
     $CcmSvcUrl = Invoke-Choco config get centralManagementServiceUrl -r
     Update-Clixml -Properties @{
         CCMServiceURL        = $CcmSvcUrl
-        CCMWebPortal         = "http://localhost/Account/Login"
-        DefaultUser          = "ccmadmin"
-        DefaultPwToBeChanged = "123qwe"
+        CCMWebPortal         = "$CcmEndpoint/Account/Login"
         CCMDBUser            = $DatabaseUser
         CCMInstallUser       = whoami
     }
