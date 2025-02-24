@@ -45,11 +45,6 @@ $PackagingFolder = "$env:SystemDrive\choco-setup\packaging"
 $licensePackageFolder = "$PackagingFolder\$LicensePackageId"
 $licensePackageNuspec = "$licensePackageFolder\$LicensePackageId.nuspec"
 
-Write-Warning "Prior to running this, please ensure you've updated the license file first at $LicensePath"
-Write-Warning "This script will OVERWRITE any existing license file you might have placed in '$licensePackageFolder'"
-& choco.exe | Out-String -Stream | Write-Host
-Write-Warning "If there is is a note about invalid license above, you're going to run into issues."
-
 # Get license expiration date and node count
 [xml]$licenseXml = Get-Content -Path $LicensePath
 $licenseExpiration = [datetimeoffset]::Parse("$($licenseXml.SelectSingleNode('/license').expiration) +0")
@@ -67,17 +62,17 @@ if (-not $LicensePackageVersion) {
 }
 
 # Ensure the packaging folder exists
-Write-Host "Generating package/packaging folders at '$PackagingFolder'"
+Write-Verbose "Generating package/packaging folders at '$PackagingFolder'"
 New-Item $PackagingFolder -ItemType Directory -Force | Out-Null
 New-Item $PackagesPath -ItemType Directory -Force | Out-Null
 
 # Create a new package
-Write-Host "Creating package named  '$LicensePackageId'"
+Write-Verbose "Creating package named  '$LicensePackageId'"
 New-Item $licensePackageFolder -ItemType Directory -Force | Out-Null
 New-Item "$licensePackageFolder\tools" -ItemType Directory -Force | Out-Null
 
 # Set the installation script
-Write-Host "Setting install and uninstall scripts..."
+Write-Verbose "Setting install and uninstall scripts..."
 @'
     $ErrorActionPreference = 'Stop'
     $toolsDir              = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -95,12 +90,11 @@ Write-Host "Setting install and uninstall scripts..."
 '@ | Set-Content -Path "$licensePackageFolder\tools\chocolateyUninstall.ps1" -Encoding UTF8 -Force
 
 # Copy the license to the package directory
-Write-Host "Copying license to package from '$LicensePath' to package location."
-Write-Warning "This will overwrite the file in the package, even if that's where you placed the updated license."
+Write-Verbose "Copying license to package from '$LicensePath' to package location."
 Copy-Item -Path $LicensePath -Destination "$licensePackageFolder\tools\chocolatey.license.xml" -Force
 
 # Set the nuspec
-Write-Host "Setting nuspec..."
+Write-Verbose "Setting nuspec..."
 @"
 <?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
@@ -133,9 +127,9 @@ If items are installed in any other order, it could have strange effects or fail
 "@.Trim() | Set-Content -Path "$licensePackageNuspec" -Encoding UTF8 -Force
 
 # Package up everything
-Write-Host "Creating license package..."
-choco pack $licensePackageNuspec --output-directory="$PackagesPath"
-Write-Host "Package has been created and is ready at $PackagesPath"
+Write-Verbose "Creating license package..."
+Invoke-Choco pack $licensePackageNuspec --output-directory="$PackagesPath"
+Write-Verbose "Package has been created and is ready at $PackagesPath"
 
-Write-Host "Installing newly created package on this machine, making updates to license easier in the future, if pushed from another location later."
-choco upgrade chocolatey-license -y --source="'$PackagesPath'"
+Write-Verbose "Installing newly created package on this machine, making updates to license easier in the future, if pushed from another location later."
+Invoke-Choco upgrade chocolatey-license -y --source="'$PackagesPath'"

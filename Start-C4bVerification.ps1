@@ -1,9 +1,9 @@
 #requires -modules C4B-Environment
 [CmdletBinding()]
 Param(
-    [Parameter(Mandatory)]
+    [Parameter()]
     [String]
-    $Fqdn
+    $Fqdn = $(Get-ChocoEnvironmentProperty CertSubject)
 )
 process {
     if (-not (Get-Module Pester -ListAvailable).Where{$_.Version -gt "5.0"}) {
