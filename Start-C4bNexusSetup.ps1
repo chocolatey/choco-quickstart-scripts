@@ -29,8 +29,17 @@ param(
             )
         }
     })]
+    [ValidateScript({Test-CertificateDomain -Thumbprint $_})]
     [string]
-    $Thumbprint
+    $Thumbprint = $(
+        if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint) {
+            (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint
+        } else {
+            Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Sort-Object {
+                $_.Issuer -eq $_.Subject # Prioritise any certificates above self-signed
+            } | Select-Object -ExpandProperty Thumbprint -First 1
+        }
+    )
 )
 process {
     $DefaultEap = $ErrorActionPreference
@@ -52,11 +61,10 @@ process {
         $NexusPort = 8443
 
         $null = Set-NexusCert -Thumbprint $Thumbprint -Port $NexusPort
-
-        Import-Module NexuShell
         
         if ($CertificateDnsName = Get-ChocoEnvironmentProperty CertSubject) {
-            & (Get-Module NexuShell) {Get-NexusUri -HostnameOverride $CertificateDnsName} | Write-Verbose
+            # Override the domain, so we don't get prompted for wildcard certificates
+            Get-NexusLocalServiceUri -HostnameOverride $CertificateDnsName | Write-Verbose
         }
     }
 
@@ -70,7 +78,7 @@ process {
     }
     $null = New-NetFirewallRule @FwRuleParams
 
-    Wait-Nexus
+    Wait-Site Nexus
 
     Write-Host "Configuring Sonatype Nexus Repository"
 
@@ -227,6 +235,11 @@ process {
         Write-Error "ChocolateyInstall.ps1 script signature is not valid. Please investigate."
     }
 
+    # Push ClientSetup.ps1 to raw repo
+    $ClientScript = "$PSScriptRoot\scripts\ClientSetup.ps1"
+    (Get-Content -Path $ClientScript) -replace "{{hostname}}", "$((Get-NexusLocalServiceUri) -replace '^https?:\/\/')" | Set-Content -Path ($TemporaryFile = New-TemporaryFile).FullName
+    $null = New-NexusRawComponent -RepositoryName 'choco-install' -File $TemporaryFile.FullName -Name "ClientSetup.ps1"
+
     # Nexus NuGet V3 Compatibility
     Invoke-Choco feature disable --name="'usePackageRepositoryOptimizations'"
 
@@ -239,6 +252,7 @@ process {
     Invoke-Choco source disable -n 'ChocolateyTest'
 
     # Push all packages from previous steps to NuGet repo
+    Write-Host "Pushing C4B Environment Packages to ChocolateyInternal"
     Get-ChildItem -Path "$env:SystemDrive\choco-setup\files\files" -Filter *.nupkg | ForEach-Object {
         Invoke-Choco push $_.FullName --source $LocalSource --apikey $NugetApiKey --force
     }
@@ -270,7 +284,7 @@ process {
 
     # Save useful params
     Update-Clixml -Properties @{
-        NexusUri = & (Get-Module NexuShell) {Get-NexusUri}
+        NexusUri = Get-NexusLocalServiceUri
         NexusCredential = $Credential
         NexusRepo = "$((Get-NexusRepository -Name 'ChocolateyInternal').url)/index.json"
         NuGetApiKey = $NugetApiKey | ConvertTo-SecureString -AsPlainText -Force

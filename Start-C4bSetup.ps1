@@ -52,8 +52,8 @@ param(
     [Parameter(ParameterSetName='Unattended')]
     [System.Management.Automation.PSCredential]
     $DatabaseCredential = $(
-        if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).DatabaseCredential) {
-            (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).DatabaseCredential
+        if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).DatabaseUser) {
+            (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).DatabaseUser
         } elseif ($PSCmdlet.ParameterSetName -eq 'Unattended') {
             $Wshell = New-Object -ComObject Wscript.Shell
             $null = $Wshell.Popup('You will now create a credential for the ChocolateyManagement DB user, to be used by CCM (document this somewhere).')
@@ -76,7 +76,21 @@ param(
         }
     })]
     [string]
-    $Thumbprint,
+    $Thumbprint = $(
+        if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint) {
+            (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint
+        } else {
+            Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Sort-Object {
+                $_.Issuer -eq $_.Subject # Prioritise any certificates above self-signed
+            } | Select-Object -ExpandProperty Thumbprint -First 1
+        }
+    ),
+
+    # If using a wildcard certificate, provide a DNS name you want to use to access services secured by the certificate.\
+    [string]$CertificateDnsName = $(
+        if (-not (Get-Command Get-ChocoEnvironmentProperty -ErrorAction SilentlyContinue)) {. $PSScriptRoot\scripts\Get-Helpers.ps1}
+        Get-ChocoEnvironmentProperty CertSubject
+    ),
 
     # If provided, shows all Chocolatey output. Otherwise, blissful quiet.
     [switch]$ShowChocoOutput,
@@ -85,7 +99,10 @@ param(
     # Defaults to main.
     [string]
     [Alias('PR')]
-    $Branch = $env:CHOCO_QSG_BRANCH
+    $Branch = $env:CHOCO_QSG_BRANCH,
+
+    # If provided, will skip launching the browser
+    [switch]$SkipBrowserLaunch
 )
 if ($ShowChocoOutput) {
     $global:PSDefaultParameterValues["Invoke-Choco:InformationAction"] = "Continue"
@@ -151,20 +168,10 @@ try {
         $Certificate = Get-Certificate -Thumbprint $Thumbprint
         Copy-CertToStore -Certificate $Certificate
 
-        if (-not ($CertificateDnsName = Get-ChocoEnvironmentProperty CertSubject)) {
-            $matcher = 'CN\s?=\s?(?<Subject>[^,\s]+)'
-            $null = $Certificate.Subject -match $matcher
-            $CertificateDnsName = if ($Matches.Subject.StartsWith('*')) {
-                # This is a wildcard cert, we need to prompt for the intended CertificateDnsName
-                while ($CertificateDnsName -notlike $Matches.Subject) {
-                    $CertificateDnsName = Read-Host -Prompt "$(if ($CertificateDnsName) {"'$($CertificateDnsName)' is not a subdomain of '$($Matches.Subject)'. "})Please provide an FQDN to use with the certificate '$($Matches.Subject)'"
-                }
-                $CertificateDnsName
-            } else {
-                $Matches.Subject
-            }
-            Set-ChocoEnvironmentProperty CertSubject $CertificateDnsName
-        }
+        $null = Test-CertificateDomain -Thumbprint $Thumbprint
+    } elseif ($PSScriptRoot) {
+        # We're going to be using a self-signed certificate
+        Set-ChocoEnvironmentProperty CertSubject $env:ComputerName
     }
 
     if ($DatabaseCredential) {
@@ -200,7 +207,8 @@ try {
         .\Start-C4BNexusSetup.ps1 @Certificate
         .\Start-C4bCcmSetup.ps1 @Certificate -DatabaseCredential $DatabaseCredential
         .\Start-C4bJenkinsSetup.ps1 @Certificate
-        .\Set-SslSecurity.ps1 @Certificate
+
+        Complete-C4bSetup -SkipBrowserLaunch:$SkipBrowserLaunch
     }
 } finally {
     $ErrorActionPreference = $DefaultEap

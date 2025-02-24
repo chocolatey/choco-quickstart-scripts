@@ -64,7 +64,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
 
 1. If you plan on joining this server to your Active Directory domain, do so now before beginning setup below.
 
-1. If you plan to use a Purchased/Acquired or Domain SSL certificate, please ensure the CN/Subject value matches the DNS-resolvable Fully Qualified Domain Name (FQDN) of your C4B Server. Place this certificate in the `Local Machine > Personal` certificate store, and ensure that the private key is exportable.
+1. If you plan to use a Purchased/Acquired or Domain SSL certificate, please ensure the CN/Subject value matches the DNS-resolvable Fully Qualified Domain Name (FQDN) of your C4B Server. Place this certificate in the `Local Machine > Trusted People` certificate store, and ensure that the private key is exportable.
 
 1. Copy your `chocolatey.license.xml` license file (from the email you received) onto your C4B Server.
 
@@ -105,6 +105,34 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > </details>
 
 > :memo:**Offline Install**: You can now copy the `C:\choco-setup\` directory to any computer to continue the installation. To zip up that directory, run `Compress-Archive -Path C:\choco-setup\files\* -DestinationPath C:\choco-setup\C4B-Files.zip`. Move the archive to your new machine, and run `Expand-Archive -Path /path/to/C4B-Files.zip -DestinationPath C:\choco-setup\files -Force`. You should then run `Set-Location "$env:SystemDrive\choco-setup\files"; .\Start-C4bSetup.ps1`, and continue with the guide.
+
+#### Running with a Certificate
+
+**ALTERNATIVE 1 : Custom SSL Certificate** - If you have your own custom SSL certificate (purchased/acquired, or from your Domain CA), you can paste and run the following script with the `Thumbprint` value of your SSL certificate specified:
+
+```powershell
+Set-Location "$env:SystemDrive\choco-setup\files"
+.\Start-C4bSetup.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>'
+```
+
+> :warning:**REMINDER**: If you are using your own SSL certificate, be sure to place this certificate in the `Local Machine > Personal` certificate store before running the above script, and ensure that the private key is exportable.
+
+> :memo: **NOTE**
+> A Role and User credential will be configured to limit access to your Nexus repositories. As well, CCM Client and Service Salts are configured to further encrypt your connection between CCM and your endpoint clients. These additional settings are also incorporated into your `Register-C4bEndpoint.ps1` script for onboarding endpoints.
+
+**ALTERNATIVE 2 : Wildcard SSL Certificate** - If you have a wildcard certificate, you will also need to provide a DNS name you wish to use for that certificate:
+
+```powershell
+Set-Location "$env:SystemDrive\choco-setup\files"
+.\Start-C4bSetup.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>' -CertificateDnsName '<YOUR_DESIRED_FQDN_HERE>'
+```
+
+For example, with a wildcard certificate with a thumbprint of `deee9b2fabb24bdaae71d82286e08de1` you wish to use `chocolatey.foo.org`, the following would be required:
+
+```powershell
+Set-Location "$env:SystemDrive\choco-setup\files"
+.\Start-C4bSetup.ps1 -Thumbprint deee9b2fabb24bdaae71d82286e08de1 -CertificateDnsName chocolatey.foo.org
+```
 
 ### Step 2: Nexus Setup
 
@@ -168,50 +196,20 @@ Below are the minimum requirements for setting up your C4B server via this guide
     > </ul>
     > </details>
 
-### Step 5: SSL Setup
+### Step 5: Complete Setup
 
 1. In the same **elevated** PowerShell console as above, paste and run the following code:
 
     ```powershell
-    Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Set-SslSecurity.ps1
-    ```
-
-    **ALTERNATIVE 1 : Custom SSL Certificate** - If you have your own custom SSL certificate (purchased/acquired, or from your Domain CA), you can paste and run the following script with the `Thumbprint` value of your SSL certificate specified:
-
-    ```powershell
-    Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Set-SslSecurity.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>'
-    ```
-
-    > :warning:**REMINDER**: If you are using your own SSL certificate, be sure to place this certificate in the `Local Machine > Personal` certificate store before running the above script, and ensure that the private key is exportable.
-
-    > :memo: **NOTE**
-    > A Role and User credential will be configured to limit access to your Nexus repositories. As well, CCM Client and Service Salts are configured to further encrypt your connection between CCM and your endpoint clients. These additional settings are also incorporated into your `Register-C4bEndpoint.ps1` script for onboarding endpoints.
-
-    **ALTERNATIVE 2 : Wildcard SSL Certificate** - If you have a wildcard certificate, you will also need to provide a DNS name you wish to use for that certificate:
-
-    ```powershell
-    Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Set-SslSecurity.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>' -CertificateDnsName '<YOUR_DESIRED_FQDN_HERE>'
-    ```
-
-    For example, with a wildcard certificate with a thumbprint of `deee9b2fabb24bdaae71d82286e08de1` you wish to use `chocolatey.foo.org`, the following would be required:
-
-    ```powershell
-    Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Set-SslSecurity.ps1 -Thumbprint deee9b2fabb24bdaae71d82286e08de1 -CertificateDnsName chocolatey.foo.org
+    Complete-C4bSetup
     ```
 
     > <details>
     > <summary><strong>What does this script do? (click to expand)</strong></summary>
     > <ul class="list-style-type-disc">
-    > <li>Adds SSL certificate configuration for Nexus and CCM web portals</li>
-    > <li>Generates a `Register-C4bEndpoint.ps1` script for you to easily set up endpoint clients</li>
-    > <li>Outputs data to a JSON file to pass between scripts</li>
+    > <li>Sets up Chocolatey Agent on this system</li>
     > <li>Writes a Readme.html file to the Public Desktop with account information for C4B services</li>
     > <li>Auto-opens README, CCM, Nexus, and Jenkins in your web browser</li>
-    > <li>Removes temporary JSON files used during provisioning</li>
     > </ul>
     > </details>
 

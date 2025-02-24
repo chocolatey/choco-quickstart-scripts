@@ -31,11 +31,16 @@ param(
             )
         }
     })]
+    [ValidateScript({Test-CertificateDomain -Thumbprint $_})]
     [string]
     $Thumbprint = $(
-        Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Sort-Object {
-            $_.Issuer -eq $_.Subject # Prioritise any certificates above self-signed
-        } | Select-Object -ExpandProperty Thumbprint -First 1
+        if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint) {
+            (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint
+        } else {
+            Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Sort-Object {
+                $_.Issuer -eq $_.Subject # Prioritise any certificates above self-signed
+            } | Select-Object -ExpandProperty Thumbprint -First 1
+        }
     ),
 
     # The certificate subject that identifies the target SSL certificate in
@@ -57,10 +62,7 @@ param(
     [string]$NuGetApiKey = $(
         if (-not (Get-Command Get-ChocoEnvironmentProperty -ErrorAction SilentlyContinue)) {. $PSScriptRoot\scripts\Get-Helpers.ps1}
         Get-ChocoEnvironmentProperty NuGetApiKey -AsPlainText
-    ),
-
-    # If provided, will skip launching the browser
-    [switch]$SkipBrowserLaunch
+    )
 )
 process {
     $DefaultEap = $ErrorActionPreference
@@ -74,18 +76,8 @@ process {
         Get-Certificate -Thumbprint $Thumbprint
     }
 
-    if (-not $CertificateDnsName) {
-        $matcher = 'CN\s?=\s?(?<Subject>[^,\s]+)'
-        $null = $Certificate.Subject -match $matcher
-        $SubjectWithoutCn = if ($Matches.Subject.StartsWith('*')) {
-            # This is a wildcard cert, we need to prompt for the intended CertificateDnsName
-            while ($CertificateDnsName -notlike $Matches.Subject) {
-                $CertificateDnsName = Read-Host -Prompt "$(if ($CertificateDnsName) {"'$($CertificateDnsName)' is not a subdomain of '$($Matches.Subject)'. "})Please provide an FQDN to use with the certificate '$($Matches.Subject)'"
-            }
-            $CertificateDnsName
-        } else {
-            $Matches.Subject
-        }
+    if (-not $CertificateDnsName -and -not ($CertificateDnsName = Get-ChocoEnvironmentProperty CertSubject)) {
+        $null = Test-CertificateDomain -Thumbprint $Certificate.Thumbprint
     } else {
         $SubjectWithoutCn = $CertificateDnsName
     }
@@ -107,7 +99,7 @@ process {
     Start-Service nexus
 
     Write-Warning "Waiting to give Nexus time to start up on 'https://${SubjectWithoutCn}:8443'"
-    Wait-Nexus
+    Wait-Site Nexus
 
     # Build Credential Object, Connect to Nexus
     if ($Credential = Get-ChocoEnvironmentProperty NexusCredential) {
@@ -122,8 +114,8 @@ process {
 
     # Push ClientSetup.ps1 to raw repo
     $ClientScript = "$PSScriptRoot\scripts\ClientSetup.ps1"
-    (Get-Content -Path $ClientScript) -replace "{{hostname}}", $SubjectWithoutCn | Set-Content -Path $ClientScript
-    $null = New-NexusRawComponent -RepositoryName 'choco-install' -File $ClientScript
+    (Get-Content -Path $ClientScript) -replace "{{hostname}}", "$((Get-NexusLocalServiceUri) -replace '^https?:\/\/')" | Set-Content -Path ($TemporaryFile = New-TemporaryFile).FullName
+    $null = New-NexusRawComponent -RepositoryName 'choco-install' -File $TemporaryFile.FullName -Name "ClientSetup.ps1"
 
     $NexusPw = Get-ChocoEnvironmentProperty ChocoUserPassword -AsPlainText
 
@@ -199,33 +191,17 @@ process {
 
     # Generate Register-C4bEndpoint.ps1
     $EndpointScript = "$PSScriptRoot\scripts\Register-C4bEndpoint.ps1"
-    $ClientSaltValue = Get-ChocoEnvironmentProperty ClientSalt -AsPlainText
-    $ServiceSaltValue = Get-ChocoEnvironmentProperty ServiceSalt -AsPlainText
 
     Invoke-TextReplacementInFile -Path $EndpointScript -Replacement @{
-        "{{ ClientSaltValue }}" = $ClientSaltValue
-        "{{ ServiceSaltValue }}" = $ServiceSaltValue
+        "{{ ClientSaltValue }}" = Get-ChocoEnvironmentProperty ClientSalt -AsPlainText
+        "{{ ServiceSaltValue }}" = Get-ChocoEnvironmentProperty ServiceSalt -AsPlainText
         "{{ FQDN }}" = $SubjectWithoutCn
-    }
 
-    # Agent Setup
-    $agentArgs = @{
-        CentralManagementServiceUrl = "https://$($SubjectWithoutCn):24020/ChocolateyManagementService"
-        ServiceSalt = $ServiceSaltValue
-        ClientSalt = $ClientSaltValue
+        # Set a default value for TrustCertificate if we're using a self-signed cert
+        '(?<Parameter>\s+\$TrustCertificate)(?<Value>\s*=\s*\$true)?(?<Comma>,)?(?!\))' = "`${Parameter}$(
+        if (Test-SelfSignedCertificate -Certificate $Certificate) {' = $true'}
+        )`${Comma}"
     }
-
-    if (Test-SelfSignedCertificate -Certificate $Certificate) {
-        # Register endpoint script
-        (Get-Content -Path $EndpointScript) -replace "{{hostname}}", "'$SubjectWithoutCn'" | Set-Content -Path $EndpointScript
-            $ScriptBlock = @"
-`$downloader = New-Object -TypeName System.Net.WebClient
-Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-ChocoServerCertificate.ps1"))
-"@
-        (Get-Content -Path $EndpointScript) -replace "# placeholder if using a self-signed cert", $ScriptBlock | Set-Content -Path $EndpointScript
-    }
-
-    Install-ChocolateyAgent @agentArgs
 
     Update-Clixml -Properties @{
         CCMWebPortal = "https://$($SubjectWithoutCn)/Account/Login"
@@ -234,51 +210,11 @@ Invoke-Expression (`$downloader.DownloadString("http://`$(`$HostName):80/Import-
         CertThumbprint = $Certificate.Thumbprint
         CertExpiry     = $Certificate.NotAfter
         IsSelfSigned   = $IsSelfSigned
-        ServiceSalt = ConvertTo-SecureString $ServiceSaltValue -AsPlainText -Force
-        ClientSalt = ConvertTo-SecureString $ClientSaltValue -AsPlainText -Force
     }
 }
 end {
-    Write-Host 'Writing README to Desktop; this file contains login information for all C4B services.'
-    New-QuickstartReadme
-
-    if (-not $SkipBrowserLaunch -and $Host.Name -eq 'ConsoleHost') {
-        $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
-        $Timeout = New-TimeSpan -Seconds 10
-        $Stopwatch = [System.Diagnostics.Stopwatch]::new()
-        $Stopwatch.Start()
-        Write-Host $Message -NoNewline -ForegroundColor Green
-        do {
-            # wait for a key to be available:
-            if ([Console]::KeyAvailable) {
-                # read the key, and consume it so it won't
-                # be echoed to the console:
-                $keyInfo = [Console]::ReadKey($true)
-                Write-Host "`nSkipping the Opening of sites in your browser." -ForegroundColor Green
-                # exit loop
-                break
-            }
-            # write a dot and wait a second
-            Write-Host '.' -NoNewline -ForegroundColor Green
-            Start-Sleep -Seconds 1
-        }
-        while ($Stopwatch.Elapsed -lt $Timeout)
-        $Stopwatch.Stop()
-
-        if (-not ($keyInfo)) {
-            Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
-            $Readme = 'file:///C:/Users/Public/Desktop/README.html'
-            $Ccm = "https://$($SubjectWithoutCn)/Account/Login"
-            $Nexus = "https://$($SubjectWithoutCn):8443"
-            $Jenkins = "https://$($SubjectWithoutCn):7443"
-            try {
-                Start-Process msedge.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
-            } catch {
-                Start-Process chrome.exe "$Readme", "$Ccm", "$Nexus", "$Jenkins"
-            }
-        }
-    }
-
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript
+
+    Complete-C4bSetup -SkipBrowserLaunch
 }

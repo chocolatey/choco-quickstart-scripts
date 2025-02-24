@@ -15,7 +15,7 @@ param(
     [Parameter()]
     [ValidateNotNull()]
     [System.Management.Automation.PSCredential]
-    $DatabaseCredential = (
+    $DatabaseCredential = $(
         if ($DatabaseCredential = Get-ChocoEnvironmentProperty DatabaseUser) {
             $DatabaseCredential
         } else {
@@ -36,8 +36,17 @@ param(
             )
         }
     })]
+    [ValidateScript({Test-CertificateDomain -Thumbprint $_})]
     [String]
-    $Thumbprint
+    $Thumbprint = $(
+        if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint) {
+            (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint
+        } else {
+            Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Sort-Object {
+                $_.Issuer -eq $_.Subject # Prioritise any certificates above self-signed
+            } | Select-Object -ExpandProperty Thumbprint -First 1
+        }
+    )
 )
 process {
     $DefaultEap = $ErrorActionPreference
@@ -122,7 +131,8 @@ process {
     & Invoke-Choco @chocoArgs
 
     Write-Host "Creating Chocolatey Central Management Database"
-    choco install chocolatey-management-database --source='ChocolateyInternal' -y --package-parameters="'/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;'" --no-progress
+    $chocoArgs = @('install', 'chocolatey-management-database', '--source="ChocolateyInternal"', '-y', '--package-parameters="''/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;''"', '--no-progress')
+    & Invoke-Choco @chocoArgs
 
     # Add Local Windows User:
     $DatabaseUser = $DatabaseCredential.UserName
@@ -155,6 +165,8 @@ process {
         $chocoArgs += @("--package-parameters='/CertificateThumbprint=$Thumbprint'")
     }
     & Invoke-Choco @chocoArgs
+    
+    if (-not $MyCertificate) {$MyCertificate = Get-Item Cert:\LocalMachine\My\*}
 
     Write-Host "Installing Chocolatey Central Management Website"
     $chocoArgs = @('install', 'chocolatey-management-web', "--source='ChocolateyInternal'", '-y', "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
@@ -169,11 +181,29 @@ process {
 
         $CcmEndpoint = "https://$(Get-ChocoEnvironmentProperty CertSubject)"
     }
+    choco config set centralManagementServiceUrl "$($CcmEndpoint):24020/ChocolateyManagementService"
+
+    # Updating the Registration Script
+    $EndpointScript = "$PSScriptRoot\scripts\Register-C4bEndpoint.ps1"
+    Invoke-TextReplacementInFile -Path $EndpointScript -Replacement @{
+        "{{ ClientSaltValue }}" = Get-ChocoEnvironmentProperty ClientSalt -AsPlainText
+        "{{ ServiceSaltValue }}" = Get-ChocoEnvironmentProperty ServiceSalt -AsPlainText
+        "{{ FQDN }}" = Get-ChocoEnvironmentProperty CertSubject
+
+        # Set a default value for TrustCertificate if we're using a self-signed cert
+        '(?<Parameter>\s+\$TrustCertificate)(?<Value>\s*=\s*\$true)?(?<Comma>,)?(?!\))' = "`${Parameter}$(
+        if (Test-SelfSignedCertificate -Certificate $MyCertificate) {' = $true'}
+        )`${Comma}"
+    }
 
     # Create the site hosting the certificate import script on port 80
     if ($MyCertificate.NotAfter -gt (Get-Date).AddYears(5)) {
         .\scripts\New-IISCertificateHost.ps1
     }
+
+    Wait-Site CCM
+
+    Write-Host "Configuring Chocolatey Central Management"
 
     # Run initial configuration for CCM Admin
     if (-not ($CCMCredential = Get-ChocoEnvironmentProperty CCMCredential)) {

@@ -33,11 +33,16 @@ param(
             )
         }
     })]
+    [ValidateScript({Test-CertificateDomain -Thumbprint $_})]
     [string]
     $Thumbprint = $(
-        Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Sort-Object {
-            $_.Issuer -eq $_.Subject # Prioritise any certificates above self-signed
-        } | Select-Object -ExpandProperty Thumbprint -First 1
+        if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint) {
+            (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint
+        } else {
+            Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Sort-Object {
+                $_.Issuer -eq $_.Subject # Prioritise any certificates above self-signed
+            } | Select-Object -ExpandProperty Thumbprint -First 1
+        }
     )
 )
 process {
@@ -59,8 +64,8 @@ process {
     $chocoArgs = @('install', 'jenkins', "--source='ChocolateyInternal'", '-y', '--no-progress')
     & Invoke-Choco @chocoArgs
 
-    Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
-    Start-Sleep -Seconds 30  # Jenkins needs a moment
+    # Jenkins needs a moment
+    Wait-Site Jenkins
 
     # Disabling inital setup prompts
     $JenkinsHome = "C:\ProgramData\Jenkins\.jenkins"

@@ -39,6 +39,129 @@ function Invoke-Choco {
     }
 }
 
+function Test-CertificateDomain {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Thumbprint
+    )
+    # Check the certificate exists
+    if (-not ($Certificate = Get-Item Cert:\LocalMachine\TrustedPeople\$Thumbprint)) {
+        throw "Certificate could not be found in Cert:\LocalMachine\TrustedPeople\. Please ensure it is is present, and try again."
+    }
+
+    # Check that we have a domain for it
+    if (-not ($CertificateDnsName = Get-ChocoEnvironmentProperty CertSubject) -and ($Certificate.Subject -match '^CN=\*')) {
+        $matcher = 'CN\s?=\s?(?<Subject>[^,\s]+)'
+        $null = $Certificate.Subject -match $matcher
+        $CertificateDnsName = if ($Matches.Subject.StartsWith('*')) {
+            # This is a wildcard cert, we need to prompt for the intended CertificateDnsName
+            while ($CertificateDnsName -notlike $Matches.Subject) {
+                $CertificateDnsName = Read-Host -Prompt "$(if ($CertificateDnsName) {"'$($CertificateDnsName)' is not a subdomain of '$($Matches.Subject)'. "})Please provide an FQDN to use with the certificate '$($Matches.Subject)'"
+            }
+            $CertificateDnsName
+        } else {
+            $Matches.Subject
+        }
+        Set-ChocoEnvironmentProperty CertSubject $CertificateDnsName
+    }
+
+    $true
+}
+
+function Wait-Site {
+    <#
+        .Synopsis
+            Waits for a given site to be available. A simple healthcheck.
+    #>
+    [Alias('Wait-Nexus','Wait-CCM','Wait-Jenkins')]
+    [CmdletBinding(DefaultParameterSetName="Name")]
+    param(
+        # The service name to check for a 200 response
+        [Parameter(ParameterSetName='Name', Position=0)]
+        [ValidateSet('Nexus','CCM','Jenkins')]
+        [string]$Name = $MyInvocation.InvocationName.Split('-')[-1],
+
+        # The Url to check for a 200 response
+        [Parameter(ParameterSetName='Url', Mandatory, Position=0)]
+        [string]$Url = @{
+            'Nexus'   = {
+                try {
+                    Get-NexusLocalServiceUri
+                } catch {
+                    Write-Verbose "Nexus may not be installed yet."
+                    "http://localhost:8081"
+                }
+            }
+            'CCM'     = {
+                try {
+                    $Binding = Get-WebBinding -Name ChocolateyCentralManagement
+                    $Domain = if (
+                        $Binding.protocol -eq 'https' -and
+                        ($Certificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object Subject -notlike 'CN=`**').Count -eq 1 -and
+                        $Certificate.Subject -match "^CN=(?<Domain>.+)(?:,|$)"
+                    ) {
+                        $Matches.Domain
+                    } elseif ($Binding.protocol -eq 'https' -and ($CertSubject = Get-ChocoEnvironmentProperty CertSubject)) {
+                        $CertSubject
+                    } else {
+                        'localhost'
+                    }
+                    "$($Binding.protocol)://$($Domain):$($Binding.bindingInformation.Trim('*').Trim(':'))/"
+                } catch {
+                    Write-Verbose "CCM may not be installed yet."
+                    "http://localhost"
+                }
+            }
+            'Jenkins' = {
+                try {
+                    if (Test-Path "C:\Program Files\Jenkins\jenkins.xml") {
+                        [xml]$Xml = Get-Content "C:\Program Files\Jenkins\jenkins.xml"
+                        if ($Xml.SelectSingleNode("/service/arguments").'#text' -match "--(?<Scheme>https?)Port=(?<PortNumber>\d+)\b") {
+                            $Port = $Matches.PortNumber
+                            $Scheme = $Matches.Scheme
+                        }
+                        $Domain = if ($Scheme -eq 'https') {
+                            Get-ChocoEnvironmentProperty CertSubject
+                        } else {
+                            'localhost'
+                        }
+                        "$($Scheme)://$($Domain):$($Port)/login"  # TODO: Get PATH
+                    } elseif (Test-Path "C:\Program Files\Jenkins\jenkins.model.JenkinsLocationConfiguration.xml") {
+                        [xml]$Location = (Get-Content "C:\Program Files\Jenkins\jenkins.model.JenkinsLocationConfiguration.xml" -ErrorAction Stop) -replace "^\<\?xml version=['""]1\.1['""]","<?xml version='1.0'"
+                        $Location."jenkins.model.JenkinsLocationConfiguration".jenkinsUrl
+                    }
+                } catch {
+                    Write-Verbose "Jenkins may not be installed yet."
+                    "http://$('localhost'):8080/login"
+                }
+            }
+        }.$Name.Invoke(),
+
+        # Seconds before we give up waiting and fail
+        [uint16]$Timeout = 180  # seconds
+    )
+    begin {
+        $Timer = [System.Diagnostics.Stopwatch]::StartNew()
+
+        if ([string]::IsNullOrEmpty($Url)) {
+            Write-Error "Please pass a valid -Name or -Url to wait for." -ErrorAction Stop
+        }
+    }
+    end {
+        while ($Response.StatusCode -ne '200' -and $Timer.Elapsed.TotalSeconds -lt $Timeout) {
+            $Response = try {
+                Invoke-WebRequest $Url -UseBasicParsing -ErrorAction Stop
+            } catch { $null }
+        }
+
+        if ($Response.StatusCode -eq '200') {
+            Write-Verbose "'$($Url)' is accessible!"
+        } else {
+            Write-Error "'$($Url)' was not accessible after $($Timer.Elapsed.TotalSeconds) seconds." -ErrorAction Stop
+        }
+    }
+}
+
 Update-TypeData -TypeName SecureString -MemberType ScriptMethod -MemberName ToPlainText -Force -Value {
     [System.Net.NetworkCredential]::new("TempCredential", $this).Password
 }
@@ -191,17 +314,6 @@ function Get-ChocolateyPackageMetadata {
 #endregion
 
 #region Nexus functions (Start-C4BNexusSetup.ps1)
-function Wait-Nexus {
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::tls12
-    $NexusUrl = & (Get-Module NexuShell) {Get-NexusUri}
-    do {
-        $response = try {
-            Invoke-WebRequest $NexusUrl -ErrorAction Stop
-        } catch {}
-    } until ($response.StatusCode -eq '200')
-    Write-Host "Nexus is ready!"
-}
-
 function Invoke-NexusScript {
     [CmdletBinding()]
     Param (
@@ -1142,57 +1254,51 @@ The host name of the C4B instance.
 }
 #endregion
 
-#region Agent Setup
-function Install-ChocolateyAgent {
-    [CmdletBinding()]
-    Param(
-        [Parameter()]
-        [String]
-        $Source,
-
-        [Parameter(Mandatory)]
-        [String]
-        $CentralManagementServiceUrl,
-
-        [Parameter()]
-        [String]
-        $ServiceSalt,
-
-        [Parameter()]
-        [String]
-        $ClientSalt
+function Complete-C4bSetup {
+    param(
+        [switch]$SkipBrowserLaunch
     )
+    # Setup Agent on this machine
+    if (-not (Get-Service chocolatey-agent -ErrorAction SilentlyContinue)) {
+        Invoke-Choco install chocolatey-agent --confirm
+        Invoke-Choco feature enable --name='useChocolateyCentralManagement'
+        Invoke-Choco feature enable --name='useChocolateyCentralManagementDeployments'
+    }
 
-    process {
-        if ($Source) {
-            $chocoArgs = @('install', 'chocolatey-agent', '-y', "--source='$Source'")
-            & choco @chocoArgs
-        }
-        else {
-            $chocoArgs = @('install', 'chocolatey-agent', '-y')
-            & choco @chocoArgs
-        }
-        
+    # Write readme to desktop and hand over to user
+    Write-Host 'Writing README to Desktop - this file contains login information for all C4B services.'
+    New-QuickstartReadme
 
-        $chocoArgs = @('config', 'set', 'centralManagementServiceUrl', "$CentralManagementServiceUrl")
-        & choco @chocoArgs
+    if (-not $SkipBrowserLaunch -and $Host.Name -eq 'ConsoleHost') {
+        $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
+        $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        Write-Host $Message -NoNewline -ForegroundColor Green
+        do {
+            # wait for a key to be available:
+            if ([Console]::KeyAvailable) {
+                # read the key, and consume it so it won't
+                # be echoed to the console:
+                $keyInfo = [Console]::ReadKey($true)
+                Write-Host "`nSkipping the Opening of sites in your browser." -ForegroundColor Green
+                # exit loop
+                break
+            }
+            # write a dot and wait a second
+            Write-Host '.' -NoNewline -ForegroundColor Green
+            Start-Sleep -Seconds 1
+        } while ($Stopwatch.Elapsed.TotalSeconds -lt 10)
 
-        $chocoArgs = @('feature', 'enable', '--name="useChocolateyCentralManagement"')
-        & choco @chocoArgs
-
-        $chocoArgs = @('feature', 'enable', '--name="useChocolateyCentralManagementDeployments"')
-        & choco @chocoArgs
-
-        if ($ServiceSalt -and $ClientSalt) {
-            $chocoArgs = @('config', 'set', 'centralManagementClientCommunicationSaltAdditivePassword', "$ClientSalt")
-            & choco @chocoArgs
-
-            $chocoArgs = @('config', 'set', 'centralManagementServiceCommunicationSaltAdditivePassword', "$ServiceSalt")
-            & choco @chocoArgs
+        if (-not ($keyInfo)) {
+            Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
+            Start-Process msedge.exe @(
+                'file:///C:/Users/Public/Desktop/README.html',
+                (Get-ChocoEnvironmentProperty CCMWebPortal),
+                (Get-ChocoEnvironmentProperty NexusUri),
+                (Get-ChocoEnvironmentProperty JenkinsUri)
+            )
         }
     }
 }
-#endregion
 
 # Check for and configure FIPS enforcement, if required.
 if (
