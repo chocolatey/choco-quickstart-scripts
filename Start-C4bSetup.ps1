@@ -41,7 +41,7 @@ param(
         }
     ),
 
-    # Unattended mode. Allows you to skip running the other scripts indiviually.
+    # Unattended mode. Allows you to skip running the other scripts individually.
     [Parameter(Mandatory, ParameterSetName='Unattended')]
     [switch]
     $Unattend,
@@ -145,11 +145,30 @@ try {
     }
 
     if ($Thumbprint) {
-        Set-ChocoEnvironmentProperty Thumbprint $Thumbprint
+        Set-ChocoEnvironmentProperty CertThumbprint $Thumbprint
+
+        # Collect current certificate configuration
+        $Certificate = Get-Certificate -Thumbprint $Thumbprint
+        Copy-CertToStore -Certificate $Certificate
+
+        if (-not ($CertificateDnsName = Get-ChocoEnvironmentProperty CertSubject)) {
+            $matcher = 'CN\s?=\s?(?<Subject>[^,\s]+)'
+            $null = $Certificate.Subject -match $matcher
+            $CertificateDnsName = if ($Matches.Subject.StartsWith('*')) {
+                # This is a wildcard cert, we need to prompt for the intended CertificateDnsName
+                while ($CertificateDnsName -notlike $Matches.Subject) {
+                    $CertificateDnsName = Read-Host -Prompt "$(if ($CertificateDnsName) {"'$($CertificateDnsName)' is not a subdomain of '$($Matches.Subject)'. "})Please provide an FQDN to use with the certificate '$($Matches.Subject)'"
+                }
+                $CertificateDnsName
+            } else {
+                $Matches.Subject
+            }
+            Set-ChocoEnvironmentProperty CertSubject $CertificateDnsName
+        }
     }
 
     if ($DatabaseCredential) {
-        Set-ChocoEnvironmentProperty DatabaseCredential $DatabaseCredential
+        Set-ChocoEnvironmentProperty DatabaseUser $DatabaseCredential
     }
 
     # Downloading all CCM setup packages below
