@@ -156,11 +156,10 @@ process {
 
     # Create new user for endpoints
     if (-not (Get-NexusUser -User 'chocouser' -ErrorAction SilentlyContinue)) {
-        $NexusPw = [System.Web.Security.Membership]::GeneratePassword(32, 12)
         # Create Nexus user
         $UserParams = @{
             Username     = 'chocouser'
-            Password     = ($NexusPw | ConvertTo-SecureString -AsPlainText -Force)
+            Password     = New-ServicePassword
             FirstName    = 'Choco'
             LastName     = 'User'
             EmailAddress = 'chocouser@example.com'

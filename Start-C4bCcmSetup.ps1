@@ -224,17 +224,17 @@ process {
 
     # Set Client and Service salts
     if (-not (Get-ChocoEnvironmentProperty ClientSalt)) {
-        $ClientSaltValue = New-CCMSalt
-        Set-ChocoEnvironmentProperty ClientSalt (ConvertTo-SecureString $ClientSaltValue -AsPlainText -Force)
+        $ClientSaltValue = New-ServicePassword
+        Set-ChocoEnvironmentProperty ClientSalt $ClientSaltValue
 
-        Invoke-Choco config set centralManagementClientCommunicationSaltAdditivePassword $ClientSaltValue
+        Invoke-Choco config set centralManagementClientCommunicationSaltAdditivePassword $ClientSaltValue.ToPlainText()
     }
 
     if (-not (Get-ChocoEnvironmentProperty ServiceSalt)) {
-        $ServiceSaltValue = New-CCMSalt
-        Set-ChocoEnvironmentProperty ServiceSalt (ConvertTo-SecureString $ServiceSaltValue -AsPlainText -Force)
+        $ServiceSaltValue = New-ServicePassword
+        Set-ChocoEnvironmentProperty ServiceSalt $ServiceSaltValue
 
-        Invoke-Choco config set centralManagementServiceCommunicationSaltAdditivePassword $ServiceSaltValue
+        Invoke-Choco config set centralManagementServiceCommunicationSaltAdditivePassword $ServiceSaltValue.ToPlainText()
     }
 
     $CcmSvcUrl = Invoke-Choco config get centralManagementServiceUrl -r
