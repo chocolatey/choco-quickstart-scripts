@@ -573,21 +573,6 @@ ALTER ROLE [$DatabaseRole] ADD MEMBER [$Username]
     $Connection.Close()
 }
 
-function New-CcmSalt {
-    [CmdletBinding()]
-    param(
-        [Parameter()]
-        [int]
-        $MinLength = 32,
-        [Parameter()]
-        [int]
-        $SpecialCharCount = 12
-    )
-    process {
-        [System.Web.Security.Membership]::GeneratePassword($MinLength, $SpecialCharCount)
-    }
-}
-
 function Stop-CCMService {
     #Stop Central Management components
     Stop-Service chocolatey-central-management
