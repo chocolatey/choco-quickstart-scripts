@@ -112,7 +112,7 @@ Below are the minimum requirements for setting up your C4B server via this guide
 
 ```powershell
 Set-Location "$env:SystemDrive\choco-setup\files"
-.\Start-C4bSetup.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>'
+.\Initialize-C4bSetup.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>'
 ```
 
 > :warning:**REMINDER**: If you are using your own SSL certificate, be sure to place this certificate in the `Local Machine > Personal` certificate store before running the above script, and ensure that the private key is exportable.
@@ -124,14 +124,14 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 
 ```powershell
 Set-Location "$env:SystemDrive\choco-setup\files"
-.\Start-C4bSetup.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>' -CertificateDnsName '<YOUR_DESIRED_FQDN_HERE>'
+.\Initialize-C4bSetup.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>' -CertificateDnsName '<YOUR_DESIRED_FQDN_HERE>'
 ```
 
 For example, with a wildcard certificate with a thumbprint of `deee9b2fabb24bdaae71d82286e08de1` you wish to use `chocolatey.foo.org`, the following would be required:
 
 ```powershell
 Set-Location "$env:SystemDrive\choco-setup\files"
-.\Start-C4bSetup.ps1 -Thumbprint deee9b2fabb24bdaae71d82286e08de1 -CertificateDnsName chocolatey.foo.org
+.\Initialize-C4bSetup.ps1 -Thumbprint deee9b2fabb24bdaae71d82286e08de1 -CertificateDnsName chocolatey.foo.org
 ```
 
 ### Step 2: Nexus Setup
@@ -221,7 +221,7 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 
     ```powershell
     Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Start-C4bVerification.ps1 -Fqdn '<Your expected fqdn here>'
+    .\Test-C4bSetup.ps1 -Fqdn '<Your expected fqdn here>'
     ```
 
     If you expect services to be available at `chocoserver.yourcompany.com`, then your command would look like: `.\Start-C4bVerification.ps1 -Fqdn 'chocoserver.yourcompany.com'`
