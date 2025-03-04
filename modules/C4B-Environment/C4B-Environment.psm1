@@ -540,6 +540,9 @@ function Add-DatabaseUserAndRoles {
 USE [master]
 IF EXISTS(SELECT * FROM msdb.sys.syslogins WHERE UPPER([name]) = UPPER('$Username'))
 BEGIN
+DECLARE @kill varchar(8000) = '';
+SELECT @kill = @kill + 'kill ' + CONVERT(varchar(5), session_id) + ';' FROM sys.dm_exec_sessions WHERE UPPER([login_name]) = UPPER('$Username')
+EXEC(@kill);
 DROP LOGIN [$Username]
 END
 
