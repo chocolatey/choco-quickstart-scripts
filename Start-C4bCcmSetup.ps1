@@ -237,6 +237,13 @@ process {
         Invoke-Choco config set centralManagementServiceCommunicationSaltAdditivePassword $ServiceSaltValue.ToPlainText()
     }
 
+    # Set Website Root Address
+    Update-CcmSettings -CcmEndpoint $CCmEndpoint -Credential $CCMCredential -Settings @{
+        website = @{
+            webSiteRootAddress = $CcmEndpoint
+        }
+    }
+
     $CcmSvcUrl = Invoke-Choco config get centralManagementServiceUrl -r
     Update-Clixml -Properties @{
         CCMServiceURL        = $CcmSvcUrl
