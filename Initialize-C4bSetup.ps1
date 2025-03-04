@@ -121,7 +121,7 @@ $QsRepo = if ($Branch) {
 }
 
 $DefaultEap, $ErrorActionPreference = $ErrorActionPreference, 'Stop'
-Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
+Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Initialize-C4bSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
 try {
     # Setup initial choco-setup directories

@@ -45,14 +45,13 @@ Describe "Server Integrity" {
             $Logs = Get-ChildItem C:\choco-setup\logs -Recurse -Filter *.txt
         }
 
-        It "<File> log file was created during installation" -ForEach @(
-            @{File = 'Set-SslSecurity'}
-            @{File = 'Start-C4bCcmSetup'}
-            @{File = 'Start-C4bJenkinsSetup'}
-            @{File = 'Start-C4bNexusSetup'}
-            @{File = 'Start-C4bSetup'}
+        It "<_> log file was created during installation" -ForEach @(
+            'Start-C4bCcmSetup'
+            'Start-C4bJenkinsSetup'
+            'Start-C4bNexusSetup'
+            'Initialize-C4bSetup'
         ) {
-            Test-Path "C:\choco-setup\logs\$($_.File)*.txt" | Should -Be $true
+            Test-Path "C:\choco-setup\logs\$($_)*.txt" | Should -Be $true
         }
     }
 }

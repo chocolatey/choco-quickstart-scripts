@@ -67,7 +67,7 @@ param(
 process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
-    Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Set-SslSecurity-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
+    Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Switch-SslSecurity-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
     # Collect current certificate configuration
     $Certificate = if ($Subject) {
