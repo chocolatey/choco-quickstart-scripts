@@ -16,10 +16,13 @@ param(
     [ValidateNotNull()]
     [System.Management.Automation.PSCredential]
     $DatabaseCredential = $(
-        if ($DatabaseCredential = Get-ChocoEnvironmentProperty DatabaseUser) {
-            $DatabaseCredential
+        if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).DatabaseUser) {
+            (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).DatabaseUser
         } else {
-            Get-Credential -Username ChocoUser -Message 'Create a credential for the ChocolateyManagement DB user (document this somewhere)'
+            [PSCredential]::new(
+                "chocodbuser",
+                (ConvertTo-SecureString "$(New-Guid)-$(New-Guid)" -Force -AsPlainText)
+            )
         }
     ),
 

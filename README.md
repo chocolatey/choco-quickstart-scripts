@@ -8,7 +8,7 @@ Below is the Quick Start Guide as it exists currently on the [Chocolatey Docs](h
 
 ---
 
-Welcome to the Chocolatey of Business (C4B) Quick-Start Guide! This guide will walk you through the basics of configuring a C4B Server on your VM infrastructure of choice. This includes:
+Welcome to the Chocolatey for Business (C4B) Quick-Start Guide! This guide will walk you through the basics of configuring a C4B Server on your VM infrastructure of choice. This includes:
 
 - The Chocolatey Licensed components
 - A NuGet V3 Repository (Nexus)
@@ -90,6 +90,8 @@ Below are the minimum requirements for setting up your C4B server via this guide
     Set-ExecutionPolicy Bypass -Scope Process -Force
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::tls12
     Invoke-RestMethod https://ch0.co/qsg-go | Invoke-Expression
+    Set-Location "$env:SystemDrive\choco-setup\files"
+    .\Initialize-C4bSetup.ps1
     ```
 
     > <details>
@@ -134,114 +136,88 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 .\Initialize-C4bSetup.ps1 -Thumbprint deee9b2fabb24bdaae71d82286e08de1 -CertificateDnsName chocolatey.foo.org
 ```
 
-### Step 2: Nexus Setup
+#### Script: Nexus Setup
 
-1. In the same **elevated** Windows PowerShell console as above, paste and run the following code:
+As part of the C4B setup, we install and configure Sonatype Nexus Repository, which is used for hosting your Chocolatey packages internally:
 
-    ```powershell
-    Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Start-C4bNexusSetup.ps1
-    ```
+> <details>
+> <summary><strong>What does this script do? (click to expand)</strong></summary>
+> <ul class="list-style-type-disc">
+> <li>Installs Sonatype Nexus Repository Manager OSS instance</li>
+> <li>Cleans up all demo repositories on Nexus</li>
+> <li>Creates a "ChocolateyInternal" NuGet repository</li>
+> <li>Creates a "ChocolateyTest" NuGet repository</li>
+> <li>Creates a "choco-install" raw repository</li>
+> <li>Sets up "ChocolateyInternal" on C4B Server as source, with API key</li>
+> <li>Adds firewall rule for repository access</li>
+> <li>Installs MS Edge, as Internet Explorer cannot access the Sonatype Nexus site</li>
+> <li>Outputs data to a JSON file to pass between scripts</li>
+> </ul>
+> </details>
 
-    > <details>
-    > <summary><strong>What does this script do? (click to expand)</strong></summary>
-    > <ul class="list-style-type-disc">
-    > <li>Installs Sonatype Nexus Repository Manager OSS instance</li>
-    > <li>Cleans up all demo repositories on Nexus</li>
-    > <li>Creates a "ChocolateyInternal" NuGet repository</li>
-    > <li>Creates a "ChocolateyTest" NuGet repository</li>
-    > <li>Creates a "choco-install" raw repository</li>
-    > <li>Sets up "ChocolateyInternal" on C4B Server as source, with API key</li>
-    > <li>Adds firewall rule for repository access</li>
-    > <li>Installs MS Edge, as Internet Explorer cannot access the Sonatype Nexus site</li>
-    > <li>Outputs data to a JSON file to pass between scripts</li>
-    > </ul>
-    > </details>
+#### Script: Chocolatey Central Management Setup
 
-### Step 3: Chocolatey Central Management Setup
+As part of the C4B setup, we install and configure Chocolatey Central Management and associated prerequisites to manage your Chocolatey for Business nodes:
 
-1. In the same PowerShell Administrator console as above, paste and run the following code:
+> <details>
+> <summary><strong>What does this script do? (click to expand)</strong></summary>
+> <ul class="list-style-type-disc">
+> <li>Installs MS SQL Express and SQL Server Management Studio (SSMS)</li>
+> <li>Creates "ChocolateyManagement" database, and adds appropriate `ChocoUser` permissions</li>
+> <li>Installs all 3 Chocolatey Central Management packages (database, service, web), with correct parameters</li>
+> <li>Outputs data to a JSON file to pass between scripts</li>
+> </ul>
+> </details>
 
-    ```powershell
-    Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Start-C4bCcmSetup.ps1
-    ```
+#### Script: Jenkins Setup
 
-    > <details>
-    > <summary><strong>What does this script do? (click to expand)</strong></summary>
-    > <ul class="list-style-type-disc">
-    > <li>Installs MS SQL Express and SQL Server Management Studio (SSMS)</li>
-    > <li>Creates "ChocolateyManagement" database, and adds appropriate `ChocoUser` permissions</li>
-    > <li>Installs all 3 Chocolatey Central Management packages (database, service, web), with correct parameters</li>
-    > <li>Outputs data to a JSON file to pass between scripts</li>
-    > </ul>
-    > </details>
+As part of the C4B setup, we install and configure Jenkins as a method for running Package Internalizer and other jobs:
 
-### Step 4: Jenkins Setup
+> <details>
+> <summary><strong>What does this script do? (click to expand)</strong></summary>
+> <ul class="list-style-type-disc">
+> <li>Installs Jenkins package</li>
+> <li>Updates Jenkins plugins</li>
+> <li>Configures pre-downloaded Jenkins scripts for Package Internalizer automation</li>
+> <li>Sets up pre-defined Jenkins jobs for the scripts above</li>
+> </ul>
+> </details>
 
-1. In the same **elevated** PowerShell console as above, paste and run the following code:
+#### Script: Complete Setup
 
-    ```powershell
-    Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Start-C4bJenkinsSetup.ps1
-    ```
+As part of the C4B setup, we create a readme and install the Chocolatey Agent on the server:
 
-    > <details>
-    > <summary><strong>What does this script do? (click to expand)</strong></summary>
-    > <ul class="list-style-type-disc">
-    > <li>Installs Jenkins package</li>
-    > <li>Updates Jenkins plugins</li>
-    > <li>Configures pre-downloaded Jenkins scripts for Package Internalizer automation</li>
-    > <li>Sets up pre-defined Jenkins jobs for the scripts above</li>
-    > </ul>
-    > </details>
+> <details>
+> <summary><strong>What does this script do? (click to expand)</strong></summary>
+> <ul class="list-style-type-disc">
+> <li>Sets up Chocolatey Agent on this system</li>
+> <li>Writes a Readme.html file to the Public Desktop with account information for C4B services</li>
+> <li>Auto-opens README, CCM, Nexus, and Jenkins in your web browser</li>
+> </ul>
+> </details>
 
-### Step 5: Complete Setup
+> :mag: **FYI**: A `Readme.html` file will now be generated on your desktop. This file contains login information for all 3 web portals (CCM, Nexus, and Jenkins). This `Readme.html`, along with all 3 web portals, will automatically be opened in your browser.
 
-1. In the same **elevated** PowerShell console as above, paste and run the following code:
+### Script: Verification
 
-    ```powershell
-    Complete-C4bSetup
-    ```
+As a part of the C4B setup, we run tests to validate that your environment is correctly configured:
 
-    > <details>
-    > <summary><strong>What does this script do? (click to expand)</strong></summary>
-    > <ul class="list-style-type-disc">
-    > <li>Sets up Chocolatey Agent on this system</li>
-    > <li>Writes a Readme.html file to the Public Desktop with account information for C4B services</li>
-    > <li>Auto-opens README, CCM, Nexus, and Jenkins in your web browser</li>
-    > </ul>
-    > </details>
+> <details>
+> <summary><strong>What does this script do? (click to expand)</strong></summary>
+> <ul class="list-style-type-disc">
+> <li>Verifies Nexus Repository installation</li>
+> <li>Verifies Central Management installation</li>
+> <li>Verifies Jenkins installation</li>
+> <li>Ensures system firewall is configured</li>
+> <li>Ensures Windows Features are installed</li>
+> <li>Ensures services are correctly configured</li>
+> <li>Ensured README is created</li>
+> </ul>
+> </details>
 
-    > :mag: **FYI**: A `Readme.html` file will now be generated on your desktop. This file contains login information for all 3 web portals (CCM, Nexus, and Jenkins). This `Readme.html`, along with all 3 web portals, will automatically be opened in your browser.
+### Step 2: Setting up Endpoints
 
-### Step 6: Verification
-
-1. In the same **elevated** PowerShell console as above, paste and run the following code:
-
-    ```powershell
-    Set-Location "$env:SystemDrive\choco-setup\files"
-    .\Test-C4bSetup.ps1 -Fqdn '<Your expected fqdn here>'
-    ```
-
-    If you expect services to be available at `chocoserver.yourcompany.com`, then your command would look like: `.\Start-C4bVerification.ps1 -Fqdn 'chocoserver.yourcompany.com'`
-
-    > <details>
-    > <summary><strong>What does this script do? (click to expand)</strong></summary>
-    > <ul class="list-style-type-disc">
-    > <li>Verifies Nexus Repository installation</li>
-    > <li>Verifies Central Management installation</li>
-    > <li>Verifies Jenkins installation</li>
-    > <li>Ensures system firewall is configured</li>
-    > <li>Ensures Windows Features are installed</li>
-    > <li>Ensures services are correctly configured</li>
-    > <li>Ensured README is created</li>
-    > </ul>
-    > </details>
-
-### Step 7: Setting up Endpoints
-
-1. Find the `Register-C4bEndpoint.ps1` script in the `choco-setup\files\scripts\` directory on your C4B Server. Copy this script to your client endpoint.
+1. Find the `Register-C4bEndpoint.ps1` script in the `C:\choco-setup\files\scripts\` directory on your C4B Server. Copy this script to your client endpoint.
 
 1. Open an **elevated** PowerShell console on your client endpoint, and browse (`cd`) to the location you copied the script above. Paste and run the following code:
 
