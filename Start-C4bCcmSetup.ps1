@@ -135,6 +135,9 @@ process {
 
     Write-Host "Creating Chocolatey Central Management Database"
     $chocoArgs = @('install', 'chocolatey-management-database', '--source="ChocolateyInternal"', '-y', '--package-parameters="''/ConnectionString=Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;Trusted_Connection=true;''"', '--no-progress')
+    if ($PackageVersion = $Packages.Where{ $_.Name -eq 'chocolatey-management-database' }.Version) {
+        $chocoArgs += "--version='$($PackageVersion)'"
+    }
     & Invoke-Choco @chocoArgs
 
     # Add Local Windows User:
@@ -153,6 +156,9 @@ process {
 
     Write-Host "Installing Chocolatey Central Management Service"
     $chocoArgs = @('install', 'chocolatey-management-service', "--source='ChocolateyInternal'", '-y', "--package-parameters-sensitive=`"/ConnectionString:'Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'`"", '--no-progress')
+    if ($PackageVersion = $Packages.Where{ $_.Name -eq 'chocolatey-management-service' }.Version) {
+        $chocoArgs += "--version='$($PackageVersion)'"
+    }
     if ($Thumbprint) {
         Write-Verbose "Validating certificate is in LocalMachine\TrustedPeople Store"
         if (-not (Get-Item Cert:\LocalMachine\TrustedPeople\$Thumbprint -EA 0) -and -not (Get-Item Cert:\LocalMachine\My\$Thumbprint -EA 0)) {
@@ -169,10 +175,13 @@ process {
     }
     & Invoke-Choco @chocoArgs
     
-    if (-not $MyCertificate) {$MyCertificate = Get-Item Cert:\LocalMachine\My\*}
+    if (-not $MyCertificate) { $MyCertificate = Get-Item Cert:\LocalMachine\My\* }
 
     Write-Host "Installing Chocolatey Central Management Website"
     $chocoArgs = @('install', 'chocolatey-management-web', "--source='ChocolateyInternal'", '-y', "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
+    if ($PackageVersion = $Packages.Where{ $_.Name -eq 'chocolatey-management-web' }.Version) {
+        $chocoArgs += "--version='$($PackageVersion)'"
+    }
     & Invoke-Choco @chocoArgs
 
     # Setup Website SSL
