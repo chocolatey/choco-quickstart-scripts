@@ -268,7 +268,7 @@ jobs:
                   }
                 }
                 Write-Host "Using Certificate with Thumbprint '$($Thumbprint)'"
-                @{Thumbprint = $CertDetails.Thumbprint}
+                @{Thumbprint = $CertDetails.Thumbprint; CertificateDnsName = $CertDetails.FQDN}
               }
               'wildcard' {
                 $CertDetails = Invoke-Command -Session $Session -ScriptBlock {
@@ -302,11 +302,7 @@ jobs:
               )
               $Timer = [System.Diagnostics.Stopwatch]::StartNew()
               Invoke-Command -Session $Session -ScriptBlock {
-                C:\choco-setup\files\Start-C4bSetup.ps1
-                C:\choco-setup\files\Start-C4BNexusSetup.ps1
-                C:\choco-setup\files\Start-C4bCcmSetup.ps1 -DatabaseCredential $using:DatabaseCredential
-                C:\choco-setup\files\Start-C4bJenkinsSetup.ps1
-                C:\choco-setup\files\Set-SslSecurity.ps1 @using:Certificate
+                C:\choco-setup\files\Initialize-C4bSetup.ps1 @using:Certificate -DatabaseCredential $using:DatabaseCredential
               }
               $Timer.Stop()
               "deployment-time=$($Timer.Elapsed)" >> $env:GITHUB_OUTPUT
