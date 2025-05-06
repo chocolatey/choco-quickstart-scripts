@@ -39,6 +39,129 @@ function Invoke-Choco {
     }
 }
 
+function Test-CertificateDomain {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Thumbprint
+    )
+    # Check the certificate exists
+    if (-not ($Certificate = Get-Item Cert:\LocalMachine\TrustedPeople\$Thumbprint)) {
+        throw "Certificate could not be found in Cert:\LocalMachine\TrustedPeople\. Please ensure it is is present, and try again."
+    }
+
+    # Check that we have a domain for it
+    if (-not ($CertificateDnsName = Get-ChocoEnvironmentProperty CertSubject) -and ($Certificate.Subject -match '^CN=\*')) {
+        $matcher = 'CN\s?=\s?(?<Subject>[^,\s]+)'
+        $null = $Certificate.Subject -match $matcher
+        $CertificateDnsName = if ($Matches.Subject.StartsWith('*')) {
+            # This is a wildcard cert, we need to prompt for the intended CertificateDnsName
+            while ($CertificateDnsName -notlike $Matches.Subject) {
+                $CertificateDnsName = Read-Host -Prompt "$(if ($CertificateDnsName) {"'$($CertificateDnsName)' is not a subdomain of '$($Matches.Subject)'. "})Please provide an FQDN to use with the certificate '$($Matches.Subject)'"
+            }
+            $CertificateDnsName
+        } else {
+            $Matches.Subject
+        }
+        Set-ChocoEnvironmentProperty CertSubject $CertificateDnsName
+    }
+
+    $true
+}
+
+function Wait-Site {
+    <#
+        .Synopsis
+            Waits for a given site to be available. A simple healthcheck.
+    #>
+    [Alias('Wait-Nexus','Wait-CCM','Wait-Jenkins')]
+    [CmdletBinding(DefaultParameterSetName="Name")]
+    param(
+        # The service name to check for a 200 response
+        [Parameter(ParameterSetName='Name', Position=0)]
+        [ValidateSet('Nexus','CCM','Jenkins')]
+        [string]$Name = $MyInvocation.InvocationName.Split('-')[-1],
+
+        # The Url to check for a 200 response
+        [Parameter(ParameterSetName='Url', Mandatory, Position=0)]
+        [string]$Url = @{
+            'Nexus'   = {
+                try {
+                    Get-NexusLocalServiceUri
+                } catch {
+                    Write-Verbose "Nexus may not be installed yet."
+                    "http://localhost:8081"
+                }
+            }
+            'CCM'     = {
+                try {
+                    $Binding = Get-WebBinding -Name ChocolateyCentralManagement
+                    $Domain = if (
+                        $Binding.protocol -eq 'https' -and
+                        ($Certificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object Subject -notlike 'CN=`**').Count -eq 1 -and
+                        $Certificate.Subject -match "^CN=(?<Domain>.+)(?:,|$)"
+                    ) {
+                        $Matches.Domain
+                    } elseif ($Binding.protocol -eq 'https' -and ($CertSubject = Get-ChocoEnvironmentProperty CertSubject)) {
+                        $CertSubject
+                    } else {
+                        'localhost'
+                    }
+                    "$($Binding.protocol)://$($Domain):$($Binding.bindingInformation.Trim('*').Trim(':'))/"
+                } catch {
+                    Write-Verbose "CCM may not be installed yet."
+                    "http://localhost"
+                }
+            }
+            'Jenkins' = {
+                try {
+                    if (Test-Path "C:\Program Files\Jenkins\jenkins.xml") {
+                        [xml]$Xml = Get-Content "C:\Program Files\Jenkins\jenkins.xml"
+                        if ($Xml.SelectSingleNode("/service/arguments").'#text' -match "--(?<Scheme>https?)Port=(?<PortNumber>\d+)\b") {
+                            $Port = $Matches.PortNumber
+                            $Scheme = $Matches.Scheme
+                        }
+                        $Domain = if ($Scheme -eq 'https') {
+                            Get-ChocoEnvironmentProperty CertSubject
+                        } else {
+                            'localhost'
+                        }
+                        "$($Scheme)://$($Domain):$($Port)/login"  # TODO: Get PATH
+                    } elseif (Test-Path "C:\Program Files\Jenkins\jenkins.model.JenkinsLocationConfiguration.xml") {
+                        [xml]$Location = (Get-Content "C:\Program Files\Jenkins\jenkins.model.JenkinsLocationConfiguration.xml" -ErrorAction Stop) -replace "^\<\?xml version=['""]1\.1['""]","<?xml version='1.0'"
+                        $Location."jenkins.model.JenkinsLocationConfiguration".jenkinsUrl
+                    }
+                } catch {
+                    Write-Verbose "Jenkins may not be installed yet."
+                    "http://$('localhost'):8080/login"
+                }
+            }
+        }.$Name.Invoke(),
+
+        # Seconds before we give up waiting and fail
+        [uint16]$Timeout = 180  # seconds
+    )
+    begin {
+        $Timer = [System.Diagnostics.Stopwatch]::StartNew()
+
+        if ([string]::IsNullOrEmpty($Url)) {
+            Write-Error "Please pass a valid -Name or -Url to wait for." -ErrorAction Stop
+        }
+    }
+    end {
+        while ($Response.StatusCode -ne '200' -and $Timer.Elapsed.TotalSeconds -lt $Timeout) {
+            $Response = try {
+                Invoke-WebRequest $Url -UseBasicParsing -ErrorAction Stop
+            } catch { $null }
+        }
+
+        if ($Response.StatusCode -eq '200') {
+            Write-Verbose "'$($Url)' is accessible!"
+        } else {
+            Write-Error "'$($Url)' was not accessible after $($Timer.Elapsed.TotalSeconds) seconds." -ErrorAction Stop
+        }
+    }
+}
+
 Update-TypeData -TypeName SecureString -MemberType ScriptMethod -MemberName ToPlainText -Force -Value {
     [System.Net.NetworkCredential]::new("TempCredential", $this).Password
 }
@@ -191,23 +314,7 @@ function Get-ChocolateyPackageMetadata {
 #endregion
 
 #region Nexus functions (Start-C4BNexusSetup.ps1)
-function Wait-Nexus {
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::tls12
-    Do {
-        $response = try {
-            Invoke-WebRequest $("http://localhost:8081") -ErrorAction Stop
-        }
-        catch {
-            $null
-        }
-        
-    } until($response.StatusCode -eq '200')
-    Write-Host "Nexus is ready!"
-
-}
-
 function Invoke-NexusScript {
-
     [CmdletBinding()]
     Param (
         [Parameter(Mandatory)]
@@ -222,1346 +329,12 @@ function Invoke-NexusScript {
         [String]
         $Script
     )
-
-    $scriptName = [GUID]::NewGuid().ToString()
-    $body = @{
-        name    = $scriptName
-        type    = 'groovy'
-        content = $Script
-    }
-
-    # Call the API
-    $baseUri = "$ServerUri/service/rest/v1/script"
-
-    #Store the Script
-    $uri = $baseUri
-    Invoke-RestMethod -Uri $uri -ContentType 'application/json' -Body $($body | ConvertTo-Json) -Header $ApiHeader -Method Post
-    #Run the script
-    $uri = "{0}/{1}/run" -f $baseUri, $scriptName
-    $result = Invoke-RestMethod -Uri $uri -ContentType 'text/plain' -Header $ApiHeader -Method Post
-    #Delete the Script
-    $uri = "{0}/{1}" -f $baseUri, $scriptName
-    Invoke-RestMethod -Uri $uri -Header $ApiHeader -Method Delete -UseBasicParsing
-
-    $result
-
-}
-
-function Connect-NexusServer {
-    <#
-    .SYNOPSIS
-    Creates the authentication header needed for REST calls to your Nexus server
-    
-    .DESCRIPTION
-    Creates the authentication header needed for REST calls to your Nexus server
-    
-    .PARAMETER Hostname
-    The hostname or ip address of your Nexus server
-    
-    .PARAMETER Credential
-    The credentials to authenticate to your Nexus server
-    
-    .PARAMETER UseSSL
-    Use https instead of http for REST calls. Defaults to 8443.
-    
-    .PARAMETER Sslport
-    If not the default 8443 provide the current SSL port your Nexus server uses
-    
-    .EXAMPLE
-    Connect-NexusServer -Hostname nexus.fabrikam.com -Credential (Get-Credential)
-    .EXAMPLE
-    Connect-NexusServer -Hostname nexus.fabrikam.com -Credential (Get-Credential) -UseSSL
-    .EXAMPLE
-    Connect-NexusServer -Hostname nexus.fabrikam.com -Credential $Cred -UseSSL -Sslport 443
-    #>
-    [cmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Connect-NexusServer/')]
-    param(
-        [Parameter(Mandatory, Position = 0)]
-        [Alias('Server')]
-        [String]
-        $Hostname,
-
-        [Parameter(Mandatory, Position = 1)]
-        [System.Management.Automation.PSCredential]
-        $Credential,
-
-        [Parameter()]
-        [Switch]
-        $UseSSL,
-
-        [Parameter()]
-        [String]
-        $Sslport = '8443'
-    )
-
-    process {
-
-        if ($UseSSL) {
-            $script:protocol = 'https'
-            $script:port = $Sslport
-        }
-        else {
-            $script:protocol = 'http'
-            $script:port = '8081'
-        }
-
-        $script:HostName = $Hostname
-
-        $credPair = "{0}:{1}" -f $Credential.UserName, $Credential.GetNetworkCredential().Password
-
-        $encodedCreds = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($credPair))
-
-        $script:header = @{ Authorization = "Basic $encodedCreds" }
-
-        try {
-            $url = "$($protocol)://$($Hostname):$($port)/service/rest/v1/status"
-
-            $params = @{
-                Headers     = $header
-                ContentType = 'application/json'
-                Method      = 'GET'
-                Uri         = $url
-            }
-
-            $null = Invoke-RestMethod @params -ErrorAction Stop
-            Write-Host "Connected to $Hostname" -ForegroundColor Green
-        }
-
-        catch {
-            $_.Exception.Message
-        }
-    }
-}
-
-function Invoke-Nexus {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [String]
-        $UriSlug,
-
-        [Parameter()]
-        [Hashtable]
-        $Body,
-
-        [Parameter()]
-        [Array]
-        $BodyAsArray,
-
-        [Parameter()]
-        [String]
-        $BodyAsString,
-
-        [Parameter()]
-        [String]
-        $File,
-
-        [Parameter()]
-        [String]
-        $ContentType = 'application/json',
-
-        [Parameter(Mandatory)]
-        [String]
-        $Method,
-
-        [hashtable]
-        $AdditionalHeaders = @{}
-    )
-    process {
-        $UriBase = "$($protocol)://$($Hostname):$($port)"
-        $Uri = $UriBase + $UriSlug
-        $Params = @{
-            Headers     = $header + $AdditionalHeaders
-            ContentType = $ContentType
-            Uri         = $Uri
-            Method      = $Method
-        }
-
-        if ($Body) {
-            $Params.Add('Body', $($Body | ConvertTo-Json -Depth 3))
-        } 
-
-        if ($BodyAsArray) {
-            $Params.Add('Body', $($BodyAsArray | ConvertTo-Json -Depth 3))
-        }
-
-        if ($BodyAsString) {
-            $Params.Add('Body', $BodyAsString)
-        }
-
-        if ($File) {
-            $Params.Remove('ContentType')
-            $Params.Add('InFile', $File)
-        }
-
-        Invoke-RestMethod @Params
-        
-
-    }
-}
-
-function Get-NexusUserToken {
-    <#
-    .SYNOPSIS
-    Fetches a User Token for the provided credential
-    
-    .DESCRIPTION
-    Fetches a User Token for the provided credential
-    
-    .PARAMETER Credential
-    The Nexus user for which to receive a token
-    
-    .NOTES
-    This is a private function not exposed to the end user. 
-    #>
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory)]
-        [PSCredential]
-        $Credential
-    )
-
-    process {
-        $UriBase = "$($protocol)://$($Hostname):$($port)"
-        
-        $slug = '/service/extdirect'
-
-        $uri = $UriBase + $slug
-
-        $data = @{
-            action = 'rapture_Security'
-            method = 'authenticationToken'
-            data   = @("$([System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($($Credential.Username))))", "$([System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($($Credential.GetNetworkCredential().Password))))")
-            type   = 'rpc'
-            tid    = 16 
-        }
-
-        Write-Verbose ($data | ConvertTo-Json)
-        $result = Invoke-RestMethod -Uri $uri -Method POST -Body ($data | ConvertTo-Json) -ContentType 'application/json' -Headers $header
-        $token = $result.result.data
-        $token
-    }
-
-}
-
-function Get-NexusRepository {
-    <#
-    .SYNOPSIS
-    Returns info about configured Nexus repository
-    
-    .DESCRIPTION
-    Returns details for currently configured repositories on your Nexus server
-    
-    .PARAMETER Format
-    Query for only a specific repository format. E.g. nuget, maven2, or docker
-    
-    .PARAMETER Name
-    Query for a specific repository by name
-    
-    .EXAMPLE
-    Get-NexusRepository
-    .EXAMPLE
-    Get-NexusRepository -Format nuget
-    .EXAMPLE
-    Get-NexusRepository -Name CompanyNugetPkgs
-    #>
-    [cmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Get-NexusRepository/', DefaultParameterSetName = "default")]
-    param(
-        [Parameter(ParameterSetName = "Format", Mandatory)]
-        [String]
-        [ValidateSet('apt', 'bower', 'cocoapods', 'conan', 'conda', 'docker', 'gitlfs', 'go', 'helm', 'maven2', 'npm', 'nuget', 'p2', 'pypi', 'r', 'raw', 'rubygems', 'yum')]
-        $Format,
-
-        [Parameter(ParameterSetName = "Type", Mandatory)]
-        [String]
-        [ValidateSet('hosted', 'group', 'proxy')]
-        $Type,
-
-        [Parameter(ParameterSetName = "Name", Mandatory)]
-        [String]
-        $Name
-    )
-
-
-    begin {
-
-        if (-not $header) {
-            throw "Not connected to Nexus server! Run Connect-NexusServer first."
-        }
-
-        $urislug = "/service/rest/v1/repositories"
-    }
-    process {
-
-        switch ($PSCmdlet.ParameterSetName) {
-            { $Format } {
-                $filter = { $_.format -eq $Format }
-
-                $result = Invoke-Nexus -UriSlug $urislug -Method Get
-                $result | Where-Object $filter
-                
-            }
-
-            { $Name } {
-                $filter = { $_.name -eq $Name }
-
-                $result = Invoke-Nexus -UriSlug $urislug -Method Get
-                $result | Where-Object $filter
-
-            }
-
-            { $Type } {
-                $filter = { $_.type -eq $Type }
-                $result = Invoke-Nexus -UriSlug $urislug -Method Get
-                $result | Where-Object $filter
-            }
-
-            default {
-                Invoke-Nexus -UriSlug $urislug -Method Get | ForEach-Object { 
-                    [pscustomobject]@{
-                        Name       = $_.SyncRoot.name
-                        Format     = $_.SyncRoot.format
-                        Type       = $_.SyncRoot.type
-                        Url        = $_.SyncRoot.url
-                        Attributes = $_.SyncRoot.attributes
-                    }
-                }
-            }
-        }
-    }
-}
-
-function Remove-NexusRepository {
-    <#
-    .SYNOPSIS
-    Removes a given repository from the Nexus instance
-    
-    .DESCRIPTION
-    Removes a given repository from the Nexus instance
-    
-    .PARAMETER Repository
-    The repository to remove
-    
-    .PARAMETER Force
-    Disable prompt for confirmation before removal
-    
-    .EXAMPLE
-    Remove-NexusRepository -Repository ProdNuGet
-    .EXAMPLE
-    Remove-NexusRepository -Repository MavenReleases -Force()
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Remove-NexusRepository/', SupportsShouldProcess, ConfirmImpact = 'High')]
-    Param(
-        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
-        [Alias('Name')]
-        [ArgumentCompleter( {
-                param($command, $WordToComplete, $CommandAst, $FakeBoundParams)
-                $repositories = (Get-NexusRepository).Name
-
-                if ($WordToComplete) {
-                    $repositories.Where{ $_ -match "^$WordToComplete" }
-                }
-                else {
-                    $repositories
-                }
-            })]
-        [String[]]
-        $Repository,
-
-        [Parameter()]
-        [Switch]
-        $Force
-    )
-    begin {
-
-        if (-not $header) {
-            throw "Not connected to Nexus server! Run Connect-NexusServer first."
-        }
-
-        $urislug = "/service/rest/v1/repositories"
-    }
-    process {
-
-        $Repository | Foreach-Object {
-            $Uri = $urislug + "/$_"
-
-            try {
-
-                if ($Force -and -not $Confirm) {
-                    $ConfirmPreference = 'None'
-                    if ($PSCmdlet.ShouldProcess("$_", "Remove Repository")) {
-                        $result = Invoke-Nexus -UriSlug $Uri -Method 'DELETE' -ErrorAction Stop
-                        [pscustomobject]@{
-                            Status     = 'Success'
-                            Repository = $_
-                        }
-                    }
-                }
-                else {
-                    if ($PSCmdlet.ShouldProcess("$_", "Remove Repository")) {
-                        $result = Invoke-Nexus -UriSlug $Uri -Method 'DELETE' -ErrorAction Stop
-                        [pscustomobject]@{
-                            Status     = 'Success'
-                            Repository = $_
-                            Timestamp  = $result.date
-                        }
-                    }
-                }
-            }
-
-            catch {
-                $_.exception.message
-            }
-        }
-    }
-}
-
-function Remove-NexusRepositoryFolder {
-    <#
-    .SYNOPSIS
-    Removes a given folder from a repository from the Nexus instance
-
-    .PARAMETER RepositoryName
-    The repository to remove from
-
-    .PARAMETER Name
-    The name of the folder to remove
-
-    .EXAMPLE
-    Remove-NexusRepositoryFolder -RepositoryName MyNuGetRepo -Name 'v3'
-    # Removes the v3 folder in the MyNuGetRepo repository
-    #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$RepositoryName,
-
-        [Parameter(Mandatory)]
-        [string]$Name
-    )
-    end {
-        if (-not $header) {
-            throw "Not connected to Nexus server! Run Connect-NexusServer first."
-        }
-
-        $ApiParameters = @{
-            UriSlug = "/service/extdirect"
-            Method  = "POST"
-            Body    = @{
-                action = "coreui_Component"
-                method =  "deleteFolder"
-                data   = @(
-                    $Name,
-                    $RepositoryName
-                )
-                type   = "rpc"
-                tid    = Get-Random -Minimum 1 -Maximum 100
-            }
-            AdditionalHeaders = @{
-                "X-Nexus-UI" = "true"
-            }
-        }
-
-        $Result = Invoke-Nexus @ApiParameters
-
-        if (-not $Result.result.success) {
-            throw "Failed to delete folder: $($Result.result.message)"
-        }
-    }
-}
-
-function New-NexusNugetHostedRepository {
-    <#
-    .SYNOPSIS
-    Creates a new NuGet Hosted repository
-    
-    .DESCRIPTION
-    Creates a new NuGet Hosted repository
-    
-    .PARAMETER Name
-    The name of the repository
-    
-    .PARAMETER CleanupPolicy
-    The Cleanup Policies to apply to the repository
-    
-    
-    .PARAMETER Online
-    Marks the repository to accept incoming requests
-    
-    .PARAMETER BlobStoreName
-    Blob store to use to store NuGet packages
-    
-    .PARAMETER StrictContentValidation
-    Validate that all content uploaded to this repository is of a MIME type appropriate for the repository format
-    
-    .PARAMETER DeploymentPolicy
-    Controls if deployments of and updates to artifacts are allowed
-    
-    .PARAMETER HasProprietaryComponents
-    Components in this repository count as proprietary for namespace conflict attacks (requires Sonatype Nexus Firewall)
-    
-    .EXAMPLE
-    New-NexusNugetHostedRepository -Name NugetHostedTest -DeploymentPolicy Allow
-    .EXAMPLE
-    $RepoParams = @{
-        Name = MyNuGetRepo
-        CleanupPolicy = '90 Days'
-        DeploymentPolicy = 'Allow'
-        UseStrictContentValidation = $true
-    }
-    
-    New-NexusNugetHostedRepository @RepoParams
-    .NOTES
-    General notes
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/New-NexusNugetHostedRepository/')]
-    Param(
-        [Parameter(Mandatory)]
-        [String]
-        $Name,
-
-        [Parameter()]
-        [String]
-        $CleanupPolicy,
-
-        [Parameter()]
-        [Switch]
-        $Online = $true,
-
-        [Parameter()]
-        [String]
-        $BlobStoreName = 'default',
-
-        [Parameter()]
-        [ValidateSet('True', 'False')]
-        [String]
-        $UseStrictContentValidation = 'True',
-
-        [Parameter()]
-        [ValidateSet('Allow', 'Deny', 'Allow_Once')]
-        [String]
-        $DeploymentPolicy,
-
-        [Parameter()]
-        [Switch]
-        $HasProprietaryComponents
-    )
-
-    begin {
-
-        if (-not $header) {
-            throw "Not connected to Nexus server! Run Connect-NexusServer first."
-        }
-
-        $urislug = "/service/rest/v1/repositories"
-
-    }
-
-    process {
-        $formatUrl = $urislug + '/nuget'
-
-        $FullUrlSlug = $formatUrl + '/hosted'
-
-
-        $body = @{
-            name    = $Name
-            online  = [bool]$Online
-            storage = @{
-                blobStoreName               = $BlobStoreName
-                strictContentTypeValidation = $UseStrictContentValidation
-                writePolicy                 = $DeploymentPolicy
-            }
-            cleanup = @{
-                policyNames = @($CleanupPolicy)
-            }
-        }
-
-        if ($HasProprietaryComponents) {
-            $Prop = @{
-                proprietaryComponents = 'True'
-            }
-    
-            $Body.Add('component', $Prop)
-        }
-
-        Write-Verbose $($Body | ConvertTo-Json)
-        $null = Invoke-Nexus -UriSlug $FullUrlSlug -Body $Body -Method POST
-
-    }
-}
-
-function New-NexusRawHostedRepository {
-    <#
-    .SYNOPSIS
-    Creates a new Raw Hosted repository
-    
-    .DESCRIPTION
-    Creates a new Raw Hosted repository
-    
-    .PARAMETER Name
-    The Name of the repository to create
-    
-    .PARAMETER Online
-    Mark the repository as Online. Defaults to True
-    
-    .PARAMETER BlobStore
-    The blob store to attach the repository too. Defaults to 'default'
-    
-    .PARAMETER UseStrictContentTypeValidation
-    Validate that all content uploaded to this repository is of a MIME type appropriate for the repository format
-    
-    .PARAMETER DeploymentPolicy
-    Controls if deployments of and updates to artifacts are allowed
-    
-    .PARAMETER CleanupPolicy
-    Components that match any of the Applied policies will be deleted
-    
-    .PARAMETER HasProprietaryComponents
-    Components in this repository count as proprietary for namespace conflict attacks (requires Sonatype Nexus Firewall)
-    
-    .PARAMETER ContentDisposition
-    Add Content-Disposition header as 'Attachment' to disable some content from being inline in a browser.
-    
-    .EXAMPLE
-    New-NexusRawHostedRepository -Name BinaryArtifacts -ContentDisposition Attachment
-    .EXAMPLE
-    $RepoParams = @{
-        Name = 'BinaryArtifacts'
-        Online = $true
-        UseStrictContentTypeValidation = $true
-        DeploymentPolicy = 'Allow'
-        CleanupPolicy = '90Days',
-        BlobStore = 'AmazonS3Bucket'
-    }
-    New-NexusRawHostedRepository @RepoParams
-    
-    .NOTES
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/New-NexusRawHostedRepository/', DefaultParameterSetname = "Default")]
-    Param(
-        [Parameter(Mandatory)]
-        [String]
-        $Name,
-
-        [Parameter()]
-        [Switch]
-        $Online = $true,
-
-        [Parameter()]
-        [String]
-        $BlobStore = 'default',
-
-        [Parameter()]
-        [Switch]
-        $UseStrictContentTypeValidation,
-
-        [Parameter()]
-        [ValidateSet('Allow', 'Deny', 'Allow_Once')]
-        [String]
-        $DeploymentPolicy = 'Allow_Once',
-
-        [Parameter()]
-        [String]
-        $CleanupPolicy,
-
-        [Parameter()]
-        [Switch]
-        $HasProprietaryComponents,
-
-        [Parameter(Mandatory)]
-        [ValidateSet('Inline', 'Attachment')]
-        [String]
-        $ContentDisposition
-    )
-
-    begin {
-
-        if (-not $header) {
-            throw "Not connected to Nexus server! Run Connect-NexusServer first."
-        }
-
-        $urislug = "/service/rest/v1/repositories/raw/hosted"
-
-    }
-
-    process {
-
-        $Body = @{
-            name      = $Name
-            online    = [bool]$Online
-            storage   = @{
-                blobStoreName               = $BlobStore
-                strictContentTypeValidation = [bool]$UseStrictContentTypeValidation
-                writePolicy                 = $DeploymentPolicy.ToLower()
-            }
-            cleanup   = @{
-                policyNames = @($CleanupPolicy)
-            }
-            component = @{
-                proprietaryComponents = [bool]$HasProprietaryComponents
-            }
-            raw       = @{
-                contentDisposition = $ContentDisposition.ToUpper()
-            }
-        }
-
-        Write-Verbose $($Body | ConvertTo-Json)
-        $null = Invoke-Nexus -UriSlug $urislug -Body $Body -Method POST
-
-
-    }
-}
-
-function Get-NexusRealm {
-    <#
-    .SYNOPSIS
-    Gets Nexus Realm information
-    
-    .DESCRIPTION
-    Gets Nexus Realm information
-    
-    .PARAMETER Active
-    Returns only active realms
-    
-    .EXAMPLE
-    Get-NexusRealm
-    .EXAMPLE
-    Get-NexusRealm -Active
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Get-NexusRealm/')]
-    Param(
-        [Parameter()]
-        [Switch]
-        $Active
-    )
-
-    begin {
-
-        if (-not $header) {
-            throw "Not connected to Nexus server! Run Connect-NexusServer first."
-        }
-
-        
-        $urislug = "/service/rest/v1/security/realms/available"
-        
-
-    }
-
-    process {
-
-        if ($Active) {
-            $current = Invoke-Nexus -UriSlug $urislug -Method 'GET'
-            $urislug = '/service/rest/v1/security/realms/active'
-            $Activated = Invoke-Nexus -UriSlug $urislug -Method 'GET'
-            $current | Where-Object { $_.Id -in $Activated }
-        }
-        else {
-            $result = Invoke-Nexus -UriSlug $urislug -Method 'GET' 
-
-            $result | Foreach-Object {
-                [pscustomobject]@{
-                    Id   = $_.id
-                    Name = $_.name
-                }
-            }
-        }
-    }
-}
-
-function Enable-NexusRealm {
-    <#
-    .SYNOPSIS
-    Enable realms in Nexus
-    
-    .DESCRIPTION
-    Enable realms in Nexus
-    
-    .PARAMETER Realm
-    The realms you wish to activate
-    
-    .EXAMPLE
-    Enable-NexusRealm -Realm 'NuGet Api-Key Realm', 'Rut Auth Realm'
-    .EXAMPLE
-    Enable-NexusRealm -Realm 'LDAP Realm'
-    
-    .NOTES
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Enable-NexusRealm/')]
-    Param(
-        [Parameter(Mandatory)]
-        [ArgumentCompleter( {
-                param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
-
-                $r = (Get-NexusRealm).name
-
-                if ($WordToComplete) {
-                    $r.Where($_ -match "^$WordToComplete")
-                }
-                else {
-                    $r
-                }
-            }
-        )]
-        [String[]]
-        $Realm
-    )
-
-    begin {
-
-        if (-not $header) {
-            throw "Not connected to Nexus server! Run Connect-NexusServer first."
-        }
-
-        $urislug = "/service/rest/v1/security/realms/active"
-
-    }
-
-    process {
-
-        $collection = @()
-
-        Get-NexusRealm -Active | ForEach-Object { $collection += $_.id }
-
-        $Realm | Foreach-Object {
-
-            switch ($_) {
-                'Conan Bearer Token Realm' { $id = 'org.sonatype.repository.conan.internal.security.token.ConanTokenRealm' }
-                'Default Role Realm' { $id = 'DefaultRole' }
-                'Docker Bearer Token Realm' { $id = 'DockerToken' }
-                'LDAP Realm' { $id = 'LdapRealm' }
-                'Local Authentication Realm' { $id = 'NexusAuthenticatingRealm' }
-                'Local Authorizing Realm' { $id = 'NexusAuthorizingRealm' }
-                'npm Bearer Token Realm' { $id = 'NpmToken' }
-                'NuGet API-Key Realm' { $id = 'NuGetApiKey' }
-                'Rut Auth Realm' { $id = 'rutauth-realm' }
-            }
-
-            $collection += $id
-    
-        }
-
-        $body = $collection
-
-        Write-Verbose $($Body | ConvertTo-Json)
-        $null = Invoke-Nexus -UriSlug $urislug -BodyAsArray $Body -Method PUT
-
-    }
-}
-
-function Get-NexusNuGetApiKey {
-    <#
-    .SYNOPSIS
-    Retrieves the NuGet API key of the given user credential
-    
-    .DESCRIPTION
-    Retrieves the NuGet API key of the given user credential
-    
-    .PARAMETER Credential
-    The Nexus User whose API key you wish to retrieve
-    
-    .EXAMPLE
-    Get-NexusNugetApiKey -Credential (Get-Credential)
-    
-    .NOTES
-    
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/TreasureChest/Security/API%20Key/Get-NexusNuGetApiKey/')]
-    Param(
-        [Parameter(Mandatory)]
-        [PSCredential]
-        $Credential
-    )
-
-    process {
-        $token = Get-NexusUserToken -Credential $Credential
-        $base64Token = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($token))
-        $UriBase = "$($protocol)://$($Hostname):$($port)"
-        
-        $slug = "/service/rest/internal/nuget-api-key?authToken=$base64Token&_dc=$(([DateTime]::ParseExact("01/02/0001 21:08:29", "MM/dd/yyyy HH:mm:ss",$null)).Ticks)"
-
-        $uri = $UriBase + $slug
-
-        Invoke-RestMethod -Uri $uri -Method GET -ContentType 'application/json' -Headers $header
-
-    }
-}
-
-function New-NexusRawComponent {
-    <#
-    .SYNOPSIS
-    Uploads a file to a Raw repository
-    
-    .DESCRIPTION
-    Uploads a file to a Raw repository
-    
-    .PARAMETER RepositoryName
-    The Raw repository to upload too
-    
-    .PARAMETER File
-    The file to upload
-    
-    .PARAMETER Directory
-    The directory to store the file on the repo
-    
-    .PARAMETER Name
-    The name of the file stored into the repo. Can be different than the file name being uploaded.
-    
-    .EXAMPLE
-    New-NexusRawComponent -RepositoryName GeneralFiles -File C:\temp\service.1234.log
-    .EXAMPLE
-    New-NexusRawComponent -RepositoryName GeneralFiles -File C:\temp\service.log -Directory logs
-    .EXAMPLE
-    New-NexusRawComponent -RepositoryName GeneralFile -File C:\temp\service.log -Directory logs -Name service.99999.log
-    
-    .NOTES
-    #>
-    [CmdletBinding()]
-    Param(
-        [Parameter(Mandatory)]
-        [String]
-        $RepositoryName,
-
-        [Parameter(Mandatory)]
-        [String]
-        $File,
-
-        [Parameter()]
-        [String]
-        $Directory,
-
-        [Parameter()]
-        [String]
-        $Name = (Split-Path -Leaf $File)
-    )
-
-    process {
-
-        if (-not $Directory) {
-            $urislug = "/repository/$($RepositoryName)/$($Name)"
-        }
-        else {
-            $urislug = "/repository/$($RepositoryName)/$($Directory)/$($Name)"
-
-        }
-        $UriBase = "$($protocol)://$($Hostname):$($port)"
-        $Uri = $UriBase + $UriSlug
-
-
-        $params = @{
-            Uri             = $Uri
-            Method          = 'PUT'
-            ContentType     = 'text/plain'
-            InFile          = $File
-            Headers         = $header
-            UseBasicParsing = $true
-        }
-
-        $null = Invoke-WebRequest @params        
-    }
-}
-
-function Get-NexusUser {
-    <#
-    .SYNOPSIS
-    Retrieve a list of users. Note if the source is not 'default' the response is limited to 100 users.
-    
-    .DESCRIPTION
-    Retrieve a list of users. Note if the source is not 'default' the response is limited to 100 users.
-    
-    .PARAMETER User
-    The username to fetch
-    
-    .PARAMETER Source
-    The source to fetch from
-    
-    .EXAMPLE
-    Get-NexusUser
-    
-    .EXAMPLE
-    Get-NexusUser -User bob
-
-    .EXAMPLE
-    Get-NexusUser -Source default
-
-    .NOTES
-    
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/NexuShell/Security/User/Get-NexusUser/')]
-    Param(
-        [Parameter()]
-        [String]
-        $User,
-
-        [Parameter()]
-        [String]
-        $Source
-    )
-
-    begin {
-        if (-not $header) {
-            throw "Not connected to Nexus server! Run Connect-NexusServer first."
-        }
-    }
-
-    process {
-        $urislug = '/service/rest/v1/security/users'
-
-        if ($User) {
-            $urislug = "/service/rest/v1/security/users?userId=$User"
-        }
-
-        if ($Source) {
-            $urislug = "/service/rest/v1/security/users?source=$Source"
-        }
-
-        if ($User -and $Source) {
-            $urislug = "/service/rest/v1/security/users?userId=$User&source=$Source"
-        }
-
-        $result = Invoke-Nexus -Urislug $urislug -Method GET
-
-        $result | Foreach-Object {
-            [pscustomobject]@{
-                Username      = $_.userId
-                FirstName     = $_.firstName
-                LastName      = $_.lastName
-                EmailAddress  = $_.emailAddress
-                Source        = $_.source
-                Status        = $_.status
-                ReadOnly      = $_.readOnly
-                Roles         = $_.roles
-                ExternalRoles = $_.externalRoles
-            }
-        }
-    }
-}
-
-function Get-NexusRole {
-    <#
-    .SYNOPSIS
-    Retrieve Nexus Role information
-    
-    .DESCRIPTION
-    Retrieve Nexus Role information
-    
-    .PARAMETER Role
-    The role to retrieve
-    
-    .PARAMETER Source
-    The source to retrieve from
-    
-    .EXAMPLE
-    Get-NexusRole
-
-    .EXAMPLE
-    Get-NexusRole -Role ExampleRole
-    
-    .NOTES
-    
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/NexuShell/Security/Roles/Get-NexusRole/')]
-    Param(
-        [Parameter()]
-        [Alias('id')]
-        [String]
-        $Role,
-
-        [Parameter()]
-        [String]
-        $Source
-    )
-    begin { if (-not $header) { throw 'Not connected to Nexus server! Run Connect-NexusServer first.' } }
-    process {
-        
-        $urislug = '/service/rest/v1/security/roles'
-
-        if ($Role) {
-            $urislug = "/service/rest/v1/security/roles/$Role"
-        }
-
-        if ($Source) {
-            $urislug = "/service/rest/v1/security/roles?source=$Source"
-        }
-
-        if ($Role -and $Source) {
-            $urislug = "/service/rest/v1/security/roles/$($Role)?source=$Source"
-        }
-
-        Write-verbose $urislug
-        $result = Invoke-Nexus -Urislug $urislug -Method GET
-
-        $result | ForEach-Object {
-            [PSCustomObject]@{
-                Id          = $_.id
-                Source      = $_.source
-                Name        = $_.name
-                Description = $_.description
-                Privileges  = $_.privileges
-                Roles       = $_.roles
-            }
-        }
-    }
-}
-
-function New-NexusUser {
-    <#
-    .SYNOPSIS
-    Create a new user in the default source.
-    
-    .DESCRIPTION
-    Create a new user in the default source.
-    
-    .PARAMETER Username
-    The userid which is required for login. This value cannot be changed.
-    
-    .PARAMETER Password
-    The password for the new user.
-    
-    .PARAMETER FirstName
-    The first name of the user.
-    
-    .PARAMETER LastName
-    The last name of the user.
-    
-    .PARAMETER EmailAddress
-    The email address associated with the user.
-    
-    .PARAMETER Status
-    The user's status, e.g. active or disabled.
-    
-    .PARAMETER Roles
-    The roles which the user has been assigned within Nexus.
-    
-    .EXAMPLE
-    $params = @{
-        Username = 'jimmy'
-        Password = ("sausage" | ConvertTo-SecureString -AsPlainText -Force)
-        FirstName = 'Jimmy'
-        LastName = 'Dean'
-        EmailAddress = 'sausageking@jimmydean.com'
-        Status = Active
-        Roles = 'nx-admin'
-    }
-
-    New-NexusUser @params
-    
-    .NOTES
-    
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/NexuShell/Security/User/New-NexusUser/')]
-    Param(
-        [Parameter(Mandatory)]
-        [String]
-        $Username,
-
-        [Parameter(Mandatory)]
-        [SecureString]
-        $Password,
-
-        [Parameter(Mandatory)]
-        [String]
-        $FirstName,
-
-        [Parameter(Mandatory)]
-        [String]
-        $LastName,
-
-        [Parameter(Mandatory)]
-        [String]
-        $EmailAddress,
-
-        [Parameter(Mandatory)]
-        [ValidateSet('Active', 'Locked', 'Disabled', 'ChangePassword')]
-        [String]
-        $Status,
-
-        [Parameter(Mandatory)]
-        [ArgumentCompleter({
-                param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
-            (Get-NexusRole).Id.Where{ $_ -like "*$WordToComplete*" }
-            })]
-        [String[]]
-        $Roles
-    )
-
-    process {
-        $urislug = '/service/rest/v1/security/users'
-
-        $Body = @{
-            userId       = $Username
-            firstName    = $FirstName
-            lastName     = $LastName
-            emailAddress = $EmailAddress
-            password     = [System.Net.NetworkCredential]::new($Username, $Password).Password
-            status       = $Status
-            roles        = $Roles
-        }
-
-        Write-Verbose ($Body | ConvertTo-Json)
-        $result = Invoke-Nexus -Urislug $urislug -Body $Body -Method POST
-
-        [pscustomObject]@{
-            Username      = $result.userId
-            FirstName     = $result.firstName
-            LastName      = $result.lastName
-            EmailAddress  = $result.emailAddress
-            Source        = $result.source
-            Status        = $result.status
-            Roles         = $result.roles
-            ExternalRoles = $result.externalRoles
-        }
-    }
-}
-
-function New-NexusRole {
-    <#
-    .SYNOPSIS
-    Creates a new Nexus Role
-    
-    .DESCRIPTION
-    Creates a new Nexus Role
-    
-    .PARAMETER Id
-    The ID of the role
-    
-    .PARAMETER Name
-    The friendly name of the role
-    
-    .PARAMETER Description
-    A description of the role
-    
-    .PARAMETER Privileges
-    Included privileges for the role
-    
-    .PARAMETER Roles
-    Included nested roles
-    
-    .EXAMPLE
-    New-NexusRole -Id SamepleRole
-
-    .EXAMPLE
-    New-NexusRole -Id SampleRole -Description "A sample role" -Privileges nx-all
-    
-    .NOTES
-    
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/NexuShell/Security/Roles/New-NexusRole/')]
-    Param(
-        [Parameter(Mandatory)]
-        [String]
-        $Id,
-
-        [Parameter(Mandatory)]
-        [String]
-        $Name,
-
-        [Parameter()]
-        [String]
-        $Description,
-
-        [Parameter(Mandatory)]
-        [String[]]
-        $Privileges,
-
-        [Parameter()]
-        [String[]]
-        $Roles
-    )
-
-    begin {
-        if (-not $header) { 
-            throw 'Not connected to Nexus server! Run Connect-NexusServer first.' 
-        } 
-    }
-    
-    process {
-
-        $urislug = '/service/rest/v1/security/roles'
-        $Body = @{
-            
-            id          = $Id
-            name        = $Name
-            description = $Description
-            privileges  = @($Privileges)
-            roles       = $Roles
-            
-        }
-
-        Invoke-Nexus -Urislug $urislug -Body $Body -Method POST | Foreach-Object {
-            [PSCustomobject]@{
-                Id          = $_.id
-                Name        = $_.name
-                Description = $_.description
-                Privileges  = $_.privileges
-                Roles       = $_.roles
-            }
-        }
-
-    }
-}
-
-function Set-NexusAnonymousAuth {
-    <#
-    .SYNOPSIS
-    Turns Anonymous Authentication on or off in Nexus
-    
-    .DESCRIPTION
-    Turns Anonymous Authentication on or off in Nexus
-    
-    .PARAMETER Enabled
-    Turns on Anonymous Auth
-    
-    .PARAMETER Disabled
-    Turns off Anonymous Auth
-    
-    .EXAMPLE
-    Set-NexusAnonymousAuth -Enabled
-    #>
-    [CmdletBinding(HelpUri = 'https://steviecoaster.dev/NexuShell/Set-NexusAnonymousAuth/')]
-    Param(
-        [Parameter()]
-        [Switch]
-        $Enabled,
-
-        [Parameter()]
-        [Switch]
-        $Disabled
-    )
-
-    begin {
-
-        if (-not $header) {
-            throw "Not connected to Nexus server! Run Connect-NexusServer first."
-        }
-
-        $urislug = "/service/rest/v1/security/anonymous"
-    }
-
-    process {
-
-        Switch ($true) {
-
-            $Enabled {
-                $Body = @{
-                    enabled   = $true
-                    userId    = 'anonymous'
-                    realmName = 'NexusAuthorizingRealm'
-                }
-
-                Invoke-Nexus -UriSlug $urislug -Body $Body -Method 'PUT'
-            }
-
-            $Disabled {
-                $Body = @{
-                    enabled   = $false
-                    userId    = 'anonymous'
-                    realmName = 'NexusAuthorizingRealm'
-                }
-
-                Invoke-Nexus -UriSlug $urislug -Body $Body -Method 'PUT'
-
-            }
-        }
+    try {
+        $scriptName = [GUID]::NewGuid().ToString()
+        New-NexusScript -Name $scriptName -Content $Script -Type "groovy"
+        Start-NexusScript -Name $scriptName
+    } finally {
+        Remove-NexusScript -Name $scriptName
     }
 }
 
@@ -1767,6 +540,9 @@ function Add-DatabaseUserAndRoles {
 USE [master]
 IF EXISTS(SELECT * FROM msdb.sys.syslogins WHERE UPPER([name]) = UPPER('$Username'))
 BEGIN
+DECLARE @kill varchar(8000) = '';
+SELECT @kill = @kill + 'kill ' + CONVERT(varchar(5), session_id) + ';' FROM sys.dm_exec_sessions WHERE UPPER([login_name]) = UPPER('$Username')
+EXEC(@kill);
 DROP LOGIN [$Username]
 END
 
@@ -1800,21 +576,6 @@ ALTER ROLE [$DatabaseRole] ADD MEMBER [$Username]
     $Connection.Close()
 }
 
-function New-CcmSalt {
-    [CmdletBinding()]
-    param(
-        [Parameter()]
-        [int]
-        $MinLength = 32,
-        [Parameter()]
-        [int]
-        $SpecialCharCount = 12
-    )
-    process {
-        [System.Web.Security.Membership]::GeneratePassword($MinLength, $SpecialCharCount)
-    }
-}
-
 function Stop-CCMService {
     #Stop Central Management components
     Stop-Service chocolatey-central-management
@@ -1827,7 +588,7 @@ function Remove-CcmBinding {
 
     process {
         Write-Verbose "Removing existing bindings"
-        netsh http delete sslcert ipport=0.0.0.0:443
+        netsh http delete sslcert ipport=0.0.0.0:443 | Write-Verbose
     }
 }
 
@@ -1839,7 +600,7 @@ function New-CcmBinding {
     Write-Verbose "Adding new binding https://${SubjectWithoutCn} to Chocolatey Central Management"
 
     $guid = [Guid]::NewGuid().ToString("B")
-    netsh http add sslcert ipport=0.0.0.0:443 certhash=$Thumbprint certstorename=TrustedPeople appid="$guid"
+    netsh http add sslcert ipport=0.0.0.0:443 certhash=$Thumbprint certstorename=TrustedPeople appid="$guid" | Write-Verbose
     Get-WebBinding -Name ChocolateyCentralManagement | Remove-WebBinding
     New-WebBinding -Name ChocolateyCentralManagement -Protocol https -Port 443 -SslFlags 0 -IpAddress '*'
 }
@@ -1877,6 +638,190 @@ function Set-CcmCertificate {
     }
 }
 
+function Get-CcmAuthenticatedSession {
+    [CmdletBinding()]
+    [OutputType([Microsoft.PowerShell.Commands.WebRequestSession])]
+    param(
+        # The CCM server to operate against
+        [string]$CcmEndpoint = "http://localhost",
+
+        # The current credential for the account to change
+        [System.Net.NetworkCredential]$Credential = @{
+            userName = "ccmadmin"
+            password = "123qwe"
+        }
+    )
+    end {
+        # Wait-CCM -Url $CcmEndpoint
+
+        Write-Verbose "Authenticating to CCM Web at '$($CcmEndpoint)'"
+        $methodParams = @{
+            Uri             = "$CcmEndpoint/Account/Login"
+            Body            = @{
+                usernameOrEmailAddress = $Credential.Username
+                password               = $Credential.Password
+            }
+            ContentType     = 'application/x-www-form-urlencoded'
+            Method          = "POST"
+            SessionVariable = "Session"
+        }
+        try {
+            $null = Invoke-WebRequest @methodParams -UseBasicParsing -ErrorAction Stop
+        } catch {
+            Write-Error "Failed to authenticate with '$($CcmEndpoint)': $($_)"
+        }
+
+        $Session
+    }
+}
+
+function Set-CcmAccountPassword {
+    <#
+        .Synopsis
+            Sets the password for a current CCM user
+
+        .Notes
+            Relies on the account not being set to reset-password-on-next-login, and not locked out.
+    #>
+    [CmdletBinding()]
+    param(
+        # The CCM server to operate against
+        [string]$CcmEndpoint = "http://localhost",
+
+        # The current credential for the account to change
+        [System.Net.NetworkCredential]$Credential = @{
+            userName = "ccmadmin"
+            password = "123qwe"
+        },
+
+        # A Valid ConnectionString for the CCM Database
+        [string]$ConnectionString,
+
+        # The new password to set
+        [Parameter(Mandatory)]
+        [SecureString]$NewPassword
+    )
+    $NewCredential = [System.Net.NetworkCredential]::new($Credential.UserName, $NewPassword)
+
+    if ($ConnectionString) {
+        try {
+            $Connection = [System.Data.SQLClient.SqlConnection]::new($ConnectionString)
+            $Connection.Open()
+            $Query = [System.Data.SQLClient.SqlCommand]::new(
+                "UPDATE [dbo].[AbpUsers] SET ShouldChangePasswordOnNextLogin = 0, IsLockoutEnabled = 0 WHERE Name = @UserName and TenantId = '1'",
+                $Connection
+            )
+            $null = $Query.Parameters.Add(
+                [System.Data.SqlClient.SqlParameter]::new('UserName', $Credential.UserName)
+            )
+            $QueryResult = $Query.BeginExecuteReader()
+            while (-not $QueryResult.isCompleted) {
+                Write-Verbose "Waiting for SQL Query to return"
+                Start-Sleep -Milliseconds 100
+            }
+            if ($QueryResult.isCompleted -and -not $QueryResult.IsFaulted) {
+                Write-Verbose "Unset ShouldChangePasswordOnNextLogin for '$($Credential.Username)'"
+            }
+        } finally {
+            $Query.Dispose()
+            $Connection.Close()
+            $Connection.Dispose()
+        }
+    }
+
+    $Session = Get-CcmAuthenticatedSession -CcmEndpoint $CcmEndpoint -Credential $Credential
+
+    Write-Verbose "Changing password for account '$($Credential.UserName)'"
+    $resetParams = @{
+        Uri         = "$CcmEndpoint/api/services/app/Profile/ChangePassword"
+        Body        = @{
+            CurrentPassword   = $Credential.Password
+            NewPassword       = $NewCredential.Password
+            NewPasswordRepeat = $NewCredential.Password
+        } | ConvertTo-Json
+        ContentType = 'application/json'
+        Method      = "POST"
+        WebSession  = $Session
+    }
+    $Result = Invoke-RestMethod @resetParams -UseBasicParsing
+
+    if ($Result.Success -eq 'true') {
+        Write-Verbose "Password for account '$($Credential.UserName)' was changed successfully."
+    }
+}
+
+function Update-CcmSettings {
+    [CmdletBinding()]
+    param(
+        # The CCM server to operate against
+        [string]$CcmEndpoint = "http://localhost",
+
+        # The current credential for the admin account
+        [System.Net.NetworkCredential]$Credential = @{
+            userName = "ccmadmin"
+            password = "123qwe"
+        },
+
+        # A hashtable of settings to update. Only works two levels deep.
+        [hashtable]$Settings
+    )
+    end {
+        $Session = Get-CcmAuthenticatedSession -CcmEndpoint $CcmEndpoint -Credential $Credential
+
+        # Get Current Settings
+        $ServerSettings = (Invoke-RestMethod -Uri $CcmEndpoint/api/services/app/TenantSettings/GetAllSettings -WebSession $Session).result
+
+        # Overwrite Settings via Hashtable
+        foreach ($Heading in $Settings.Keys) {
+            foreach ($Setting in $Settings[$Heading].Keys) {
+                $ServerSettings.$Heading.$Setting = $Settings.$Heading.$Setting
+            }
+        }
+
+        # PUT new Settings to CCM
+        $SettingChange = @{
+            Uri         = "$CcmEndpoint/api/services/app/TenantSettings/UpdateAllSettings"
+            Method      = "PUT"
+            ContentType = 'application/json; charset=utf-8'
+            Body        = $ServerSettings | ConvertTo-Json
+            WebSession  = $Session
+        }
+        $Result = Invoke-RestMethod @SettingChange -ErrorAction Stop
+
+        if ($Result.success) {
+            Write-Verbose "Updated Settings successfully."
+        }
+    }
+}
+
+function Set-CcmEncryptionPassword {
+    [CmdletBinding()]
+    param(
+        # The CCM server to operate against
+        [string]$CcmEndpoint = "http://localhost",
+
+        # The current credential for the account to change
+        [System.Net.NetworkCredential]$Credential = @{
+            userName = "ccmadmin"
+            password = "123qwe"
+        },
+
+        # New encryption password to set
+        [SecureString]$NewPassword,
+
+        # Previous encryption password (unset on fresh install)
+        [SecureString]$OldPassword = [SecureString]::new()
+    )
+    end {
+        Update-CcmSettings -CcmEndpoint $CcmEndpoint -Credential $Credential -Settings @{
+            encryption = @{
+                oldPassphrase     = $OldPassword.ToPlainText()
+                passphrase        = $NewPassword.ToPlainText()
+                confirmPassphrase = $NewPassword.ToPlainText()
+            }
+        }
+    }
+}
 #endregion
 
 #region Jenkins Setup
@@ -2094,7 +1039,9 @@ function Get-ChocoEnvironmentProperty {
         [switch]$AsPlainText
     )
     begin {
-        $Content = Import-Clixml -Path "$env:SystemDrive\choco-setup\clixml\chocolatey-for-business.xml"
+        if (Test-Path "$env:SystemDrive\choco-setup\clixml\chocolatey-for-business.xml") {
+            $Content = Import-Clixml -Path "$env:SystemDrive\choco-setup\clixml\chocolatey-for-business.xml"
+        }
     }
     process {
         if ($Name) {
@@ -2214,6 +1161,28 @@ function Set-JenkinsCertificate {
         Restart-Service Jenkins
     }
 }
+
+function Update-JenkinsJobParameters {
+    param(
+        [string]$JobsPath = "C:\ProgramData\Jenkins\.jenkins\jobs",
+
+        [hashtable]$Replacement = @{}
+    )
+    process {
+        foreach ($Job in Get-ChildItem $JobsPath -Filter config.xml -Recurse) {
+            Write-Verbose "Updating parameters in '$($Job.DirectoryName)'"
+            [xml]$Config = (Get-Content $Job.FullName) -replace "^\<\?xml version=['""]1\.1['""]","<?xml version='1.0'"
+
+            foreach ($Node in $Config.SelectSingleNode("//parameterDefinitions").ChildNodes) {
+                if ($Node.name -in $Replacement.Keys) {
+                    $Node.defaultValue = $Replacement[$Node.name]
+                }
+            }
+
+            $Config.Save($Job.FullName)
+        }
+    }
+}
 #endregion
 
 #region README functions
@@ -2244,84 +1213,80 @@ The host name of the C4B instance.
             # CCM Values
             "{{ ccm_fqdn .*?}}" = ([uri]$Data.CCMWebPortal).DnsSafeHost
             "{{ ccm_port .*?}}"     = ([uri]$Data.CCMWebPortal).Port
-            "{{ ccm_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.DefaultPwToBeChanged)
+            "{{ ccm_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.CCMCredential.Password.ToPlainText())
 
             # Chocolatey Configuration Values
-            "{{ ccm_encryption_password .*?}}" = "Requested on first run."
-            "{{ ccm_client_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode((Get-ChocoEnvironmentProperty ClientSalt -AsPlainText))
-            "{{ ccm_service_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode((Get-ChocoEnvironmentProperty ServiceSalt -AsPlainText))
+            "{{ ccm_encryption_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.CCMEncryptionPassword.ToPlainText())
+            "{{ ccm_client_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.ClientSalt.ToPlainText())
+            "{{ ccm_service_salt .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.ServiceSalt.ToPlainText())
             "{{ chocouser_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.NexusCredential.Password.ToPlainText())
 
             # Nexus Values
             "{{ nexus_fqdn .*?}}" = ([uri]$Data.NexusUri).DnsSafeHost
             "{{ nexus_port .*?}}" = ([uri]$Data.NexusUri).Port
             "{{ nexus_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.NexusCredential.Password.ToPlainText())
-            "{{ lookup\('file', 'credentials\/nexus_apikey'\) .*?}}" = Get-ChocoEnvironmentProperty NugetApiKey -AsPlainText
+            "{{ lookup\('file', 'credentials\/nexus_apikey'\) .*?}}" = $Data.NugetApiKey.ToPlainText()
+
+            "{{ nexus_client_username .*?}}" = 'chocouser'
+            "{{ nexus_client_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.ChocoUserPassword.ToPlainText())
+
+            "{{ nexus_packager_username .*?}}" = $Data.PackageUploadCredential.Username
+            "{{ nexus_packager_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.PackageUploadCredential.Password.ToPlainText())
 
             # Jenkins Values
             "{{ jenkins_fqdn .*?}}" = ([uri]$Data.JenkinsUri).DnsSafeHost
             "{{ jenkins_port .*?}}" = ([uri]$Data.JenkinsUri).Port
             "{{ jenkins_password .*?}}" = [System.Web.HttpUtility]::HtmlEncode($Data.JenkinsCredential.Password.ToPlainText())
-
-            # Nexus Chocolatey Source Credential values
-            "{{ nexus_client_username .*?}}" = 'chocouser'
-            "{{ nexus_client_password .*?}}" = $Data.ChocoUserPassword
         }
     }
 }
 #endregion
 
-#region Agent Setup
-function Install-ChocolateyAgent {
-    [CmdletBinding()]
-    Param(
-        [Parameter()]
-        [String]
-        $Source,
-
-        [Parameter(Mandatory)]
-        [String]
-        $CentralManagementServiceUrl,
-
-        [Parameter()]
-        [String]
-        $ServiceSalt,
-
-        [Parameter()]
-        [String]
-        $ClientSalt
+function Complete-C4bSetup {
+    param(
+        [switch]$SkipBrowserLaunch
     )
+    # Setup Agent on this machine
+    if (-not (Get-Service chocolatey-agent -ErrorAction SilentlyContinue)) {
+        Invoke-Choco install chocolatey-agent --confirm
+        Invoke-Choco feature enable --name='useChocolateyCentralManagement'
+        Invoke-Choco feature enable --name='useChocolateyCentralManagementDeployments'
+    }
 
-    process {
-        if ($Source) {
-            $chocoArgs = @('install', 'chocolatey-agent', '-y', "--source='$Source'")
-            & choco @chocoArgs
-        }
-        else {
-            $chocoArgs = @('install', 'chocolatey-agent', '-y')
-            & choco @chocoArgs
-        }
-        
+    # Write readme to desktop and hand over to user
+    Write-Host 'Writing README to Desktop - this file contains login information for all C4B services.'
+    New-QuickstartReadme
 
-        $chocoArgs = @('config', 'set', 'centralManagementServiceUrl', "$CentralManagementServiceUrl")
-        & choco @chocoArgs
+    if (-not $SkipBrowserLaunch -and $Host.Name -eq 'ConsoleHost') {
+        $Message = 'The CCM, Nexus & Jenkins sites will open in your browser in 10 seconds. Press any key to skip this.'
+        $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        Write-Host $Message -NoNewline -ForegroundColor Green
+        do {
+            # wait for a key to be available:
+            if ([Console]::KeyAvailable) {
+                # read the key, and consume it so it won't
+                # be echoed to the console:
+                $keyInfo = [Console]::ReadKey($true)
+                Write-Host "`nSkipping the Opening of sites in your browser." -ForegroundColor Green
+                # exit loop
+                break
+            }
+            # write a dot and wait a second
+            Write-Host '.' -NoNewline -ForegroundColor Green
+            Start-Sleep -Seconds 1
+        } while ($Stopwatch.Elapsed.TotalSeconds -lt 10)
 
-        $chocoArgs = @('feature', 'enable', '--name="useChocolateyCentralManagement"')
-        & choco @chocoArgs
-
-        $chocoArgs = @('feature', 'enable', '--name="useChocolateyCentralManagementDeployments"')
-        & choco @chocoArgs
-
-        if ($ServiceSalt -and $ClientSalt) {
-            $chocoArgs = @('config', 'set', 'centralManagementClientCommunicationSaltAdditivePassword', "$ClientSalt")
-            & choco @chocoArgs
-
-            $chocoArgs = @('config', 'set', 'centralManagementServiceCommunicationSaltAdditivePassword', "$ServiceSalt")
-            & choco @chocoArgs
+        if (-not ($keyInfo)) {
+            Write-Host "`nOpening CCM, Nexus & Jenkins sites in your browser." -ForegroundColor Green
+            Start-Process msedge.exe @(
+                'file:///C:/Users/Public/Desktop/README.html',
+                (Get-ChocoEnvironmentProperty CCMWebPortal),
+                (Get-ChocoEnvironmentProperty NexusUri),
+                (Get-ChocoEnvironmentProperty JenkinsUri)
+            )
         }
     }
 }
-#endregion
 
 # Check for and configure FIPS enforcement, if required.
 if (

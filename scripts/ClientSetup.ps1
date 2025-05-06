@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Completes client setup for a client machine to communicate with the C4B Server.
+Completes client setup for a client machine to communicate with CCM.
 #>
 [CmdletBinding(DefaultParameterSetName = 'Default')]
 param(
@@ -9,12 +9,11 @@ param(
     [Parameter()]
     [Alias('Url')]
     [string]
-    $RepositoryUrl = 'https://{{hostname}}:8443/repository/ChocolateyInternal/index.json',
+    $RepositoryUrl = 'https://{{hostname}}/repository/ChocolateyInternal/index.json',
 
-    # The credential necessary to access the internal Nexus repository. This can
-    # be ignored if Anonymous authentication is enabled.
-    # This parameter will be necessary if your C4B server is web-enabled.
+    # The credential used to access the internal Nexus repository.
     [Parameter(Mandatory)]
+    [Alias('Credential')]
     [pscredential]
     $RepositoryCredential,
 
@@ -42,16 +41,18 @@ param(
     # Client salt value used to populate the centralManagementClientCommunicationSaltAdditivePassword
     # value in the Chocolatey config file
     [Parameter()]
+    [Alias('ClientSalt')]
     [string]
     $ClientCommunicationSalt,
 
     # Server salt value used to populate the centralManagementServiceCommunicationSaltAdditivePassword
     # value in the Chocolatey config file
     [Parameter()]
+    [Alias('ServerSalt')]
     [string]
     $ServiceCommunicationSalt,
 
-    #Install the Chocolatey Licensed Extension with right-click context menus available
+    # Install the Chocolatey Licensed Extension with right-click context menus available
     [Parameter()]
     [Switch]
     $IncludePackageTools,
@@ -62,7 +63,7 @@ param(
     [Hashtable]
     $AdditionalConfiguration,
 
-    # Allows for the toggling of additonal features that is applied after the base configuration.
+    # Allows for the toggling of additional features that is applied after the base configuration.
     # Can override base configuration with this parameter
     [Parameter()]
     [Hashtable]
@@ -82,8 +83,7 @@ param(
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
-$hostAddress = $RepositoryUrl.Split('/')[2]
-$hostName = ($hostAddress -split ':')[0]
+$hostName = ([uri]$RepositoryUrl).DnsSafeHost
 
 $params = @{
     ChocolateyVersion = $ChocolateyVersion
@@ -91,16 +91,19 @@ $params = @{
     UseNativeUnzip    = $true
 }
 
-if (-not $IgnoreProxy) {
-    if ($ProxyUrl) {
-        $proxy = [System.Net.WebProxy]::new($ProxyUrl, $true <#bypass on local#>)
-        $params.Add('ProxyUrl', $ProxyUrl)
-    }
+if (-not $IgnoreProxy -and $ProxyUrl) {
+    $Proxy = [System.Net.WebProxy]::new(
+        $ProxyUrl,
+        $true  # Bypass Local Addresses
+    )
+    $params.Add('ProxyUrl', $ProxyUrl)
 
     if ($ProxyCredential) {
+        $Proxy.Credentials = $ProxyCredential
         $params.Add('ProxyCredential', $ProxyCredential)
-        $proxy.Credentials = $ProxyCredential
-        
+    } elseif ($DefaultProxyCredential = [System.Net.CredentialCache]::DefaultCredentials) {
+        $Proxy.Credentials = $DefaultProxyCredential
+        $params.Add('ProxyCredential', $DefaultProxyCredential)
     }
 }
 
@@ -114,11 +117,12 @@ $NupkgUrl = if (-not $ChocolateyVersion) {
     $QueryUrl = (($RepositoryUrl -replace '/index\.json$'), "v3/registration/Chocolatey/index.json") -join '/'
     $Result = $webClient.DownloadString($QueryUrl) | ConvertFrom-Json
     $Result.items.items[-1].packageContent
-}
-else {
+} else {
     # Otherwise, assume the URL
     "$($RepositoryUrl -replace '/index\.json$')/v3/content/chocolatey/$($ChocolateyVersion)/chocolatey.$($ChocolateyVersion).nupkg"
 }
+
+$webClient.Proxy = if ($Proxy -and -not $Proxy.IsBypassed($NupkgUrl)) {$Proxy}
 
 # Download the NUPKG
 $NupkgPath = Join-Path $env:TEMP "$(New-Guid).zip"
@@ -126,11 +130,9 @@ $webClient.DownloadFile($NupkgUrl, $NupkgPath)
 
 # Add Parameter for ChocolateyDownloadUrl, that is the NUPKG path
 $params.Add('ChocolateyDownloadUrl', $NupkgPath)
-
-# Get the script content
-$script = $webClient.DownloadString("https://${hostAddress}/repository/choco-install/ChocolateyInstall.ps1")
-
-# Run the Chocolatey Install script with the parameters provided
+$InstallScriptUrl = $RepositoryUrl -replace '\/repository\/(?<RepositoryName>.+)\/(index.json)?$', '/repository/choco-install/ChocolateyInstall.ps1'
+$webClient.Proxy = if ($Proxy -and -not $Proxy.IsBypassed($InstallScriptUrl)) {$Proxy}
+$script = $webClient.DownloadString($InstallScriptUrl)
 & ([scriptblock]::Create($script)) @params
 
 # If FIPS is enabled, configure Chocolatey to use FIPS compliant checksums
@@ -146,23 +148,24 @@ choco config set commandExecutionTimeoutSeconds 14400
 # Nexus NuGet V3 Compatibility
 choco feature disable --name="'usePackageRepositoryOptimizations'"
 
-# Environment base Source configuration
 choco source add --name="'ChocolateyInternal'" --source="'$RepositoryUrl'" --allow-self-service --user="'$($RepositoryCredential.UserName)'" --password="'$($RepositoryCredential.GetNetworkCredential().Password)'" --priority=1
+
 choco source disable --name="'Chocolatey'"
 choco source disable --name="'chocolatey.licensed'"
 
-choco upgrade chocolatey-license -y --source="'ChocolateyInternal'"
-if (-not $IncludePackageTools) {
-    choco upgrade chocolatey.extension -y --params="'/NoContextMenu'" --source="'ChocolateyInternal'" --no-progress
-} 
-else {
-    Write-Warning "IncludePackageTools was passed. Right-Click context menus will be available for installers, .nupkg, and .nuspec file types!"
-    choco upgrade chocolatey.extension -y --source="'ChocolateyInternal'" --no-progress
-}
-choco upgrade chocolateygui -y --source="'ChocolateyInternal'" --no-progress
-choco upgrade chocolateygui.extension -y --source="'ChocolateyInternal'" --no-progress
+choco upgrade chocolatey-license --confirm --source="'ChocolateyInternal'"
+choco upgrade chocolatey.extension --confirm --source="'ChocolateyInternal'" --no-progress @(
+    if (-not $IncludePackageTools) {
+        '--params="/NoContextMenu"'
+    } else {
+        Write-Verbose "IncludePackageTools was passed. Right-Click context menus will be available for installers, .nupkg, and .nuspec file types!"
+    }
+)
 
-choco upgrade chocolatey-agent -y --source="'ChocolateyInternal'"
+choco upgrade chocolateygui --confirm --source="'ChocolateyInternal'" --no-progress
+choco upgrade chocolateygui.extension --confirm --source="'ChocolateyInternal'" --no-progress
+
+choco upgrade chocolatey-agent --confirm --source="'ChocolateyInternal'"
 
 # Chocolatey Package Upgrade Resilience
 choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"
@@ -188,20 +191,19 @@ if ($ServiceCommunicationSalt) {
 choco feature enable --name="'useChocolateyCentralManagement'"
 choco feature enable --name="'useChocolateyCentralManagementDeployments'"
 
-
 if ($AdditionalConfiguration -or $AdditionalFeatures -or $AdditionalSources -or $AdditionalPackages) {
-    Write-Host "Applying user supplied configuration" -ForegroundColor Cyan
+    Write-Host "Applying user supplied configuration"
 }
-# How we call choco from here changes as we need to be more dynamic with thingsii .
+
 if ($AdditionalConfiguration) {
-    <#
+<#
     We expect to pass in a hashtable with configuration information with the following shape:
 
     @{
-        Name = BackgroundServiceAllowedCommands 
-        Value = 'install,upgrade,uninstall'
+        BackgroundServiceAllowedCommands = 'install,upgrade,uninstall'
+        commandExecutionTimeoutSeconds = 6000
     }
-    #>
+#>
 
     $AdditionalConfiguration.GetEnumerator() | ForEach-Object {
         $Config = [System.Collections.Generic.list[string]]::new()
@@ -215,15 +217,14 @@ if ($AdditionalConfiguration) {
 }
 
 if ($AdditionalFeatures) {
-    <#
+<#
     We expect to pass in feature information as a hashtable with the following shape:
 
     @{
         useBackgroundservice = 'Enabled'
     }
-    #>
+#>
    $AdditionalFeatures.GetEnumerator() | ForEach-Object {
-
         $Feature = [System.Collections.Generic.list[string]]::new()
         $Feature.Add('feature')
 
@@ -240,13 +241,12 @@ if ($AdditionalFeatures) {
 }
 
 if ($AdditionalSources) {
-
-    <#
-    We expect a user to pass in a hashtable with source information with the folllowing shape:
+<#
+    We expect a user to pass in a hashtable with source information with the following shape:
     @{
         Name = 'MySource'
         Source = 'https://nexus.fabrikam.com/repository/MyChocolateySource'
-        #Optional items
+        # Optional items
         Credentials = $MySourceCredential
         AllowSelfService = $true
         AdminOnly = $true
@@ -256,7 +256,7 @@ if ($AdditionalSources) {
         CertificatePassword = 's0mepa$$'
     }
 #>
-    Foreach ($Source in $AdditionalSources) {
+    foreach ($Source in $AdditionalSources) {
         $SourceSplat = [System.Collections.Generic.List[string]]::new()
         # Required items
         $SourceSplat.Add('source')
@@ -284,8 +284,7 @@ if ($AdditionalSources) {
 }
 
 if ($AdditionalPackages) {
-
-    <#
+<#
     We expect to pass in a hashtable with package information with the following shape:
 
     @{
@@ -294,9 +293,8 @@ if ($AdditionalPackages) {
         Version = 123.4.56
         Pin = $true
     }
-    #>
+#>
     foreach ($package in $AdditionalPackages.GetEnumerator()) {
-        
         $PackageSplat = [System.Collections.Generic.list[string]]::new()
         $PackageSplat.add('install')
         $PackageSplat.add($package['Id'])
