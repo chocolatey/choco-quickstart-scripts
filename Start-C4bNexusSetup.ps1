@@ -267,19 +267,12 @@ process {
     if (-not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')) {
         Write-Host "Installing Microsoft Edge, to allow viewing the Nexus site"
         Invoke-Choco install microsoft-edge -y --source ChocolateyInternal
-        if ($LASTEXITCODE -eq 0) {
-            if (Test-Path 'HKLM:\SOFTWARE\Microsoft\Edge') {
-                $RegArgs = @{
-                    Path = 'HKLM:\SOFTWARE\Microsoft\Edge\'
-                    Name = 'HideFirstRunExperience'
-                    Type = 'Dword'
-                    Value = 1
-                    Force = $true
-                }
-                $null = Set-ItemProperty @RegArgs
-            }
-        }
     }
+    $Key = @{ Key = 'HKLM:\Software\Policies\Microsoft\Edge' ; Value = 'HideFirstRunExperience' }
+    if (-not (Test-Path $Key.Key)) {
+        $null = New-Item -Path $Key.Key -Force
+    }
+    $null = New-ItemProperty -Path $Key.Key -Name $Key.Value -Value 1 -PropertyType DWORD -Force
 
     # Save useful params
     Update-Clixml -Properties @{
