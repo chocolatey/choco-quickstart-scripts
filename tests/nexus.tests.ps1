@@ -57,8 +57,7 @@ Describe "Nexus Configuration" {
 
     Context "Repository Configuration" {
         BeforeAll {
-            $password = (Get-Content 'C:\ProgramData\sonatype-work\nexus3\admin.password') | ConvertTo-SecureString -AsPlainText -Force
-            $credential = [System.Management.Automation.PSCredential]::new('admin',$password)
+            $credential = Get-ChocoEnvironmentProperty NexusCredential
             . "C:\choco-setup\files\scripts\Get-Helpers.ps1"
             $null = Connect-NexusServer -Hostname $Fqdn -Credential $credential -UseSSL
 

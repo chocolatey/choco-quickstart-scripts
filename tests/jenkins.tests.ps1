@@ -31,10 +31,6 @@ Describe "Jenkins Configuration" {
             $Scripts = (Get-ChildItem 'C:\Scripts' -Recurse -Filter *.ps1).Name
         }
 
-        It "ConvertTo-ChocoObject is present" {
-            'ConvertTo-ChocoObject.ps1' -in $Scripts | Should -Be $true
-        }
-
         It "Get-UpdatedPackage.ps1 is present" {
             'Get-UpdatedPackage.ps1' -in $Scripts | Should -Be $true
         }
