@@ -117,7 +117,7 @@ Set-Location "$env:SystemDrive\choco-setup\files"
 .\Initialize-C4bSetup.ps1 -Thumbprint '<YOUR_CUSTOM_SSL_CERT_THUMBPRINT_HERE>'
 ```
 
-> :warning:**REMINDER**: If you are using your own SSL certificate, be sure to place this certificate in the `Local Machine > Personal` certificate store before running the above script, and ensure that the private key is exportable.
+> :warning:**REMINDER**: If you are using your own SSL certificate, be sure to place this certificate in the `Local Machine > Trusted People` certificate store before running the above script, and ensure that the private key is exportable.
 
 > :memo: **NOTE**
 > A Role and User credential will be configured to limit access to your Nexus repositories. As well, CCM Client and Service Salts are configured to further encrypt your connection between CCM and your endpoint clients. These additional settings are also incorporated into your `Register-C4bEndpoint.ps1` script for onboarding endpoints.
@@ -240,6 +240,35 @@ As a part of the C4B setup, we run tests to validate that your environment is co
     > <li>Configures Central Management (CCM) check-in, and opts endpoints into CCM Deployments</li>
     > </ul>
     > </details>
+
+#### Available parameters
+
+* `ClientCommunicationSalt`  
+    The salt for communication from an agent to an instance of Central Management Service. Details available in the README file on server desktop.
+* `ServiceCommunicationSalt`  
+    The salt for communication from an instance of Central Management Service to an agent. Details available in the README file on server desktop.
+* `RepositoryCredential`  
+    The credential to use to access the repository server from the endpoint. Details available in the README file on server desktop.
+* `ProxyUrl`  
+    The URL of a proxy server to use for connecting to the repository.
+* `ProxyCredential`  
+    The credentials, if required, to connect to the proxy server.
+* `IncludePackageTools`  
+    Install the Chocolatey Licensed Extension with right-click context menus available.
+* `AdditionalConfiguration`  
+    Allows for the application of user-defined configuration that is applied after the base configuration.
+* `AdditionalFeatures`  
+    Allows for the toggling of additional features that is applied after the base configuration.
+* `AdditionalPackages`  
+    Allows for the installation of additional packages after the system base packages have been installed.
+* `AdditionalSources`  
+    Allows for the addition of alternative sources after the base configuration has been applied.
+* `TrustCertificate`  
+    If passed, downloads the certificate from the client server before initializing Chocolatey Agent.
+
+#### Advanced Endpoint Configuration
+
+It is possible to customize the installation of Chocolatey on an endpoint via the available parameters above. For examples, please see [Advanced Endpoint Configuration](https://docs.chocolatey.org/en-us/c4b-environments/quick-start-environment/advanced-client-configuration/).
 
 ### Conclusion
 
