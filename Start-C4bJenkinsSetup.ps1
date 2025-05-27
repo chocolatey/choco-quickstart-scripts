@@ -18,12 +18,39 @@ param(
     [string]$NuGetApiKey = $(
         if (-not (Get-Command Get-ChocoEnvironmentProperty -ErrorAction SilentlyContinue)) {. $PSScriptRoot\scripts\Get-Helpers.ps1}
         Get-ChocoEnvironmentProperty NuGetApiKey -AsPlainText
+    ),
+
+    # The certificate thumbprint that identifies the target SSL certificate in
+    # the local machine certificate stores.
+    [Parameter(ValueFromPipeline, ParameterSetName='Thumbprint')]
+    [ArgumentCompleter({
+        Get-ChildItem Cert:\LocalMachine\TrustedPeople | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new(
+                $_.Thumbprint,
+                $_.Thumbprint,
+                "ParameterValue",
+                ($_.Subject -replace "^CN=(?<FQDN>.+),?.*$",'${FQDN}')
+            )
+        }
+    })]
+    [ValidateScript({Test-CertificateDomain -Thumbprint $_})]
+    [string]
+    $Thumbprint = $(
+        if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint) {
+            (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint
+        } else {
+            Get-ChildItem Cert:\LocalMachine\TrustedPeople -Recurse | Sort-Object {
+                $_.Issuer -eq $_.Subject # Prioritise any certificates above self-signed
+            } | Select-Object -ExpandProperty Thumbprint -First 1
+        }
     )
 )
 process {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bJenkinsSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
+
+    $JenkinsScheme, $JenkinsPort = "http", "8080"
 
     # Install temurin21jre to meet JRE>11 dependency of Jenkins
     $chocoArgs = @('install', 'temurin21jre', "--source='ChocolateyInternal'", '-y', '--no-progress', "--params='/ADDLOCAL=FeatureJavaHome'")
@@ -37,8 +64,8 @@ process {
     $chocoArgs = @('install', 'jenkins', "--source='ChocolateyInternal'", '-y', '--no-progress')
     & Invoke-Choco @chocoArgs
 
-    Write-Host "Giving Jenkins 30 seconds to complete background setup..." -ForegroundColor Green
-    Start-Sleep -Seconds 30  # Jenkins needs a moment
+    # Jenkins needs a moment
+    Wait-Site Jenkins
 
     # Disabling inital setup prompts
     $JenkinsHome = "C:\ProgramData\Jenkins\.jenkins"
@@ -47,25 +74,26 @@ process {
     $JenkinsVersion | Out-File -FilePath $JenkinsHome\jenkins.install.UpgradeWizard.state -Encoding utf8
     $JenkinsVersion | Out-File -FilePath $JenkinsHome\jenkins.install.InstallUtil.lastExecVersion -Encoding utf8
 
-    # Set the hostname, such that it's ready for use.
-    Set-JenkinsLocationConfiguration -Url "http://$($HostName):8080" -Path $JenkinsHome\jenkins.model.JenkinsLocationConfiguration.xml
-
     #region Set Jenkins Password
     $JenkinsCred = Set-JenkinsPassword -UserName 'admin' -NewPassword $(New-ServicePassword) -PassThru
     #endregion
 
-    # Long winded way to get the scripts for Jenkins jobs into the right place, but easier to maintain going forward
-    $root = Split-Path -Parent $MyInvocation.MyCommand.Definition
-    $systemRoot = $env:SystemDrive + '\'
-    $JenkinsRoot = Join-Path $root -ChildPath 'jenkins'
-    $jenkinsScripts = Join-Path $JenkinsRoot -ChildPath 'scripts'
-
-    #Set home directory of Jenkins install
-    $JenkinsHome = 'C:\ProgramData\Jenkins\.jenkins'
-
-    Copy-Item $jenkinsScripts $systemRoot -Recurse -Force
-
     Stop-Service -Name Jenkins
+
+    if ($Thumbprint) {
+        $JenkinsScheme, $JenkinsPort = "https", 7443
+
+        if ($SubjectWithoutCn = Get-ChocoEnvironmentProperty CertSubject) {
+            $Hostname = $SubjectWithoutCn
+        }
+
+        # Generate Jenkins keystore
+        Set-JenkinsCertificate -Thumbprint $Thumbprint -Port $JenkinsPort
+
+        # Add firewall rule for Jenkins
+        netsh advfirewall firewall add rule name="Jenkins-$($JenkinsPort)" dir=in action=allow protocol=tcp localport=$JenkinsPort
+    }
+    Set-JenkinsLocationConfiguration -Url "$($JenkinsScheme)://$($SubjectWithoutCn):$($JenkinsPort)" -Path $JenkinsHome\jenkins.model.JenkinsLocationConfiguration.xml
 
     #region Jenkins Plugin Install & Update
     $JenkinsPlugins = (Get-Content $PSScriptRoot\files\jenkins.json | ConvertFrom-Json).plugins
@@ -103,13 +131,8 @@ process {
     #endregion
 
     #region Job Config
-    Write-Host "Creating Chocolatey Jobs" -ForegroundColor Green
-    Get-ChildItem "$env:SystemDrive\choco-setup\files\jenkins" | Copy-Item -Destination "$JenkinsHome\jobs\" -Recurse -Force
-
-    Get-ChildItem -Path "$JenkinsHome\jobs" -Recurse -File -Filter 'config.xml' | Invoke-TextReplacementInFile -Replacement @{
-        '{{NugetApiKey}}' = $NuGetApiKey
-        '(?<=https:\/\/)(?<HostName>.+)(?=:8443\/repository\/)' = $HostName
-    }
+    $chocoArgs = @('install', 'chocolatey-licensed-jenkins-jobs', "--source='ChocolateyInternal'", '-y', '--no-progress')
+    & Invoke-Choco @chocoArgs
     #endregion
 
     Write-Host "Starting Jenkins service back up" -ForegroundColor Green
@@ -117,7 +140,7 @@ process {
 
     # Save useful params
     Update-Clixml -Properties @{
-        JenkinsUri  = "http://$($HostName):8080"
+        JenkinsUri        = "$($JenkinsScheme)://$($HostName):$($JenkinsPort)"
         JenkinsCredential = $JenkinsCred
     }
 

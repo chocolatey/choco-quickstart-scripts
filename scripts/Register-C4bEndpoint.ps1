@@ -76,6 +76,7 @@ Param(
     [Parameter()]
     [String]
     $ProxyUrl,
+
     # The credentials, if required, to connect to the proxy server.
     [Parameter()]
     [PSCredential]
@@ -148,7 +149,7 @@ begin {
 }
 
 end {
-    # If we use a Self-Signed certificate, we need to explicity trust it
+    # If we use a Self-Signed certificate, we need to explicitly trust it
     if ($TrustCertificate) {
         Invoke-Expression ($downloader.DownloadString("http://$($Fqdn):80/Import-ChocoServerCertificate.ps1"))
     }
