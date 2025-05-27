@@ -48,7 +48,7 @@ param(
     $DatabaseCredential = $(
         if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).DatabaseUser) {
             (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).DatabaseUser
-        } elseif ($PSCmdlet.ParameterSetName -eq 'Install') {
+        } else {
             [PSCredential]::new(
                 "chocodbuser",
                 (ConvertTo-SecureString "$(New-Guid)-$(New-Guid)" -Force -AsPlainText)
