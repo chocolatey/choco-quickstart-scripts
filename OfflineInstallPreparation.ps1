@@ -108,6 +108,7 @@ foreach ($Package in (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertF
         "download", "$($Package.Name)"
         "--output-directory", $PackageWorkingDirectory
         "--ignore-dependencies"
+        "--no-progress"
     )
     $ChocoArgs += switch ($Package.psobject.properties.name) {
         "Version" { "--version=$($Package.Version)" }
