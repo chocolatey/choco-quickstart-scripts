@@ -22,8 +22,8 @@ To test the quickstart environment:
 
 1. Copy the repository directory over to `C:\choco-setup\files\` on the test machine. You do not need to copy the `.git` directory.
 1. Open an elevated Windows PowerShell console.
-1. Run `C:\choco-setup\files\Start-C4bSetup.ps1`, and continue through the guide steps as detailed in `README.md`.
-1. Run `C:\choco-setup\files\Start-C4bVerification.ps1` and check that all tests pass.
+1. Run `C:\choco-setup\files\Initialize-C4bSetup.ps1`, and continue through the guide steps as detailed in `README.md`.
+1. Run `C:\choco-setup\files\Test-C4bSetup.ps1` and check that all tests pass.
 
 ## Testing a PR
 
@@ -43,7 +43,7 @@ Invoke-RestMethod "https://ch0.co/qsg-go" | Invoke-Expression
 ```
 
 1. Perform each step of the Quickstart Guide, and make sure the changes you have attempted to make work appropriately.
-1. Run `Start-C4bVerification.ps1` and check that all tests pass.
+1. Run `Test-C4bSetup.ps1` and check that all tests pass.
 1. If everything looks OK, push your branch and create your Pull Request.
 
 ## Creating a PR
