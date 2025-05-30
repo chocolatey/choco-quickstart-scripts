@@ -195,6 +195,17 @@ process {
     }
     choco config set centralManagementServiceUrl "$($CcmEndpoint):24020/ChocolateyManagementService"
 
+    #Generate CCM Salt Values
+    if (-not (Get-ChocoEnvironmentProperty ClientSalt)) {
+        $ClientSaltValue = New-ServicePassword
+        Set-ChocoEnvironmentProperty ClientSalt $ClientSaltValue
+    }
+
+    if (-not (Get-ChocoEnvironmentProperty ServiceSalt)) {
+        $ServiceSaltValue = New-ServicePassword
+        Set-ChocoEnvironmentProperty ServiceSalt $ServiceSaltValue
+    }
+
     # Updating the Registration Script
     $EndpointScript = "$PSScriptRoot\scripts\Register-C4bEndpoint.ps1"
     Invoke-TextReplacementInFile -Path $EndpointScript -Replacement @{
@@ -234,20 +245,9 @@ process {
         Set-ChocoEnvironmentProperty CCMEncryptionPassword $CCMEncryptionPassword
     }
 
-    # Set Client and Service salts
-    if (-not (Get-ChocoEnvironmentProperty ClientSalt)) {
-        $ClientSaltValue = New-ServicePassword
-        Set-ChocoEnvironmentProperty ClientSalt $ClientSaltValue
-
-        Invoke-Choco config set centralManagementClientCommunicationSaltAdditivePassword $ClientSaltValue.ToPlainText()
-    }
-
-    if (-not (Get-ChocoEnvironmentProperty ServiceSalt)) {
-        $ServiceSaltValue = New-ServicePassword
-        Set-ChocoEnvironmentProperty ServiceSalt $ServiceSaltValue
-
-        Invoke-Choco config set centralManagementServiceCommunicationSaltAdditivePassword $ServiceSaltValue.ToPlainText()
-    }
+    # Set Client and Service salts in Chocolatey Config
+    Invoke-Choco config set centralManagementClientCommunicationSaltAdditivePassword $ClientSaltValue.ToPlainText()
+    Invoke-Choco config set centralManagementServiceCommunicationSaltAdditivePassword $ServiceSaltValue.ToPlainText()
 
     # Set Website Root Address
     Update-CcmSettings -CcmEndpoint $CCmEndpoint -Credential $CCMCredential -Settings @{
