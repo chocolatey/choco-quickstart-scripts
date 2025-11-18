@@ -1207,7 +1207,7 @@ The host name of the C4B instance.
         }
 
         Copy-Item $PSScriptRoot\ReadmeTemplate.html.j2 -Destination $env:Public\Desktop\Readme.html -Force
-        
+
         # Working around the existing j2 template, so we can keep them roughly in sync
         Invoke-TextReplacementInFile -Path $env:Public\Desktop\Readme.html -Replacement @{
             # CCM Values
@@ -1296,6 +1296,69 @@ if (
 ) {
     Write-Warning -Message "FIPS is enabled on this system. Ensuring Chocolatey uses FIPS compliant checksums"
     Invoke-Choco feature enable --name='useFipsCompliantChecksums'
+}
+
+function Invoke-JenkinsApi {
+    <#
+        .Synopsis
+            Invokes an existing job on a Jenkins server
+        .Example
+            Invoke-JenkinsApi
+    #>
+    param(
+        # The name of the job to invoke
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Slug,
+
+        # The URI of the Jenkins server, including protocols and port if required
+        [ValidateNotNullOrEmpty()]
+        [string]$Uri = 'http://localhost:8080/jenkins',
+
+        [string]$Method = "GET",
+
+        # The Jenkins credential to authenticate with
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [System.Management.Automation.PSCredential]
+        [System.Management.Automation.CredentialAttribute()]
+        $Credential,
+
+        [switch]$RequiresCrumb
+    )
+    $RequestParams = @{}
+
+    $Header = @{}
+    $Header['Authorization'] = 'Basic {0}' -f ([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$($Credential.UserName):$($Credential.GetNetworkCredential().Password)")))
+    $RequestParams['Headers'] = $Header
+
+    if ($RequiresCrumb) {
+        $JenkinsWebSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+
+        $RequestParams['Uri'] = '{0}/crumbIssuer/api/json' -f $Uri
+        $RequestParams['Method'] = 'GET'
+
+        $RequestParams['WebSession'] = $JenkinsWebSession
+
+        $CrumbResponse = Invoke-RestMethod @RequestParams
+
+        $Header['Jenkins-Crumb'] = $CrumbResponse.crumb
+        $RequestParams['Uri'] = '{0}/me/descriptorByName/jenkins.security.ApiTokenProperty/generateNewToken?newTokenName=GHA' -f $Uri
+        $RequestParams['Method'] = 'POST'
+        $RequestParams['Headers'] = $Header
+
+        $Token = (Invoke-RestMethod @RequestParams).data.tokenValue
+        $RequestParams.Headers['Authorization'] = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$($Credential.UserName):$($Token)"))
+    }
+
+    $RequestParams['Uri'] = '{0}/{1}' -f $Uri.TrimEnd('/'), $Slug.TrimStart('/')
+    $RequestParams['Method'] = $Method
+
+    if ($Parameters) {
+        $RequestParams['Body'] = $Parameters
+    }
+
+    Invoke-RestMethod @RequestParams
 }
 
 Export-ModuleMember -Function "*"
