@@ -150,7 +150,7 @@ foreach ($Plugin in (Get-Content $PSScriptRoot\files\jenkins.json | ConvertFrom-
         OutFile = Join-Path $PluginsWorkingDirectory "$($Plugin.Name).hpi"
     }
     if ($Plugin.Version -and $Plugin.Version -ne 'latest') {
-        $RestArgs.Uri = "https://updates.jenkins-ci.org/download/plugins/$($Plugin.Name)/$($Plugin.Version)/$($Plugin.Name).hpi"
+        $RestArgs.Uri = "https://updates.jenkins.io/download/plugins/$($Plugin.Name)/$($Plugin.Version)/$($Plugin.Name).hpi"
     }
     if (-not (Test-Path $RestArgs.OutFile)) {
         Invoke-WebRequest @RestArgs -UseBasicParsing
