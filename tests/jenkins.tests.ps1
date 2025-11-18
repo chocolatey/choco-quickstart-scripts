@@ -1,8 +1,16 @@
+#requires -Modules C4B-Environment
 [CmdletBinding()]
-Param(
+param(
     [Parameter(Mandatory)]
-    [String]
-    $Fqdn
+    [String]$Fqdn,
+
+    [PSCredential]$JenkinsCredential = $(
+        if (Get-ChocoEnvironmentProperty JenkinsCredential) {
+            Get-ChocoEnvironmentProperty JenkinsCredential
+        } else {
+            Get-Credential -UserName admin -Message "Jenkins Account"
+        }
+    )
 )
 
 Describe "Jenkins Configuration" {
@@ -12,7 +20,7 @@ Describe "Jenkins Configuration" {
             $service = Get-Service jenkins
         }
 
-        It "Jenkins is installed" {
+        It "Jenkins package is installed" {
             $jenkins | Should -Not -BeNullOrEmpty
         }
 
@@ -23,7 +31,6 @@ Describe "Jenkins Configuration" {
         It "Service is running" {
             $service.Status | Should -Be 'Running'
         }
-
     }
 
     Context "Required Scripts" {
@@ -44,21 +51,17 @@ Describe "Jenkins Configuration" {
         }
     }
 
-    Context "Required Jobs" {
+    Context "Required Jobs" -Skip:$(-not $JenkinsCredential) {
         BeforeAll {
-            $jobs = (Get-ChildItem 'C:\ProgramData\Jenkins\.jenkins\jobs\' -Directory).Name
+            $Jobs = (Invoke-JenkinsApi -Uri "https://$($FQDN):7443" -Slug "/api/json" -Credential $JenkinsCredential).jobs
         }
 
-        It "'Internalize packages from the Community Repository' is present" {
-            'Internalize packages from the Community Repository' -in $jobs | Should -Be $true
-        }
-
-        It "'Update Production Repository' is present" {
-            'Update Production Repository' -in $jobs | Should -Be $true
-        }
-
-        It "'Update test repository from Chocolatey Community Repository' is present" {
-            'Update test repository from Chocolatey Community Repository' -in $jobs | Should -Be $true
+        It "'<_>' is present" -ForEach @(
+            'Internalize packages from the Community Repository'
+            'Update Production Repository'
+            'Update test repository from Chocolatey Community Repository'
+        ) {
+            $Jobs.Name | Should -Contain $_
         }
     }
 
@@ -68,17 +71,26 @@ Describe "Jenkins Configuration" {
         }
     }
 
-    Context "Required Plugins" {
+    Context "Required Plugins" -Skip:$(-not $JenkinsCredential) {
         BeforeDiscovery {
-            $ExpectedPlugins = (Get-Content $PSScriptRoot\..\files\jenkins.json | ConvertFrom-Json).plugins.name
+            $ExpectedPlugins = (Get-Content $PSScriptRoot\..\files\jenkins.json | ConvertFrom-Json).plugins
+            $InstalledPlugins = (Invoke-JenkinsApi -Uri "https://$($Fqdn):7443" -Slug "/manage/pluginManager/api/json?depth=1" -Credential $JenkinsCredential).plugins
         }
 
         BeforeAll {
-            $plugins = (Get-ChildItem 'C:\ProgramData\Jenkins\.jenkins\plugins\' -Directory).Name
+            $InstalledPlugins = (Invoke-JenkinsApi -Uri "https://$($Fqdn):7443" -Slug "/manage/pluginManager/api/json?depth=1" -Credential $JenkinsCredential).plugins
         }
 
-        It "<_> plugin is installed" -ForEach $ExpectedPlugins {
-            $_ -in $plugins | Should -be $true
+        It "<_.name> plugin is installed" -ForEach $ExpectedPlugins {
+            $PluginShortName, $PluginVersion = $_.name, $_.version
+            $InstalledPlugins.Where{
+                $_.shortName -eq $PluginShortName
+            }.version | Should -Be $PluginVersion -Because "$($PluginShortName) should have been version '$($PluginVersion)'"
+        }
+
+        # During our builds, we should check we're not merging outdated plugins - but on customer systems, that may be the case.
+        It "<_.shortName> is not outdated" -ForEach $InstalledPlugins -Skip:$(-not $env:CI) {
+            $_.hasUpdate | Should -Be $false -Because "$($_.longName) ('$($_.shortName)') should not have an available update"
         }
     }
 }
