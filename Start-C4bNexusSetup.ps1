@@ -54,6 +54,10 @@ process {
     $chocoArgs = @('install', 'nexus-repository', '-y' ,'--no-progress', "--package-parameters='/Fqdn:localhost'")
     & Invoke-Choco @chocoArgs
 
+    # Add nexus-repository to upgradeAllExceptions list
+    $chocoArgs = @('config', 'set', '--name=upgradeAllExceptions', '--value=nexus-repository', '--limit-output')
+    & Invoke-Choco @chocoArgs
+
     $chocoArgs = @('install', 'nexushell', '-y' ,'--no-progress')
     & Invoke-Choco @chocoArgs
 
