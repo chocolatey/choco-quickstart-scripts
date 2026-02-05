@@ -170,13 +170,14 @@ try {
             Copy-CertToStore $Certificate
         } else {
             Write-Verbose "Certificate has been successfully found in correct store"
+            $Certificate = Get-Item Cert:\LocalMachine\TrustedPeople\$Thumbprint
         }
         $chocoArgs += @("--package-parameters='/CertificateThumbprint=$Thumbprint'")
     }
     & Invoke-Choco @chocoArgs
 
     # If not specified, the installation will have generated a certificate
-    if (-not $Certificate) { $Certificate = Get-Item Cert:\LocalMachine\My\* }
+    if (-not $Certificate) { $Certificate = Get-Item Cert:\LocalMachine\TrustedPeople\* }
 
     Write-Host "Installing Chocolatey Central Management Website"
     $chocoArgs = @('install', 'chocolatey-management-web', "--source='ChocolateyInternal'", '-y', "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
