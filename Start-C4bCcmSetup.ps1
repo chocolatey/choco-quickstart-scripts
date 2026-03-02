@@ -193,17 +193,23 @@ try {
         New-CcmBinding -Thumbprint $Thumbprint
         Start-CcmService
 
+        # If the user provided certificate has multiple SANs, they may need to select one with params
+        if (-not (Get-ChocoEnvironmentProperty CertSubject)) {
+            $CertSubject = (Get-Item Cert:\LocalMachine\TrustedPeople\$Thumbprint).Subject -replace '^CN='
+            Set-ChocoEnvironmentProperty CertSubject $CertSubject
+        }
+
         $CcmEndpoint = "https://$(Get-ChocoEnvironmentProperty CertSubject)"
     }
     choco config set centralManagementServiceUrl "$($CcmEndpoint):24020/ChocolateyManagementService"
 
     #Generate CCM Salt Values
-    if (-not (Get-ChocoEnvironmentProperty ClientSalt)) {
+    if (-not ($ClientSaltValue = Get-ChocoEnvironmentProperty ClientSalt)) {
         $ClientSaltValue = New-ServicePassword
         Set-ChocoEnvironmentProperty ClientSalt $ClientSaltValue
     }
 
-    if (-not (Get-ChocoEnvironmentProperty ServiceSalt)) {
+    if (-not ($ServiceSaltValue = Get-ChocoEnvironmentProperty ServiceSalt)) {
         $ServiceSaltValue = New-ServicePassword
         Set-ChocoEnvironmentProperty ServiceSalt $ServiceSaltValue
     }

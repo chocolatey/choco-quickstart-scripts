@@ -15,21 +15,21 @@ C4B Quick-Start Guide Nexus setup script
     - Setup of firewall rule for repository access
 #>
 [CmdletBinding()]
-param(   
+param(
     # The certificate thumbprint that identifies the target SSL certificate in
     # the local machine certificate stores.
     [Parameter()]
     [ArgumentCompleter({
-        Get-ChildItem Cert:\LocalMachine\TrustedPeople | ForEach-Object {
-            [System.Management.Automation.CompletionResult]::new(
-                $_.Thumbprint,
-                $_.Thumbprint,
-                "ParameterValue",
-                ($_.Subject -replace "^CN=(?<FQDN>.+),?.*$",'${FQDN}')
-            )
-        }
-    })]
-    [ValidateScript({Test-CertificateDomain -Thumbprint $_})]
+            Get-ChildItem Cert:\LocalMachine\TrustedPeople | ForEach-Object {
+                [System.Management.Automation.CompletionResult]::new(
+                    $_.Thumbprint,
+                    $_.Thumbprint,
+                    "ParameterValue",
+                    ($_.Subject -replace "^CN=(?<FQDN>.+),?.*$", '${FQDN}')
+                )
+            }
+        })]
+    [ValidateScript({ Test-CertificateDomain -Thumbprint $_ })]
     [string]
     $Thumbprint = $(
         if ((Test-Path C:\choco-setup\clixml\chocolatey-for-business.xml) -and (Import-Clixml C:\choco-setup\clixml\chocolatey-for-business.xml).CertThumbprint) {
@@ -51,17 +51,17 @@ process {
 
     # Install base nexus-repository package
     Write-Host "Installing Sonatype Nexus Repository"
-    $chocoArgs = @('install', 'nexus-repository', '-y' ,'--no-progress', "--package-parameters='/Fqdn:localhost'")
+    $chocoArgs = @('install', 'nexus-repository', '-y' , '--no-progress', "--package-parameters='/Fqdn:localhost'")
     & Invoke-Choco @chocoArgs
 
-    $chocoArgs = @('install', 'nexushell', '-y' ,'--no-progress')
+    $chocoArgs = @('install', 'nexushell', '-y' , '--no-progress')
     & Invoke-Choco @chocoArgs
 
     if ($Thumbprint) {
         $NexusPort = 8443
 
         $null = Set-NexusCert -Thumbprint $Thumbprint -Port $NexusPort
-        
+
         if ($CertificateDnsName = Get-ChocoEnvironmentProperty CertSubject) {
             # Override the domain, so we don't get prompted for wildcard certificates
             Get-NexusLocalServiceUri -HostnameOverride $CertificateDnsName | Write-Verbose
@@ -71,10 +71,10 @@ process {
     # Add Nexus port access via firewall
     $FwRuleParams = @{
         DisplayName = "Nexus Repository access on TCP $NexusPort"
-        Direction = 'Inbound'
-        LocalPort = $NexusPort
-        Protocol = 'TCP'
-        Action = 'Allow'
+        Direction   = 'Inbound'
+        LocalPort   = $NexusPort
+        Protocol    = 'TCP'
+        Action      = 'Allow'
     }
     $null = New-NetFirewallRule @FwRuleParams
 
@@ -262,7 +262,7 @@ process {
     # Remove Local Chocolatey Setup Source
     $chocoArgs = @('source', 'remove', '--name="LocalChocolateySetup"')
     & Invoke-Choco @chocoArgs
-    
+
     # Install a non-IE browser for browsing the Nexus web portal.
     if (-not (Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe')) {
         Write-Host "Installing Microsoft Edge, to allow viewing the Nexus site"

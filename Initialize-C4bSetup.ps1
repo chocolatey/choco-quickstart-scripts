@@ -180,7 +180,7 @@ try {
             # Collect current certificate configuration
             $Certificate = Get-Certificate -Thumbprint $Thumbprint
             Copy-CertToStore -Certificate $Certificate
-    
+
             $null = Test-CertificateDomain -Thumbprint $Thumbprint
         } elseif ($PSScriptRoot) {
             # We're going to be using a self-signed certificate
@@ -215,7 +215,7 @@ try {
         # Set Choco Server Chocolatey Configuration
         Invoke-Choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"
         Invoke-Choco feature enable --name="'usePackageHashValidation'"
-    
+
         # Convert license to a "choco-license" package, and install it locally to test
         Write-Host "Creating a 'chocolatey-license' package, and testing install." -ForegroundColor Green
         Set-Location $FilesDir
