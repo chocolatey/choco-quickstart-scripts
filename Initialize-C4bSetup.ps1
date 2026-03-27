@@ -91,6 +91,19 @@ param(
         }
     ),
 
+    # Selects which automation platform to install and use.
+    [Parameter()]
+    [ValidateSet("Jenkins", "PowerShellUniversal")]
+    [string]$AutomationPlatform = "PowerShellUniversal",
+
+    # Selects which repository platform to use.
+    [Parameter()]
+    [ValidateSet("Nexus")]  # , "ProGet")]
+    [string]$RepositoryPlatform = $(if ($PSBoundParameters.ContainsKey('ProGetLicense')) { "ProGet" } else { "Nexus" }),
+
+    # If provided, licenses Inedo ProGet non-interactively.
+    [string]$ProGetLicense,
+
     # If provided, shows all Chocolatey output. Otherwise, blissful quiet.
     [switch]
     $ShowChocoOutput,
@@ -148,15 +161,6 @@ try {
             Remove-Item "$TempDir" -Recurse -Force
         }
     }
-
-    # Add the Module Path and Import Helper Functions
-    if (-not (Get-Module C4B-Environment -ListAvailable)) {
-        if ($env:PSModulePath.Split(';') -notcontains "$FilesDir\modules") {
-            [Environment]::SetEnvironmentVariable("PSModulePath", "$env:PSModulePath;$FilesDir\modules" , "Machine")
-            $env:PSModulePath = [Environment]::GetEnvironmentVariables("Machine").PSModulePath
-        }
-    }
-    Import-Module C4B-Environment -Verbose:$false
 
     # Downloading all CCM setup packages below
     Write-Host "Downloading missing nupkg files to $($PkgsDir)." -ForegroundColor Green
@@ -226,9 +230,18 @@ try {
         if ($Thumbprint) { $Certificate.Thumbprint = $Thumbprint }
 
         Set-Location "$env:SystemDrive\choco-setup\files"
-        .\Start-C4BNexusSetup.ps1 @Certificate
+
+        switch ($RepositoryPlatform) {
+            "Nexus" { .\Start-C4bNexusSetup.ps1 @Certificate }
+            # "ProGet" { .\Start-C4BProgetSetup.ps1 @Certificate -License $ProGetLicense }
+        }
+
         .\Start-C4bCcmSetup.ps1 @Certificate -DatabaseCredential $DatabaseCredential
-        .\Start-C4bJenkinsSetup.ps1 @Certificate
+
+        switch ($AutomationPlatform) {
+            "Jenkins" { .\StartC4bJenkinsSetup.ps1 @Certificate }
+            "PowerShellUniversal" { .\Start-C4bPsuSetup.ps1 @Certificate }
+        }
 
         Complete-C4bSetup -SkipBrowserLaunch:$SkipBrowserLaunch
     }

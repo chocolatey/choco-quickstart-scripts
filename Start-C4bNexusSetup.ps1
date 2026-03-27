@@ -216,6 +216,7 @@ process {
     } else {
         $NuGetApiKey = (Get-NexusNuGetApiKey -Credential $UploadUser).apiKey
         Set-ChocoEnvironmentProperty -Name PackageApiKey -Value $NuGetApiKey
+        Set-ChocoEnvironmentProperty PackageUploaderApiKey -Value $NuGetApiKey
     }
 
     # Push latest ChocolateyInstall.ps1 to raw repo
@@ -249,6 +250,7 @@ process {
     # Add ChocolateyTest as a source repository, to enable authenticated pushing
     Invoke-Choco source add -n 'ChocolateyTest' -s "$((Get-NexusRepository -Name 'ChocolateyTest').url)/index.json" -u="$($UploadUser.UserName)" -p="$($UploadUser.GetNetworkCredential().Password)"
     Invoke-Choco source disable -n 'ChocolateyTest'
+    Set-ChocoEnvironmentProperty PackageUploaderRepo "$((Get-NexusRepository -Name 'ChocolateyTest').url)/index.json"
 
     # Push all packages from previous steps to NuGet repo
     Write-Host "Pushing C4B Environment Packages to ChocolateyInternal"
