@@ -54,6 +54,11 @@ param(
         }
     ),
 
+    # Selects which automation platform to install and use.
+    [Parameter()]
+    [ValidateSet("Jenkins", "PowerShellUniversal")]
+    [string]$AutomationPlatform = "PowerShellUniversal",
+
     [string]$WorkingDirectory = $(Join-Path $env:Temp "choco-offline")
 )
 $ErrorActionPreference = "Stop"
@@ -78,8 +83,6 @@ if ($Signature.Status -eq 'Valid' -and $Signature.SignerCertificate.Subject -eq 
     Write-Error "ChocolateyInstall.ps1 script signature is not valid. Please investigate." -ErrorAction Stop
 }
 
-Import-Module $PSScriptRoot\modules\C4B-Environment -Force
-
 # Initialize environment, ensure Chocolatey For Business, etc.
 $Licensed = ($($(choco.exe)[0] -match "^Chocolatey (?<Version>\S+)\s*(?<LicenseType>Business)?$") -and $Matches.LicenseType)
 $InstalledLicensePath = "$env:ChocolateyInstall\license\chocolatey.license.xml"
@@ -95,8 +98,11 @@ if (-not $Licensed) {
     } else {
         'https://licensedpackages.chocolatey.org/api/v2/'
     }
-    Invoke-Choco install chocolatey.extension --source $ExtensionSource --params="'/NoContextMenu'" --confirm
+    $null = choco install chocolatey.extension --source $ExtensionSource --params="'/NoContextMenu'" --confirm --no-progress
 }
+
+# Install the required C4B Environment module
+$null = choco install c4b-environment.powershell --source $ExtensionSource --confirm --no-progress
 
 # Download each set of packages to the output directories
 $PackageWorkingDirectory = Join-Path $WorkingDirectory "Packages"
@@ -122,7 +128,7 @@ foreach ($Package in (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertF
         if (-not (Get-ChocolateyPackageMetadata -Path $PackageWorkingDirectory -Id $Package.Name) -and -not (Get-ChocolateyPackageMetadata -Path "$PSScriptRoot\files\" -Id $Package.Name)) {
             Write-Host "Downloading '$($Package.Name)'"
 
-            while ((Get-ChildItem $PackageWorkingDirectory -Filter *.nupkg).Where{$_.CreationTime -gt (Get-Date).AddMinutes(-1)}.Count -gt 5) {
+            while ((Get-ChildItem $PackageWorkingDirectory -Filter *.nupkg).Where{ $_.CreationTime -gt (Get-Date).AddMinutes(-1) }.Count -gt 5) {
                 Write-Verbose "Slowing down for a minute, in order to not trigger rate-limiting..."
                 Start-Sleep -Seconds 5
             }
@@ -135,31 +141,30 @@ foreach ($Package in (Get-Content $PSScriptRoot\files\chocolatey.json | ConvertF
 }
 Move-Item -Path $PackageWorkingDirectory\*.nupkg -Destination $PSScriptRoot\files\
 
-# Jenkins Plugins
-$PluginsWorkingDirectory = Join-Path $WorkingDirectory "JenkinsPlugins"
-if (-not (Test-Path $PluginsWorkingDirectory)) {
-    $null = New-Item -Path $PluginsWorkingDirectory -ItemType Directory -Force
-}
-if (Test-Path $PSScriptRoot\files\JenkinsPlugins.zip) {
-    Expand-Archive -Path $PSScriptRoot\files\JenkinsPlugins.zip -DestinationPath $PluginsWorkingDirectory -Force
-}
-$ProgressPreference = "Ignore"
-foreach ($Plugin in (Get-Content $PSScriptRoot\files\jenkins.json | ConvertFrom-Json).plugins) {
-    $RestArgs = @{
-        Uri     = "https://updates.jenkins-ci.org/latest/$($Plugin.Name).hpi"
-        OutFile = Join-Path $PluginsWorkingDirectory "$($Plugin.Name).hpi"
+if ($AutomationPlatform -eq 'Jenkins') {
+    # Jenkins Plugins
+    $PluginsWorkingDirectory = Join-Path $WorkingDirectory "JenkinsPlugins"
+    if (-not (Test-Path $PluginsWorkingDirectory)) {
+        $null = New-Item -Path $PluginsWorkingDirectory -ItemType Directory -Force
     }
-    if ($Plugin.Version -and $Plugin.Version -ne 'latest') {
-        $RestArgs.Uri = "https://updates.jenkins.io/download/plugins/$($Plugin.Name)/$($Plugin.Version)/$($Plugin.Name).hpi"
+    if (Test-Path $PSScriptRoot\files\JenkinsPlugins.zip) {
+        Expand-Archive -Path $PSScriptRoot\files\JenkinsPlugins.zip -DestinationPath $PluginsWorkingDirectory -Force
     }
-    if (-not (Test-Path $RestArgs.OutFile)) {
-        Invoke-WebRequest @RestArgs -UseBasicParsing
+    $ProgressPreference = "Ignore"
+    foreach ($Plugin in (Get-Content $PSScriptRoot\files\jenkins.json | ConvertFrom-Json).plugins) {
+        $RestArgs = @{
+            Uri     = "https://updates.jenkins-ci.org/latest/$($Plugin.Name).hpi"
+            OutFile = Join-Path $PluginsWorkingDirectory "$($Plugin.Name).hpi"
+        }
+        if ($Plugin.Version -and $Plugin.Version -ne 'latest') {
+            $RestArgs.Uri = "https://updates.jenkins.io/download/plugins/$($Plugin.Name)/$($Plugin.Version)/$($Plugin.Name).hpi"
+        }
+        if (-not (Test-Path $RestArgs.OutFile)) {
+            Invoke-WebRequest @RestArgs -UseBasicParsing
+        }
     }
+    Compress-Archive -Path $PluginsWorkingDirectory\* -Destination $PSScriptRoot\files\JenkinsPlugins.zip -Force
 }
-Compress-Archive -Path $PluginsWorkingDirectory\* -Destination $PSScriptRoot\files\JenkinsPlugins.zip -Force
-
-# BCryptDll
-$null = Get-BcryptDll
 
 # License
 if ($LicensePath -ne "$PSScriptRoot\files\chocolatey.license.xml") {
