@@ -51,7 +51,7 @@ param(
         }
     )
 )
-process {
+try {
     $DefaultEap = $ErrorActionPreference
     $ErrorActionPreference = 'Stop'
     Start-Transcript -Path "$env:SystemDrive\choco-setup\logs\Start-C4bCcmSetup-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
@@ -165,17 +165,19 @@ process {
             Write-Warning "You specified $Thumbprint for use with CCM service, but the certificate is not in the required LocalMachine\TrustedPeople store!"
             Write-Warning "Please place certificate with thumbprint: $Thumbprint in the LocalMachine\TrustedPeople store and re-run this step"
             throw "Certificate not in correct location... exiting."
-        } elseif ($MyCertificate = Get-Item Cert:\LocalMachine\My\$Thumbprint -EA 0) {
+        } elseif ($Certificate = Get-Item Cert:\LocalMachine\My\$Thumbprint -EA 0) {
             Write-Verbose "Copying certificate from 'Personal' store to 'TrustedPeople'"
-            Copy-CertToStore $MyCertificate
+            Copy-CertToStore $Certificate
         } else {
             Write-Verbose "Certificate has been successfully found in correct store"
+            $Certificate = Get-Item Cert:\LocalMachine\TrustedPeople\$Thumbprint
         }
         $chocoArgs += @("--package-parameters='/CertificateThumbprint=$Thumbprint'")
     }
     & Invoke-Choco @chocoArgs
-    
-    if (-not $MyCertificate) { $MyCertificate = Get-Item Cert:\LocalMachine\My\* }
+
+    # If not specified, the installation will have generated a certificate
+    if (-not $Certificate) { $Certificate = Get-Item Cert:\LocalMachine\TrustedPeople\* }
 
     Write-Host "Installing Chocolatey Central Management Website"
     $chocoArgs = @('install', 'chocolatey-management-web', "--source='ChocolateyInternal'", '-y', "--package-parameters-sensitive=""'/ConnectionString:Server=Localhost\SQLEXPRESS;Database=ChocolateyManagement;User ID=$DatabaseUser;Password=$DatabaseUserPw;'""", '--no-progress')
@@ -215,12 +217,12 @@ process {
 
         # Set a default value for TrustCertificate if we're using a self-signed cert
         '(?<Parameter>\s+\$TrustCertificate)(?<Value>\s*=\s*\$true)?(?<Comma>,)?(?!\))' = "`${Parameter}$(
-        if (Test-SelfSignedCertificate -Certificate $MyCertificate) {' = $true'}
+        if (Test-SelfSignedCertificate -Certificate $Certificate) {' = $true'}
         )`${Comma}"
     }
 
     # Create the site hosting the certificate import script on port 80
-    if ($MyCertificate.NotAfter -gt (Get-Date).AddYears(5)) {
+    if ($Certificate.NotAfter -gt (Get-Date).AddYears(5)) {
         .\scripts\New-IISCertificateHost.ps1
     }
 
@@ -265,7 +267,7 @@ process {
     }
 
     Write-Host "Chocolatey Central Management Setup has now completed" -ForegroundColor Green
-
+} finally {
     $ErrorActionPreference = $DefaultEap
     Stop-Transcript
 }
