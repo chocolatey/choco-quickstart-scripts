@@ -74,11 +74,16 @@ param(
     [Hashtable[]]
     $AdditionalPackages,
 
-    # Allows for the addition of alternative sources after the base conifguration  has been applied.
+    # Allows for the addition of alternative sources after the base configuration  has been applied.
     # Can override base configuration with this parameter
     [Parameter()]
     [Hashtable[]]
-    $AdditionalSources
+    $AdditionalSources,
+
+    # Allows for the skipping of ChocolateyGUI installation.
+    [Parameter()]
+    [Switch]
+    $SkipChocolateyGUI
 )
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
@@ -162,8 +167,10 @@ choco upgrade chocolatey.extension --confirm --source="'ChocolateyInternal'" --n
     }
 )
 
+if (-not $SkipChocolateyGUI){
 choco upgrade chocolateygui --confirm --source="'ChocolateyInternal'" --no-progress
 choco upgrade chocolateygui.extension --confirm --source="'ChocolateyInternal'" --no-progress
+}
 
 choco upgrade chocolatey-agent --confirm --source="'ChocolateyInternal'"
 
