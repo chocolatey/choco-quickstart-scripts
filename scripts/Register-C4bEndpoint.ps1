@@ -7,7 +7,7 @@
     Some endpoints may require a different set of features. The default installation will apply our _recommended_ configuration.
     However, you can override these defaults or enable/disable additional features by providing the `-AdditionalFeatures` parameter.
 
-    In this example we will disable the use of the background service so non-admin users cannot use Chocolatey (not recommended), and enable Gloabl Confirmation so you no longer need to pass -y when performing a package operation.
+    In this example we will disable the use of the background service so non-admin users cannot use Chocolatey (not recommended), and enable Global Confirmation so you no longer need to pass -y when performing a package operation.
     
     . .\Register-C4bEndpoint.ps1 -RepositoryCredential (Get-Credential) -AdditionalFeatures @{ useBackgroundService = 'Disabled'; allowGlobalCOnfirmation = 'Enabled' }
     
@@ -93,7 +93,7 @@ Param(
     [Hashtable]
     $AdditionalConfiguration,
 
-    # Allows for the toggling of additonal features that is applied after the base configuration.
+    # Allows for the toggling of additional features that is applied after the base configuration.
     # Can override base configuration with this parameter
     [Parameter()]
     [Hashtable]
@@ -104,11 +104,16 @@ Param(
     [Hashtable[]]
     $AdditionalPackages,
 
-    # Allows for the addition of alternative sources after the base conifguration  has been applied.
+    # Allows for the addition of alternative sources after the base configuration  has been applied.
     # Can override base configuration with this parameter
     [Parameter()]
     [Hashtable[]]
     $AdditionalSources,
+
+    # Allows for the skipping of ChocolateyGUI installation.
+    [Parameter()]
+    [Switch]
+    $SkipChocolateyGUI,
 
     # If passed, downloads the certificate from the client server before initializing Chocolatey Agent
     [Parameter()]
