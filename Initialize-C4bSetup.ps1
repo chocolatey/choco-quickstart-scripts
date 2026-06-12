@@ -193,6 +193,7 @@ try {
                 KeyUsage          = "KeyEncipherment", "DigitalSignature"
                 DnsName           = $CertificateDnsName
                 NotAfter          = (Get-Date).AddYears(10)
+                KeyExportPolicy   = "Exportable"
             }
 
             $Certificate = New-SelfSignedCertificate @CertificateArgs
