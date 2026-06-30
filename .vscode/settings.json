@@ -1,0 +1,22 @@
+{
+    "[powershell]": {
+        "debug.saveBeforeStart": "nonUntitledEditorsInActiveGroup",
+        "editor.semanticHighlighting.enabled": false,
+        "editor.wordSeparators": "`~!@#$%^&*()=+[{]}\\|;:'\",.<>/?",
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "modificationsIfAvailable",
+    },
+    "diffEditor.experimental.showMoves": true,
+    "diffEditor.experimental.useTrueInlineView": true,
+    "powershell.codeFormatting.autoCorrectAliases": true,
+    "powershell.codeFormatting.avoidSemicolonsAsLineTerminators": true,
+    "powershell.codeFormatting.newLineAfterCloseBrace": false,
+    "powershell.codeFormatting.pipelineIndentationStyle": "IncreaseIndentationForFirstPipeline",
+    "powershell.codeFormatting.preset": "OTBS",
+    "powershell.codeFormatting.trimWhitespaceAroundPipe": true,
+    "powershell.codeFormatting.useCorrectCasing": true,
+    "powershell.codeFormatting.whitespaceAfterSeparator": true,
+    "powershell.codeFormatting.whitespaceBetweenParameters": false,
+    "powershell.debugging.executeMode": "DotSource",
+    "powershell.pester.useLegacyCodeLens": false
+}

@@ -13,7 +13,7 @@ Welcome to the Chocolatey for Business (C4B) Quick-Start Guide! This guide will 
 - The Chocolatey Licensed components
 - A NuGet V3 Repository (Nexus)
 - Chocolatey Central Management (CCM)
-- An Automation Pipeline (Jenkins)
+- An Automation Pipeline (PowerShell Universal)
 
 > :memo: **NOTE**
 >
@@ -41,7 +41,7 @@ As illustrated in the diagram above, there are four main components to a Chocola
 
 1. **Chocolatey Central Management (CCM)**: CCM is the Web UI portal for your entire Chocolatey environment. Your endpoints check-in to CCM to report their package status. This includes the Chocolatey packages they have installed, and whether any of these packages are outdated. And now, with CCM Deployments, you can also deploy packages or package updates to groups of endpoints, as well as ad-hoc PowerShell commands. CCM is backed by an MS SQL Database. This guide will set up MS SQL Express for you.
 
-1. **Automation Pipeline (Jenkins)**: A pipeline tool will help you automate repetitive tasks, such checking for updates to a set of Chocolatey Packages from the Chocolatey Community Repository (CCR). If updates exist, the pipeline task will auto-internalize your list of packages, and push them into your NuGet repository for you. This guide will help you set up Jenkins as your automation pipeline.
+1. **Automation Pipeline (PowerShell Universal)**: A pipeline tool will help you automate repetitive tasks, such checking for updates to a set of Chocolatey Packages from the Chocolatey Community Repository (CCR). If updates exist, the pipeline task will auto-internalize your list of packages, and push them into your NuGet repository for you. This guide will help you set up PowerShell Universal as your automation pipeline.
 
 ## Requirements
 
@@ -171,17 +171,17 @@ As part of the C4B setup, we install and configure Chocolatey Central Management
 > </ul>
 > </details>
 
-#### Script: Jenkins Setup
+#### Script: PowerShell Universal Setup
 
-As part of the C4B setup, we install and configure Jenkins as a method for running Package Internalizer and other jobs:
+As part of the C4B setup, we install and configure PowerShell Universal as a method for running Package Internalizer and other jobs:
 
 > <details>
 > <summary><strong>What does this script do? (click to expand)</strong></summary>
 > <ul class="list-style-type-disc">
-> <li>Installs Jenkins package</li>
-> <li>Updates Jenkins plugins</li>
-> <li>Configures pre-downloaded Jenkins scripts for Package Internalizer automation</li>
-> <li>Sets up pre-defined Jenkins jobs for the scripts above</li>
+> <li>Installs PowerShell Universal package</li>
+> <li>Installs a module containing the Chocolatey for Business environment for PSU</li>
+> <li>Configures scripts for Package Internalizer automation</li>
+> <li>Sets up a Chocolatey for Business dashboard</li>
 > </ul>
 > </details>
 
@@ -194,11 +194,11 @@ As part of the C4B setup, we create a readme and install the Chocolatey Agent on
 > <ul class="list-style-type-disc">
 > <li>Sets up Chocolatey Agent on this system</li>
 > <li>Writes a Readme.html file to the Public Desktop with account information for C4B services</li>
-> <li>Auto-opens README, CCM, Nexus, and Jenkins in your web browser</li>
+> <li>Auto-opens README, CCM, Nexus, and PowerShell Universal in your web browser</li>
 > </ul>
 > </details>
 
-> :mag: **FYI**: A `Readme.html` file will now be generated on your desktop. This file contains login information for all 3 web portals (CCM, Nexus, and Jenkins). This `Readme.html`, along with all 3 web portals, will automatically be opened in your browser.
+> :mag: **FYI**: A `Readme.html` file will now be generated on your desktop. This file contains login information for all 3 web portals (CCM, Nexus, and PowerShell Universal). This `Readme.html`, along with all 3 web portals, will automatically be opened in your browser.
 
 ### Step 2: Setting up Endpoints
 

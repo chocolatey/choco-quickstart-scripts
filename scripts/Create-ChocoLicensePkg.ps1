@@ -48,8 +48,8 @@ $licensePackageNuspec = "$licensePackageFolder\$LicensePackageId.nuspec"
 # Get license expiration date and node count
 [xml]$licenseXml = Get-Content -Path $LicensePath
 $licenseExpiration = [datetimeoffset]::Parse("$($licenseXml.SelectSingleNode('/license').expiration) +0")
-$null = $licenseXml.license.name -match "(?<=\[).*(?=\])"
-$licenseNodeCount = $Matches.Values -replace '\s[A-Za-z]+',''
+$null = $licenseXml.license.name -match "(?<=\[)(?<NodeCount>.*)(?=\])"
+$licenseNodeCount = $Matches['NodeCount'] -replace '\s[A-Za-z]+'
 
 if ($licenseExpiration -lt [datetimeoffset]::UtcNow) {
     Write-Warning "THE LICENSE FILE AT '$LicensePath' is EXPIRED. This is the file used by this script to generate this package, not at '$licensePackageFolder'"

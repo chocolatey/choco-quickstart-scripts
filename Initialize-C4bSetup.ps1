@@ -91,6 +91,19 @@ param(
         }
     ),
 
+    # Selects which automation platform to install and use.
+    [Parameter()]
+    [ValidateSet("Jenkins", "PowerShellUniversal")]
+    [string]$AutomationPlatform = "PowerShellUniversal",
+
+    # Selects which repository platform to use.
+    [Parameter()]
+    [ValidateSet("Nexus")]  # , "ProGet")]
+    [string]$RepositoryPlatform = $(if ($PSBoundParameters.ContainsKey('ProGetLicense')) { "ProGet" } else { "Nexus" }),
+
+    # If provided, licenses Inedo ProGet non-interactively.
+    [string]$ProGetLicense,
+
     # If provided, shows all Chocolatey output. Otherwise, blissful quiet.
     [switch]
     $ShowChocoOutput,
@@ -149,15 +162,6 @@ try {
         }
     }
 
-    # Add the Module Path and Import Helper Functions
-    if (-not (Get-Module C4B-Environment -ListAvailable)) {
-        if ($env:PSModulePath.Split(';') -notcontains "$FilesDir\modules") {
-            [Environment]::SetEnvironmentVariable("PSModulePath", "$env:PSModulePath;$FilesDir\modules" , "Machine")
-            $env:PSModulePath = [Environment]::GetEnvironmentVariables("Machine").PSModulePath
-        }
-    }
-    Import-Module C4B-Environment -Verbose:$false
-
     # Downloading all CCM setup packages below
     Write-Host "Downloading missing nupkg files to $($PkgsDir)." -ForegroundColor Green
     Write-Host "This will take some time. Feel free to get a tea or coffee." -ForegroundColor Green
@@ -180,7 +184,7 @@ try {
             # Collect current certificate configuration
             $Certificate = Get-Certificate -Thumbprint $Thumbprint
             Copy-CertToStore -Certificate $Certificate
-    
+
             $null = Test-CertificateDomain -Thumbprint $Thumbprint
         } elseif ($PSScriptRoot) {
             # We're going to be using a self-signed certificate
@@ -215,7 +219,7 @@ try {
         # Set Choco Server Chocolatey Configuration
         Invoke-Choco feature enable --name="'excludeChocolateyPackagesDuringUpgradeAll'"
         Invoke-Choco feature enable --name="'usePackageHashValidation'"
-    
+
         # Convert license to a "choco-license" package, and install it locally to test
         Write-Host "Creating a 'chocolatey-license' package, and testing install." -ForegroundColor Green
         Set-Location $FilesDir
@@ -226,9 +230,18 @@ try {
         if ($Thumbprint) { $Certificate.Thumbprint = $Thumbprint }
 
         Set-Location "$env:SystemDrive\choco-setup\files"
-        .\Start-C4BNexusSetup.ps1 @Certificate
+
+        switch ($RepositoryPlatform) {
+            "Nexus" { .\Start-C4bNexusSetup.ps1 @Certificate }
+            # "ProGet" { .\Start-C4BProgetSetup.ps1 @Certificate -License $ProGetLicense }
+        }
+
         .\Start-C4bCcmSetup.ps1 @Certificate -DatabaseCredential $DatabaseCredential
-        .\Start-C4bJenkinsSetup.ps1 @Certificate
+
+        switch ($AutomationPlatform) {
+            "Jenkins" { .\StartC4bJenkinsSetup.ps1 @Certificate }
+            "PowerShellUniversal" { .\Start-C4bPsuSetup.ps1 @Certificate }
+        }
 
         Complete-C4bSetup -SkipBrowserLaunch:$SkipBrowserLaunch
     }
