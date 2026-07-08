@@ -127,10 +127,10 @@ try {
     $chocoArgs = @('install', 'dotnet-aspnetcoremodule-v2', "--source='ChocolateyInternal'", "--version='$($Packages.Where{$_.Name -eq 'dotnet-aspnetcoremodule-v2'}.Version)'", '--no-progress', '-y')
     & Invoke-Choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-8.0-runtime', "--source='ChocolateyInternal'", "--version=$($Packages.Where{$_.Name -eq 'dotnet-8.0-runtime'}.Version)", '--no-progress', '-y')
+    $chocoArgs = @('install', 'dotnet-10.0-runtime', "--source='ChocolateyInternal'", "--version=$($Packages.Where{$_.Name -eq 'dotnet-10.0-runtime'}.Version)", '--no-progress', '-y')
     & Invoke-Choco @chocoArgs
 
-    $chocoArgs = @('install', 'dotnet-8.0-aspnetruntime', "--source='ChocolateyInternal'", "--version=$($Packages.Where{$_.Name -eq 'dotnet-8.0-aspnetruntime'}.Version)", '--no-progress', '-y')
+    $chocoArgs = @('install', 'dotnet-10.0-aspnetruntime', "--source='ChocolateyInternal'", "--version=$($Packages.Where{$_.Name -eq 'dotnet-10.0-aspnetruntime'}.Version)", '--no-progress', '-y')
     & Invoke-Choco @chocoArgs
 
     Write-Host "Creating Chocolatey Central Management Database"
