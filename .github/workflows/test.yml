@@ -14,7 +14,7 @@ on:
 
       images:
         description: The Azure images to test on.
-        default: Win2022AzureEditionCore, Win2019Datacenter
+        default: Win2022AzureEditionCore, 2025-datacenter-azure-edition-core
         type: string
 
       variants:
@@ -64,7 +64,7 @@ jobs:
               $Trigger = Invoke-RestMethod "$GitHubApi/repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission" @AuthHeaders
 
               if ($Trigger.Permission -in @("admin", "write")) {
-                $Images = "Win2022AzureEditionCore", "Win2019Datacenter"
+                $Images = "Win2022AzureEditionCore", "2025-datacenter-azure-edition-core"
                 $Variants = "self-signed", "single", "wildcard"
               } else {
                 Write-Error "Action was triggered by '${{ github.actor }}', who has '$TriggerPermission': Cancelling build."
