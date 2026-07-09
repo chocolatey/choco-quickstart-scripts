@@ -186,6 +186,11 @@ try {
     }
     & Invoke-Choco @chocoArgs
 
+    # Add CCM & .Net Dependencies to upgradeAllExceptions list
+    $upgradeAllExceptions = choco config get --name=upgradeAllExceptions --limit-output
+    $chocoArgs = @('config', 'set', '--name=upgradeAllExceptions', "--value=dotnet-aspnetcoremodule-v2,dotnet-8.0-runtime,dotnet-8.0-aspnetruntime,chocolatey-management-database,chocolatey-management-service,chocolatey-management-web,$upgradeAllExceptions")
+    & Invoke-Choco @chocoArgs
+
     # Setup Website SSL
     if ($Thumbprint) {
         Stop-CcmService

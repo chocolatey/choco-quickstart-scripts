@@ -64,6 +64,11 @@ process {
     $chocoArgs = @('install', 'jenkins', "--source='ChocolateyInternal'", '-y', '--no-progress')
     & Invoke-Choco @chocoArgs
 
+    # Add Jenkins & Java Dependency to upgradeAllExceptions list
+    $upgradeAllExceptions = choco config get --name=upgradeAllExceptions --limit-output
+	$chocoArgs = @('config', 'set', '--name=upgradeAllExceptions', "--value=jenkins,temurin21jre,$upgradeAllExceptions")
+    & Invoke-Choco @chocoArgs
+
     # Jenkins needs a moment
     Wait-Site Jenkins
 

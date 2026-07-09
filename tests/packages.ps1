@@ -31,3 +31,14 @@ $RepositoryOnlyPackages = @(
     @{Name = 'chocolateygui.extension' }
     @{Name = 'dotnetfx' }
 )
+$upgradeAllExceptionPackages = @(
+    @{Name = 'chocolatey-management-database' }
+    @{Name = 'chocolatey-management-service' }
+    @{Name = 'chocolatey-management-web' }
+    @{Name = 'dotnet-8.0-aspnetruntime' }
+    @{Name = 'dotnet-8.0-runtime' }
+    @{Name = 'dotnet-aspnetcoremodule-v2' }
+    @{Name = 'jenkins' }
+    @{Name = 'nexus-repository' }
+    @{Name = 'Temurin21jre' }
+)

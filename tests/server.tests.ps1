@@ -24,6 +24,16 @@ Describe "Server Integrity" {
         }
     }
 
+    Context "Packages Set as Upgrade All Exceptions" {
+        BeforeAll {
+            $upgradeAllExceptionsList = (choco config get --name=upgradeAllExceptions --limit-output).Split(',')
+        }
+
+        It "<Name> is part of the upgradeAllExceptions list" -ForEach $upgradeAllExceptionPackages {
+            $Name | Should -BeIn $upgradeAllExceptionsList
+        }
+    }
+
     Context "Readme File" {
         It "Readme file was created" {
             Test-Path (Join-Path "$env:PUBLIC\Desktop" -ChildPath 'Readme.html') | Should -Be $true
