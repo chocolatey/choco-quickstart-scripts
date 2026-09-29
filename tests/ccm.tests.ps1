@@ -40,5 +40,13 @@ Describe "Chocolatey Central Management Configuration" {
         It "Firewall rule for Central Management Service is enabled" {
             $centralManagementFirewallRule.Enabled  | Should -Be $true
         }
+        It "SQL Express service is set to automatic startup within services pane" {
+            $sqlExpressService = Get-Service 'MSSQL$SQLEXPRESS'
+            $sqlExpressService.StartType | Should -Be 'Automatic'
+        }
+        It "SQL Express service registry key isn't set to delayed start" {
+            $sqlExpressServiceRegistryKey = Get-ItemPropertyValue 'HKLM:\SYSTEM\CurrentControlSet\Services\MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue -Name 'DelayedAutostart'
+            $sqlExpressServiceRegistryKey | Should -Not -Be 1
+        }
     }
 }

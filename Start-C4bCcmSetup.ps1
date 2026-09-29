@@ -101,6 +101,9 @@ try {
     Write-Verbose 'SQL Server: Setting Mixed Mode Authentication.'
     $null = New-ItemProperty "HKLM:\Software\Microsoft\Microsoft SQL Server\$SqlVersion\MSSQLServer\" -Name 'LoginMode' -Value 2 -Force
 
+    # Change SQL Express service from Delayed to Automatic to prevent timing issues with CCM at startup - see issue #323
+    $null = sc.exe config 'MSSQL$SQLEXPRESS' start=auto
+
     Write-Verbose "SQL Server: Forcing Restart of Instance."
     Restart-Service -Force 'MSSQL$SQLEXPRESS'
 
