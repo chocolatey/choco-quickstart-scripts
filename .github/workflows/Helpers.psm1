@@ -7,7 +7,7 @@ function New-TestVM {
         [Parameter()]
         [string]$Name = "qsg-$((New-Guid).ToString() -replace '-' -replace '^(.{11}).+$', '$1')",
 
-        [ValidateSet("Win2022AzureEditionCore", "Win2019Datacenter")]
+        [ValidateSet("Win2022AzureEditionCore", "2025-datacenter-azure-edition-core")]
         [string]$Image = "Win2022AzureEditionCore",
 
         [ArgumentCompleter({
