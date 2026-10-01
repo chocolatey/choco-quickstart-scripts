@@ -220,7 +220,7 @@ try {
         # Convert license to a "choco-license" package, and install it locally to test
         Write-Host "Creating a 'chocolatey-license' package, and testing install." -ForegroundColor Green
         Set-Location $FilesDir
-        .\scripts\Create-ChocoLicensePkg.ps1
+        .\scripts\Create-ChocoLicensePkg.ps1 -NoPush
         Remove-Item "$env:SystemDrive\choco-setup\packaging" -Recurse -Force
 
         $Certificate = @{}

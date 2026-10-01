@@ -6,9 +6,9 @@ client machines.
 .DESCRIPTION
 Finds the license file at the specified location (in your Chocolatey install
 folder by default) and creates a simple package around it. The resulting package
-is pushed to the ChocolateyInternal Nexus repository by default.
+is pushed to the $RepositoryURL
 #>
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName="Push")]
 param(
     # Local path used to build the license package.
     [Parameter()]
@@ -30,7 +30,21 @@ param(
     # license file.
     [Parameter()]
     [string]
-    $LicensePackageVersion
+    $LicensePackageVersion,
+
+    # The repository URL to push the license package to. An Example URL: https://chocoserver.mydomain.com:8443/repository/ChocolateyInternal/index.json 
+    [Parameter(Mandatory, ParameterSetName="Push")]
+    [string]
+    $RepositoryUrl,
+
+    # The API key needed to authenticate to your repository manager and push packages.
+    [Parameter(Mandatory, ParameterSetName="Push")]
+    [string]
+    $ApiKey,
+
+    [Parameter(ParameterSetName="NoPush")]
+    [switch]
+    $NoPush
 )
 
 if (-not (Test-Path $LicensePath)) {
@@ -45,7 +59,12 @@ $PackagingFolder = "$env:SystemDrive\choco-setup\packaging"
 $licensePackageFolder = "$PackagingFolder\$LicensePackageId"
 $licensePackageNuspec = "$licensePackageFolder\$LicensePackageId.nuspec"
 
-# Get license expiration date and node count
+Write-Warning "Prior to running this, please ensure you've updated the license file first at $LicensePath"
+Write-Warning "This script will OVERWRITE any existing license file you might have placed in '$licensePackageFolder'"
+& choco | Out-String -Stream | Write-Host
+Write-Warning "If there is is a note about invalid license above, you're going to run into issues."
+
+#Get license expiration date and node count
 [xml]$licenseXml = Get-Content -Path $LicensePath
 $licenseExpiration = [datetimeoffset]::Parse("$($licenseXml.SelectSingleNode('/license').expiration) +0")
 $null = $licenseXml.license.name -match "(?<=\[).*(?=\])"
@@ -62,24 +81,24 @@ if (-not $LicensePackageVersion) {
 }
 
 # Ensure the packaging folder exists
-Write-Verbose "Generating package/packaging folders at '$PackagingFolder'"
+Write-Host "Generating package/packaging folders at '$PackagingFolder'"
 New-Item $PackagingFolder -ItemType Directory -Force | Out-Null
 New-Item $PackagesPath -ItemType Directory -Force | Out-Null
 
 # Create a new package
-Write-Verbose "Creating package named  '$LicensePackageId'"
+Write-Host "Creating package named '$LicensePackageId'"
 New-Item $licensePackageFolder -ItemType Directory -Force | Out-Null
 New-Item "$licensePackageFolder\tools" -ItemType Directory -Force | Out-Null
 
 # Set the installation script
-Write-Verbose "Setting install and uninstall scripts..."
+Write-Host "Setting install and uninstall scripts..."
 @'
     $ErrorActionPreference = 'Stop'
-    $toolsDir              = Split-Path -Parent $MyInvocation.MyCommand.Definition
-    $licenseFile           = "$toolsDir\chocolatey.license.xml"
+    $toolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+    $licenseFile = "$toolsDir\chocolatey.license.xml"
 
     New-Item "$env:ChocolateyInstall\license" -ItemType Directory -Force
-    Copy-Item -Path $licenseFile  -Destination $env:ChocolateyInstall\license\chocolatey.license.xml -Force
+    Copy-Item -Path $licenseFile -Destination $env:ChocolateyInstall\license\chocolatey.license.xml -Force
     Write-Output "The license has been installed."
 '@ | Set-Content -Path "$licensePackageFolder\tools\chocolateyInstall.ps1" -Encoding UTF8 -Force
 
@@ -90,11 +109,12 @@ Write-Verbose "Setting install and uninstall scripts..."
 '@ | Set-Content -Path "$licensePackageFolder\tools\chocolateyUninstall.ps1" -Encoding UTF8 -Force
 
 # Copy the license to the package directory
-Write-Verbose "Copying license to package from '$LicensePath' to package location."
+Write-Host "Copying license to package from '$LicensePath' to package location."
+Write-Warning "This will overwrite the file in the package, even if that's where you placed the updated license."
 Copy-Item -Path $LicensePath -Destination "$licensePackageFolder\tools\chocolatey.license.xml" -Force
 
 # Set the nuspec
-Write-Verbose "Setting nuspec..."
+Write-Host "Setting nuspec..."
 @"
 <?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
@@ -117,7 +137,7 @@ The order for scripting is this:
 * chocolatey-agent
 
 If items are installed in any other order, it could have strange effects or fail.
-	</description>
+    </description>
     <!-- <releaseNotes>__REPLACE_OR_REMOVE__MarkDown_Okay</releaseNotes> -->
   </metadata>
   <files>
@@ -127,9 +147,27 @@ If items are installed in any other order, it could have strange effects or fail
 "@.Trim() | Set-Content -Path "$licensePackageNuspec" -Encoding UTF8 -Force
 
 # Package up everything
-Write-Verbose "Creating license package..."
-Invoke-Choco pack $licensePackageNuspec --output-directory="$PackagesPath"
-Write-Verbose "Package has been created and is ready at $PackagesPath"
+Write-Host "Creating license package..."
+choco pack $licensePackageNuspec --output-directory="$PackagesPath"
+Write-Host "Package has been created and is ready at $PackagesPath"
 
-Write-Verbose "Installing newly created package on this machine, making updates to license easier in the future, if pushed from another location later."
-Invoke-Choco upgrade chocolatey-license -y --source="'$PackagesPath'"
+$licensePackageFile = Get-ChildItem -Path $PackagesPath -Filter '*.nupkg' |
+    Sort-Object -Property LastWriteTime -Descending |
+    Select-Object -First 1
+
+if ($PSCmdlet.ParameterSetName -eq 'Push') {
+    choco push $licensePackageFile.FullName --source="'$RepositoryUrl'" --api-key="'$ApiKey'" --force
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "License push to $RepositoryUrl repository failed!"
+        throw "An error occurred when pushing the Chocolatey License to the $RepositoryUrl repository."
+    }
+
+    Write-Host "License package has been pushed to your repository"
+
+    Write-Host "Installing newly created package on this machine, making updates to license easier in the future, if pushed from another location later."
+    choco upgrade chocolatey-license -y --source="'$RepositoryUrl'"
+}
+else {
+    Write-Host "License package is being installed locally from $PackagesPath"
+    choco upgrade chocolatey-license -y --source="'$PackagesPath'"
+}
