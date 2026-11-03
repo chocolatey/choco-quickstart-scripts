@@ -72,6 +72,32 @@ jobs:
               }
             }
           }
+
+          $ExpiredCertificates = 0
+          if ($Variants -contains "single") {
+            $Cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+              [Convert]::FromBase64String('${{ secrets.SINGLE_CERT }}'),
+              (ConvertTo-SecureString '${{ secrets.SINGLE_PASS }}' -AsPlainText -Force)
+            )
+            if ($Cert.NotAfter -lt (Get-Date)) {
+              $ExpiredCertificates++
+              Write-Host "::error title=Certificate Expired::The '$($Cert.Subject)' certificate has expired ($($Cert.NotAfter))."
+            }
+          }
+
+          if ($Variants -contains "wildcard") {
+            $Cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+              [Convert]::FromBase64String('${{ secrets.WILDCARD_CERT }}'),
+              (ConvertTo-SecureString '${{ secrets.WILDCARD_PASS }}' -AsPlainText -Force)
+            )
+            if ($Cert.NotAfter -lt (Get-Date)) {
+              $ExpiredCertificates++
+              Write-Host "::error title=Certificate Expired::The '$($Cert.Subject)' certificate has expired ($($Cert.NotAfter))."
+            }
+          }
+
+          if ($ExpiredCertificates) {exit $ExpiredCertificates}
+
           "images=$($Images | ConvertTo-Json -Compress -AsArray)" >> $env:GITHUB_OUTPUT
           "variants=$($Variants | ConvertTo-Json -Compress -AsArray)" >> $env:GITHUB_OUTPUT
 
